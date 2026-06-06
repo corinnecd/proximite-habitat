@@ -216,7 +216,8 @@ src/
 - [x] Tests unitaires (Vitest : `permissions.ts`, `validations/fiche.ts`)
 - [x] CI GitHub Actions (`typecheck` + `test` bloquants, `lint` non bloquant)
 - [x] README projet + documentation d'installation
-- [ ] Types Supabase générés (`supabase gen types`)
+- [x] Types Supabase typés de bout en bout (`src/types/database.types.ts` + clients typés)
+- [x] Validation serveur des transitions + atomicité (RPC `transition_fiche`, migration `0003`)
 - [ ] Tests e2e (Playwright)
 - [ ] Résorber les avertissements ESLint React Compiler (rendre `lint` bloquant)
 
@@ -227,14 +228,14 @@ src/
 ### 🔴 Critique (sécurité / intégrité)
 1. ✅ ~~Secret en clair dans le dépôt~~ — `scripts/seed.mjs` lit désormais URL et clé `service_role` depuis `.env.local`. ⚠️ **La clé précédemment exposée reste valide : la roter dans le dashboard Supabase (Settings → API).**
 2. ✅ ~~Schéma & RLS non versionnés~~ — schéma complet + politiques RLS (isolation par organisation + rôle) versionnés dans `supabase/migrations/0001_initial_schema.sql` et `0002_rls_policies.sql`.
-3. **Aucune validation métier côté serveur** (hors `/api/users`) — transitions de statut et écritures se font depuis le client avec la clé `anon`. *(RLS pose maintenant un garde-fou par rôle, mais la validation fine des transitions reste à déplacer côté serveur.)*
-4. **Cohérence transactionnelle** — `update fiche` + `insert history` + `insert notification` sont 3 appels séparés non atomiques.
+3. ✅ ~~Aucune validation métier côté serveur~~ — les transitions passent par la RPC `transition_fiche` (`supabase/migrations/0003_rpc_transitions.sql`) qui revalide la matrice par rôle + l'organisation côté serveur. *(⚠️ à appliquer dans l'éditeur SQL Supabase.)*
+4. ✅ ~~Cohérence transactionnelle~~ — `transition_fiche` écrit fiche + historique + notification dans **une seule transaction** (SECURITY DEFINER).
 
 ### 🟠 Important (fonctionnel) — ce qui reste
 5. ✅ ~~**Confirmation avant de quitter le wizard**~~ — garde `beforeunload` ajouté dans `FicheStepper` (formulaire modifié / photos ou signature non envoyées).
 6. ✅ ~~**Pagination** des listes~~ — `range()` Supabase + « Charger plus » sur `/fiches` et `/notifications` (page de 20).
 7. **Fiche archivée en lecture seule** — pas de verrou UI sur les fiches `ARCHIVEE`.
-8. **Types DB générés** (`supabase gen types`) pour supprimer les interfaces dupliquées.
+8. ✅ ~~Types DB générés~~ — `src/types/database.types.ts` (type `Database` complet), clients Supabase typés, interfaces dupliquées remplacées par des types dérivés (`Fiche`, `Profile`, `Notification`…).
 9. **Tests** (aucun actuellement) + **CI**.
 
 ### 🟡 Souhaitable (qualité / produit)

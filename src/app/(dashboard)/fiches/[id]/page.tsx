@@ -28,52 +28,12 @@ import {
   canEditFiche,
   STATUS_LABELS,
 } from "@/lib/permissions";
-import type { FicheStatus } from "@/types/database";
+import type { FicheStatus, Fiche } from "@/types/database";
 import { toast } from "sonner";
 import {
   User, Home, Flame, Wind, Shield, Camera,
   Clock, ArrowLeft, UserCheck, Loader2, Pencil, Printer, Trash2,
 } from "lucide-react";
-
-interface Fiche {
-  id: string;
-  reference: string;
-  status: FicheStatus;
-  organization_id: string;
-  created_by: string;
-  assigned_to: string | null;
-  prospect_nom: string;
-  prospect_prenom: string;
-  prospect_adresse: string;
-  prospect_cp: string;
-  prospect_ville: string;
-  prospect_telephone: string;
-  disponibilites: string[];
-  date_visite: string | null;
-  heure_visite: string | null;
-  annee_construction: number | null;
-  annee_emmenagement: number | null;
-  temperature_confort: number | null;
-  surface_chauffee: number | null;
-  nb_habitants: number | null;
-  maison_en_vente: boolean | null;
-  modes_chauffage: string[];
-  systemes_chauffage: string[];
-  consommation: string | null;
-  cout_annuel: number | null;
-  systemes_ventilation: string[];
-  age_ventilation: string | null;
-  nature_isolant: string[];
-  age_isolant: string | null;
-  epaisseur_isolant: string | null;
-  types_pose_toiture: string[];
-  materiaux_toiture: string[];
-  observations: string | null;
-  signature_url: string | null;
-  consentement_rgpd: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 interface HistoryEntry {
   id: string;
@@ -88,7 +48,7 @@ interface HistoryEntry {
 interface PhotoEntry {
   id: string;
   storage_path: string;
-  original_name: string;
+  original_name: string | null;
 }
 
 interface ProfileEntry {
@@ -182,51 +142,18 @@ export default function FicheDetailPage({
     if (!fiche || !profile) return;
     setTransitioning(true);
 
-    const oldStatus = fiche.status;
-    await supabase
-      .from("fiches")
-      .update({ status: newStatus })
-      .eq("id", fiche.id);
-
-    await supabase.from("fiche_history").insert({
-      fiche_id: fiche.id,
-      organization_id: profile.organization_id,
-      user_id: profile.id,
-      action: `Statut changé de ${STATUS_LABELS[oldStatus]} à ${STATUS_LABELS[newStatus]}`,
-      old_status: oldStatus,
-      new_status: newStatus,
-      comment: comment || null,
+    // Transition validée et écrite côté serveur (fiche + historique + notification,
+    // de façon atomique). Voir supabase/migrations/0003_rpc_transitions.sql.
+    const { error } = await supabase.rpc("transition_fiche", {
+      p_fiche_id: fiche.id,
+      p_new_status: newStatus,
+      p_comment: comment || null,
     });
 
-    // ── Notifications selon le nouveau statut ──────────────────────────────
-    if (newStatus === "AFFECTEE" && fiche.assigned_to) {
-      await supabase.from("notifications").insert({
-        user_id: fiche.assigned_to,
-        organization_id: profile.organization_id,
-        type: "FICHE_AFFECTEE",
-        title: "Nouvelle fiche affectée",
-        message: `La fiche ${fiche.reference} vous a été affectée`,
-        fiche_id: fiche.id,
-      });
-    }
-
-    // Notifier le prospecteur quand sa fiche est acceptée ou refusée par le client
-    if (
-      (newStatus === "ACCEPTEE" || newStatus === "REFUSEE") &&
-      fiche.created_by &&
-      fiche.created_by !== profile.id
-    ) {
-      const isAccepted = newStatus === "ACCEPTEE";
-      await supabase.from("notifications").insert({
-        user_id: fiche.created_by,
-        organization_id: profile.organization_id,
-        type: isAccepted ? "FICHE_ACCEPTEE" : "FICHE_REFUSEE",
-        title: isAccepted ? "Fiche acceptée par le client 🎉" : "Fiche refusée par le client",
-        message: isAccepted
-          ? `Votre fiche ${fiche.reference} (${fiche.prospect_prenom} ${fiche.prospect_nom}) a été acceptée par le client.`
-          : `Votre fiche ${fiche.reference} (${fiche.prospect_prenom} ${fiche.prospect_nom}) a été refusée par le client.`,
-        fiche_id: fiche.id,
-      });
+    if (error) {
+      toast.error("Transition refusée : " + error.message);
+      setTransitioning(false);
+      return;
     }
 
     setFiche({ ...fiche, status: newStatus });
@@ -262,28 +189,17 @@ export default function FicheDetailPage({
   async function handleAssign(commercialId: string) {
     if (!fiche || !profile) return;
 
-    await supabase
-      .from("fiches")
-      .update({ assigned_to: commercialId, status: "AFFECTEE" })
-      .eq("id", fiche.id);
-
-    await supabase.from("fiche_history").insert({
-      fiche_id: fiche.id,
-      organization_id: profile.organization_id,
-      user_id: profile.id,
-      action: "Fiche affectée",
-      old_status: fiche.status,
-      new_status: "AFFECTEE",
+    // Affectation atomique côté serveur (fiche + historique + notification).
+    const { error } = await supabase.rpc("transition_fiche", {
+      p_fiche_id: fiche.id,
+      p_new_status: "AFFECTEE",
+      p_assigned_to: commercialId,
     });
 
-    await supabase.from("notifications").insert({
-      user_id: commercialId,
-      organization_id: profile.organization_id,
-      type: "FICHE_AFFECTEE",
-      title: "Nouvelle fiche affectée",
-      message: `La fiche ${fiche.reference} vous a été affectée`,
-      fiche_id: fiche.id,
-    });
+    if (error) {
+      toast.error("Affectation refusée : " + error.message);
+      return;
+    }
 
     toast.success("Fiche affectée avec succès");
     router.refresh();
@@ -566,7 +482,7 @@ export default function FicheDetailPage({
                         <img
                           key={photo.id}
                           src={data.publicUrl}
-                          alt={photo.original_name}
+                          alt={photo.original_name ?? ""}
                           className="w-full h-32 object-cover rounded-xl"
                         />
                       );

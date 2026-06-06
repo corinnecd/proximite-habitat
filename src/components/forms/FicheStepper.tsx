@@ -378,15 +378,17 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
         await uploadPhotoFiles(photos, id);
       }
 
-      await supabase.from("fiches").update({ status: "SOUMISE", consentement_rgpd: true }).eq("id", id);
-      await supabase.from("fiche_history").insert({
-        fiche_id: id,
-        organization_id: profile.organization_id,
-        user_id: profile.id,
-        action: "Fiche soumise — À valider",
-        old_status: "BROUILLON",
-        new_status: "SOUMISE",
+      // Soumission validée et écrite côté serveur (statut + RGPD + historique,
+      // de façon atomique). Voir supabase/migrations/0003_rpc_transitions.sql.
+      const { error: submitError } = await supabase.rpc("transition_fiche", {
+        p_fiche_id: id,
+        p_new_status: "SOUMISE",
       });
+      if (submitError) {
+        toast.error("Soumission refusée : " + submitError.message);
+        setSubmitting(false);
+        return;
+      }
 
       toast.success("Fiche soumise avec succès !");
       router.push("/");

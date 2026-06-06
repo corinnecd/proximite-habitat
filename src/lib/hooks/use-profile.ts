@@ -2,20 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { UserRole } from "@/types/database";
+import type { Profile } from "@/types/database";
 
-export interface Profile {
-  id: string;
-  organization_id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: UserRole;
-  phone: string | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+export type { Profile };
 
 export function useProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);

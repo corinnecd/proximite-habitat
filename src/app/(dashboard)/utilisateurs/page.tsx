@@ -12,11 +12,9 @@ import { Topbar } from "@/components/layout/Topbar";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { ROLE_LABELS } from "@/lib/permissions";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Profile } from "@/types/database";
 import { toast } from "sonner";
 import { UserPlus, Loader2, Shield, Mail, Phone } from "lucide-react";
-
-interface Profile { id: string; organization_id: string; email: string; first_name: string; last_name: string; role: UserRole; phone: string | null; is_active: boolean; created_at: string; updated_at: string; }
 
 export default function UtilisateursPage() {
   const [users, setUsers] = useState<Profile[]>([]);

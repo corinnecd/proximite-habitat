@@ -64,6 +64,8 @@ Le schéma et les politiques de sécurité (RLS) sont versionnés dans
 - `0001_initial_schema.sql` — tables, enums, index, triggers, buckets Storage.
 - `0002_rls_policies.sql` — Row Level Security : isolation par organisation +
   contrôle d'accès par rôle, et politiques Storage.
+- `0003_rpc_transitions.sql` — fonction `transition_fiche` : validation serveur
+  des transitions de statut + écriture atomique (fiche + historique + notification).
 
 Pour appliquer les migrations sur un projet Supabase, avec la
 [CLI Supabase](https://supabase.com/docs/guides/cli) :

@@ -90,7 +90,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
         consentement_rgpd:   fiche.consentement_rgpd   ?? false,
       });
 
-      setInitialPhotos(photosRes.data ?? []);
+      setInitialPhotos((photosRes.data ?? []).map((p) => ({ ...p, original_name: p.original_name ?? "" })));
       setLoading(false);
     }
 

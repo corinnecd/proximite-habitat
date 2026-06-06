@@ -4,27 +4,10 @@ import { useEffect, useState, use } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { STATUS_LABELS } from "@/lib/permissions";
-import type { FicheStatus } from "@/types/database";
+import type { Fiche } from "@/types/database";
 import { Printer, Loader2 } from "lucide-react";
 
-interface Fiche {
-  id: string; reference: string; status: FicheStatus;
-  prospect_nom: string; prospect_prenom: string; prospect_adresse: string;
-  prospect_cp: string; prospect_ville: string; prospect_telephone: string;
-  disponibilites: string[]; date_visite: string | null; heure_visite: string | null;
-  annee_construction: number | null; annee_emmenagement: number | null;
-  temperature_confort: number | null; surface_chauffee: number | null;
-  nb_habitants: number | null; maison_en_vente: boolean | null;
-  modes_chauffage: string[]; systemes_chauffage: string[];
-  consommation: string | null; cout_annuel: number | null;
-  systemes_ventilation: string[]; age_ventilation: string | null;
-  nature_isolant: string[]; age_isolant: string | null; epaisseur_isolant: string | null;
-  types_pose_toiture: string[]; materiaux_toiture: string[];
-  observations: string | null; consentement_rgpd: boolean;
-  created_at: string; updated_at: string;
-}
-
-interface PhotoRow { id: string; storage_path: string; original_name: string; }
+interface PhotoRow { id: string; storage_path: string; original_name: string | null; }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   if (!value && value !== 0) return null;
@@ -176,7 +159,7 @@ export default function ImprimerFichePage({ params }: { params: Promise<{ id: st
               {photos.map((p) => {
                 const { data } = supabase.storage.from("photos").getPublicUrl(p.storage_path);
                 return (
-                  <img key={p.id} src={data.publicUrl} alt={p.original_name}
+                  <img key={p.id} src={data.publicUrl} alt={p.original_name ?? ""}
                     className="w-full h-32 object-cover rounded-lg border border-gray-200" />
                 );
               })}

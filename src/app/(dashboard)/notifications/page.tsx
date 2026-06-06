@@ -7,18 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Topbar } from "@/components/layout/Topbar";
 import { createClient } from "@/lib/supabase/client";
 import { Bell, CheckCheck, FileText, Check, Loader2 } from "lucide-react";
+import type { Notification } from "@/types/database";
 
 const PAGE_SIZE = 20;
-
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  fiche_id: string | null;
-  read: boolean;
-  created_at: string;
-}
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);

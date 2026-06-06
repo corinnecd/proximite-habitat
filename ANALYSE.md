@@ -218,7 +218,7 @@ src/
 - [x] README projet + documentation d'installation
 - [x] Types Supabase typés de bout en bout (`src/types/database.types.ts` + clients typés)
 - [x] Validation serveur des transitions + atomicité (RPC `transition_fiche`, migration `0003`)
-- [ ] Tests e2e (Playwright)
+- [x] Tests e2e (Playwright) — auth + navigation + liste/détail (`e2e/`)
 - [ ] Résorber les avertissements ESLint React Compiler (rendre `lint` bloquant)
 
 ---

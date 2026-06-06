@@ -106,7 +106,8 @@ Comptes de test générés :
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Vérification TypeScript (`tsc --noEmit`) |
 | `npm test` | Tests unitaires (Vitest) |
-| `npm run test:watch` | Tests en mode watch |
+| `npm run test:watch` | Tests unitaires en mode watch |
+| `npm run test:e2e` | Tests end-to-end (Playwright) |
 | `npm run seed` | Peuplement de la base de démonstration |
 
 ---
@@ -154,6 +155,20 @@ npm test
 
 Couverture actuelle : matrice de permissions (`permissions.ts`) et schémas de
 validation (`validations/fiche.ts`).
+
+### Tests end-to-end (Playwright)
+
+Pilotent l'application réelle (auth, navigation, liste, détail de fiche) dans un
+navigateur. Nécessitent un `.env.local` valide et les comptes de démo
+(`npm run seed`). Le serveur de dev est démarré automatiquement (ou réutilisé
+s'il tourne déjà) :
+
+```bash
+npx playwright install   # une fois, pour installer les navigateurs
+npm run test:e2e
+```
+
+Comptes/URL surchargés par `E2E_EMAIL`, `E2E_PASSWORD`, `PLAYWRIGHT_BASE_URL`.
 
 ---
 

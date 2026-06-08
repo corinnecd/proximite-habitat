@@ -26,8 +26,7 @@ jobs:
       - name: Tests unitaires
         run: npm test
 
-      # Lint non bloquant : la base contient des avertissements React Compiler
-      # préexistants (setState dans des effets) à résorber progressivement.
+      # Lint bloquant (0 erreur). Les conseils React Compiler restent en `warn`
+      # (cf. eslint.config.mjs) : visibles mais non bloquants.
       - name: Lint
         run: npm run lint
-        continue-on-error: true

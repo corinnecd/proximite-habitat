@@ -7,7 +7,6 @@ import { Topbar } from "@/components/layout/Topbar";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
-import { STATUS_LABELS } from "@/lib/permissions";
 import type { FicheStatus } from "@/types/database";
 import {
   BarChart3, TrendingUp, Users, FileText,

@@ -8,7 +8,7 @@ import { PenTool, ShieldCheck } from "lucide-react";
 
 interface Step7Props { signatureDataUrl: string | null; setSignatureDataUrl: (url: string | null) => void; }
 
-export function Step7Signature({ signatureDataUrl, setSignatureDataUrl }: Step7Props) {
+export function Step7Signature({ setSignatureDataUrl }: Step7Props) {
   const { setValue, watch, formState: { errors } } = useFormContext<FicheFormData>();
   const consentement = watch("consentement_rgpd");
   return (

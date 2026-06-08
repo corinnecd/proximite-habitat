@@ -83,7 +83,9 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
   const [submitting, setSubmitting] = useState(false);
 
   // State pour l'affichage, ref pour les lectures synchrones dans les callbacks async
-  const [savedFicheId, setSavedFicheId] = useState<string | undefined>(ficheIdProp);
+  // Valeur non lue directement (la logique passe par ficheIdRef) ; le setter
+  // sert uniquement à déclencher un re-render après la première sauvegarde.
+  const [, setSavedFicheId] = useState<string | undefined>(ficheIdProp);
   const ficheIdRef = useRef<string | undefined>(ficheIdProp);
 
   const [photos, setPhotos] = useState<File[]>([]);

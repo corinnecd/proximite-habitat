@@ -14,7 +14,6 @@ import { STATUS_LABELS } from "@/lib/permissions";
 import type { FicheStatus } from "@/types/database";
 import { Search, FilePlus, FileText, Filter, Loader2 } from "lucide-react";
 
-const ALL_STATUSES: FicheStatus[] = ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
 const PAGE_SIZE = 20;
 
 interface FicheRow { id: string; reference: string; status: FicheStatus; prospect_nom: string; prospect_prenom: string; prospect_ville: string; prospect_cp: string; updated_at: string; assigned_to_profile: { first_name: string; last_name: string } | null; }

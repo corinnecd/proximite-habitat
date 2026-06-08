@@ -175,8 +175,9 @@ Comptes/URL surchargés par `E2E_EMAIL`, `E2E_PASSWORD`, `PLAYWRIGHT_BASE_URL`.
 ## CI
 
 Le workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) exécute, à
-chaque push et pull request : `typecheck`, `test` (bloquants) et `lint`
-(non bloquant le temps de résorber des avertissements React Compiler préexistants).
+chaque push et pull request : `typecheck`, `test` et `lint` — **tous bloquants**.
+Les conseils React Compiler (`set-state-in-effect`, etc.) sont conservés en
+`warn` dans `eslint.config.mjs` : visibles mais non bloquants.
 
 ---
 

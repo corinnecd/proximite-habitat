@@ -212,7 +212,7 @@ src/
 
 ### Lot 5 — Industrialisation 🟡 *en cours*
 - [x] Migrations SQL versionnées + politiques RLS dans le repo (`supabase/migrations/0001`, `0002`)
-- [x] Clé `service_role` sortie de `seed.mjs` (lue depuis `.env.local`) — **clé exposée à roter côté Supabase**
+- [x] Clé `service_role` sortie de `seed.mjs` (lue depuis `.env.local`) — clé exposée **rotée et ancienne clé révoquée** côté Supabase (juin 2026)
 - [x] Tests unitaires (Vitest : `permissions.ts`, `validations/fiche.ts`)
 - [x] CI GitHub Actions (`typecheck` + `test` bloquants, `lint` non bloquant)
 - [x] README projet + documentation d'installation
@@ -227,9 +227,9 @@ src/
 ## 6. Ce qui reste — listing priorisé (état juin 2026)
 
 ### 🔴 Critique (sécurité / intégrité)
-1. ✅ ~~Secret en clair dans le dépôt~~ — `scripts/seed.mjs` lit désormais URL et clé `service_role` depuis `.env.local`. ⚠️ **La clé précédemment exposée reste valide : la roter dans le dashboard Supabase (Settings → API).**
+1. ✅ ~~Secret en clair dans le dépôt~~ — `scripts/seed.mjs` lit URL et clé `service_role` depuis `.env.local`. Clé exposée **rotée** (nouvelle *secret key* `sb_secret_…`) et **ancienne clé révoquée** dans le dashboard Supabase.
 2. ✅ ~~Schéma & RLS non versionnés~~ — schéma complet + politiques RLS (isolation par organisation + rôle) versionnés dans `supabase/migrations/0001_initial_schema.sql` et `0002_rls_policies.sql`.
-3. ✅ ~~Aucune validation métier côté serveur~~ — les transitions passent par la RPC `transition_fiche` (`supabase/migrations/0003_rpc_transitions.sql`) qui revalide la matrice par rôle + l'organisation côté serveur. *(⚠️ à appliquer dans l'éditeur SQL Supabase.)*
+3. ✅ ~~Aucune validation métier côté serveur~~ — les transitions passent par la RPC `transition_fiche` (`supabase/migrations/0003_rpc_transitions.sql`) qui revalide la matrice par rôle + l'organisation côté serveur. **Migrations 0001→0003 appliquées** (schéma + RLS active sur les 6 tables + RPC).
 4. ✅ ~~Cohérence transactionnelle~~ — `transition_fiche` écrit fiche + historique + notification dans **une seule transaction** (SECURITY DEFINER).
 
 ### 🟠 Important (fonctionnel) — ce qui reste
@@ -287,7 +287,7 @@ src/
 | **UI / Design** | 🟢 Très bon | Charte pro, responsive, composants modernes. |
 | **UX** | 🟡 Correct | Quelques manques : édition de fiche, temps réel partiel, validation permissive. |
 | **Architecture** | 🟡 Moyen | Trop de logique et de requêtes dans l'UI, types dupliqués, pas de couche data. |
-| **Sécurité** | 🔴 À risque | Secret en clair, RLS non versionnées, validation métier côté client. |
+| **Sécurité** | 🟢 Solide | Clé rotée + ancienne révoquée, RLS versionnée **et appliquée** (isolation org/rôle), transitions validées et atomiques côté serveur (RPC). |
 | **Industrialisation** | 🔴 Absente | Pas de migrations, pas de tests, pas de CI, doc par défaut. |
 
 **Conclusion** : un **MVP fonctionnel et visuellement abouti**, mais qui n'est **pas prêt pour la production** tant que les points 🔴 (clé service_role exposée, schéma/RLS non versionnés, validation serveur) ne sont pas traités. Les chantiers à enclencher en priorité sont, dans l'ordre : **sécurité → versionnement du schéma → édition de fiche → tests/CI**.

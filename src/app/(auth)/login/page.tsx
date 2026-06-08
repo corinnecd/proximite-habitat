@@ -37,11 +37,18 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       <div className="hidden lg:flex lg:w-1/2 bg-[#1E3A5F] relative overflow-hidden flex-col justify-end pb-16 px-16">
-        {/* Arches circulaires décoratives */}
-        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full border-[70px] border-[#F97316]/20 pointer-events-none" />
-        <div className="absolute top-16 right-16 w-56 h-56 rounded-full border-[35px] border-[#FB923C]/25 pointer-events-none" />
-        {/* Ligne de couleur en bas */}
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#F97316] via-[#FB923C] to-transparent pointer-events-none" />
+        {/* Quadrillage de points blancs — CSS pur, 0 JS */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage: "radial-gradient(rgba(255,255,255,.18) 1.5px, transparent 1.5px)",
+            backgroundSize: "24px 24px",
+          }}
+        />
+        {/* Rectangle orange bas-droite — ombre portée */}
+        <div className="absolute -bottom-10 -right-10 w-64 h-64 rounded-3xl bg-[#F97316]/20 rotate-12 pointer-events-none shadow-[0_8px_40px_rgba(249,115,22,0.25)]" />
+        {/* Petit carré orange décalé */}
+        <div className="absolute bottom-20 right-24 w-28 h-28 rounded-2xl bg-[#F97316]/30 rotate-6 pointer-events-none shadow-[0_4px_20px_rgba(249,115,22,0.3)]" />
 
         {/* Brand en haut */}
         <div className="absolute top-12 left-16 flex items-center gap-3 z-10">

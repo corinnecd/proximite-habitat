@@ -189,10 +189,11 @@ export async function findDuplicateFiches(
  */
 export async function getFichesForStats(
   db: Db,
-  opts?: { from?: string },
+  opts?: { from?: string; assignedTo?: string },
 ): Promise<{ created_at: string; status: FicheStatus }[]> {
   let query = db.from("fiches").select("created_at, status");
   if (opts?.from) query = query.gte("created_at", opts.from);
+  if (opts?.assignedTo) query = query.eq("assigned_to", opts.assignedTo);
   const { data } = await query;
   return (data as { created_at: string; status: FicheStatus }[]) ?? [];
 }

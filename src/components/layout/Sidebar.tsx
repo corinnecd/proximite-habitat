@@ -28,6 +28,10 @@ const adminNav = [
   { name: "Reporting",    href: "/reporting",    icon: BarChart3 },
 ];
 
+const commercialNav = [
+  { name: "Mon reporting", href: "/reporting", icon: BarChart3 },
+];
+
 type BadgeKey = "fiches" | "notifs";
 
 function NavItem({
@@ -160,12 +164,17 @@ export function Sidebar() {
             <SectionLabel label="Administration" />
             <div className="space-y-0.5">
               {adminNav.map((item) => (
-                <NavItem
-                  key={item.href}
-                  item={item}
-                  isActive={isActive(item.href)}
-                  onClick={close}
-                />
+                <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
+              ))}
+            </div>
+          </>
+        )}
+        {profile?.role === "COMMERCIAL" && (
+          <>
+            <SectionLabel label="Statistiques" />
+            <div className="space-y-0.5">
+              {commercialNav.map((item) => (
+                <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
               ))}
             </div>
           </>

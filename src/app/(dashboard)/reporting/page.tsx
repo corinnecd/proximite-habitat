@@ -109,50 +109,61 @@ export default function ReportingPage() {
   const [totalFiches, setTotalFiches] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  async function loadData() {
-    const statuses: FicheStatus[] = ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+  const isCommercial = profile?.role === "COMMERCIAL";
+
+  async function loadData(profileId: string, role: string) {
+    const isComm = role === "COMMERCIAL";
+    const statuses: FicheStatus[] = isComm
+      ? ["AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
+      : ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+
     const countResults = await Promise.all(
       statuses.map(async (s) => {
-        const { count } = await supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
+        let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
+        if (isComm) q = q.eq("assigned_to", profileId);
+        const { count } = await q;
         return { status: s, count: count || 0 };
       })
     );
     setStatusCounts(countResults);
     setTotalFiches(countResults.reduce((a, b) => a + b.count, 0));
 
-    const { data: fichesRaw } = await supabase
-      .from("fiches")
-      .select("created_by, status, profiles!created_by(first_name, last_name)")
-      .neq("status", "BROUILLON");
+    // Top prospecteurs (direction uniquement)
+    if (!isComm) {
+      const { data: fichesRaw } = await supabase
+        .from("fiches")
+        .select("created_by, status, profiles!created_by(first_name, last_name)")
+        .neq("status", "BROUILLON");
 
-    if (fichesRaw) {
-      const map: Record<string, ProspecteurRow> = {};
-      for (const f of fichesRaw as unknown as Array<{
-        created_by: string; status: string;
-        profiles: { first_name: string; last_name: string } | null;
-      }>) {
-        const key = f.created_by;
-        if (!map[key]) {
-          const name = f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Inconnu";
-          map[key] = { name, total: 0, submitted: 0, accepted: 0 };
+      if (fichesRaw) {
+        const map: Record<string, ProspecteurRow> = {};
+        for (const f of fichesRaw as unknown as Array<{
+          created_by: string; status: string;
+          profiles: { first_name: string; last_name: string } | null;
+        }>) {
+          const key = f.created_by;
+          if (!map[key]) {
+            const name = f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Inconnu";
+            map[key] = { name, total: 0, submitted: 0, accepted: 0 };
+          }
+          map[key].total++;
+          map[key].submitted++;
+          if (f.status === "ACCEPTEE") map[key].accepted++;
         }
-        map[key].total++;
-        map[key].submitted++;
-        if (f.status === "ACCEPTEE") map[key].accepted++;
+        setProspecteurs(Object.values(map).sort((a, b) => b.total - a.total).slice(0, 10));
       }
-      setProspecteurs(Object.values(map).sort((a, b) => b.total - a.total).slice(0, 10));
     }
 
-    setStatPoints(await getFichesForStats(supabase));
+    setStatPoints(await getFichesForStats(supabase, isComm ? { assignedTo: profileId } : undefined));
     setLoading(false);
   }
 
   useEffect(() => {
     if (profileLoading) return;
     if (!profile) return;
-    if (profile.role !== "ADMIN") { router.replace("/"); return; }
+    if (profile.role !== "ADMIN" && profile.role !== "COMMERCIAL") { router.replace("/"); return; }
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData();
+    loadData(profile.id, profile.role);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, profileLoading]);
 
@@ -191,13 +202,20 @@ export default function ReportingPage() {
 
   return (
     <>
-      <Topbar title="Reporting" />
+      <Topbar title={isCommercial ? "Mon reporting" : "Reporting direction"} />
       <div className="p-6 lg:p-8 space-y-6">
+
+        {/* Sous-titre contextuel */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {isCommercial
+            ? <><Users className="w-4 h-4" /> Statistiques personnelles — vos fiches affectées</>
+            : <><BarChart3 className="w-4 h-4" /> Vue globale — tous commerciaux et prospecteurs réunis</>}
+        </div>
 
         {/* ── KPIs ─────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
-            label="Total fiches" value={totalFiches}
+            label={isCommercial ? "Mes fiches" : "Total fiches"} value={totalFiches}
             Icon={FileText} iconBg="bg-primary/10" iconColor="text-primary"
             border="border-l-primary"
           />
@@ -250,15 +268,31 @@ export default function ReportingPage() {
             </div>
           </div>
 
-          {/* Top prospecteurs */}
+          {/* Top prospecteurs (direction) ou résumé performance (commercial) */}
           <div className="bg-card border border-border rounded-2xl p-6 space-y-5 hover:shadow-md transition-all duration-200">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
                 <Trophy className="w-4 h-4 text-amber-600" />
               </div>
-              <h3 className="font-semibold text-sm">Top prospecteurs</h3>
+              <h3 className="font-semibold text-sm">{isCommercial ? "Ma performance" : "Top prospecteurs"}</h3>
             </div>
-            {prospecteurs.length === 0 ? (
+            {isCommercial ? (
+              /* Vue commercial : récap statuts */
+              <div className="space-y-3">
+                {statusCounts.filter(s => s.count > 0).map(({ status, count }) => (
+                  <div key={status}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <FicheStatusBadge status={status} />
+                      <span className="text-sm font-semibold tabular-nums">{count}</span>
+                    </div>
+                    <Bar value={count} max={Math.max(...statusCounts.map(s => s.count), 1)} colorClass={STATUS_BAR_COLORS[status]} />
+                  </div>
+                ))}
+                {statusCounts.every(s => s.count === 0) && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Aucune fiche affectée pour le moment</p>
+                )}
+              </div>
+            ) : prospecteurs.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
                 <p className="text-sm">Aucune fiche soumise pour le moment</p>

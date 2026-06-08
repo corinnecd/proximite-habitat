@@ -79,19 +79,42 @@ async function seed() {
     createdUsers.push({ ...u, id: authData.user.id });
   }
 
-  // Create 10 sample fiches
+  // 20 fiches réparties inégalement sur 3 commerciaux
+  // Index : 0=admin1 1=admin2 2=commercial1(Sophie) 3=commercial2(Lucas) 4=commercial3(Emma) 5=prosp1(Alexandre) 6=prosp2(Camille)
   console.log('\n3. Création des fiches de test...');
   const fiches = [
-    { nom: 'Dupont', prenom: 'Jean', ville: 'Lyon', cp: '69001', status: 'BROUILLON', created_by: 5 },
-    { nom: 'Martin', prenom: 'Claire', ville: 'Marseille', cp: '13001', status: 'BROUILLON', created_by: 6 },
-    { nom: 'Bernard', prenom: 'Paul', ville: 'Paris', cp: '75011', status: 'SOUMISE', created_by: 5 },
-    { nom: 'Petit', prenom: 'Julie', ville: 'Toulouse', cp: '31000', status: 'SOUMISE', created_by: 6 },
-    { nom: 'Robert', prenom: 'Marc', ville: 'Nice', cp: '06000', status: 'AFFECTEE', created_by: 5, assigned_to: 2 },
-    { nom: 'Durand', prenom: 'Anne', ville: 'Bordeaux', cp: '33000', status: 'AFFECTEE', created_by: 6, assigned_to: 3 },
-    { nom: 'Moreau', prenom: 'Luc', ville: 'Nantes', cp: '44000', status: 'AFFECTEE', created_by: 5, assigned_to: 4 },
-    { nom: 'Simon', prenom: 'Isabelle', ville: 'Strasbourg', cp: '67000', status: 'ACCEPTEE', created_by: 6, assigned_to: 2 },
-    { nom: 'Laurent', prenom: 'Thomas', ville: 'Rennes', cp: '35000', status: 'REFUSEE', created_by: 5, assigned_to: 3 },
-    { nom: 'Lefebvre', prenom: 'Sophie', ville: 'Lille', cp: '59000', status: 'ARCHIVEE', created_by: 6, assigned_to: 4 },
+    // ── Brouillons (prospecteurs, non affectés) ──
+    { nom: 'Dupont',     prenom: 'Jean',      ville: 'Lyon',          cp: '69001', status: 'BROUILLON', created_by: 5 },
+    { nom: 'Martin',     prenom: 'Claire',    ville: 'Marseille',     cp: '13001', status: 'BROUILLON', created_by: 6 },
+    { nom: 'Garnier',    prenom: 'Éric',      ville: 'Grenoble',      cp: '38000', status: 'BROUILLON', created_by: 5 },
+
+    // ── Soumises (en attente d'affectation) ──
+    { nom: 'Bernard',    prenom: 'Paul',      ville: 'Paris',         cp: '75011', status: 'SOUMISE', created_by: 5 },
+    { nom: 'Petit',      prenom: 'Julie',     ville: 'Toulouse',      cp: '31000', status: 'SOUMISE', created_by: 6 },
+
+    // ── Sophie Martin (commercial1) — 8 fiches ──
+    { nom: 'Leroy',      prenom: 'Nicolas',   ville: 'Nantes',        cp: '44000', status: 'AFFECTEE',  created_by: 5, assigned_to: 2 },
+    { nom: 'Chevalier',  prenom: 'Valérie',   ville: 'Montpellier',   cp: '34000', status: 'AFFECTEE',  created_by: 6, assigned_to: 2 },
+    { nom: 'Simon',      prenom: 'Isabelle',  ville: 'Strasbourg',    cp: '67000', status: 'ACCEPTEE',  created_by: 6, assigned_to: 2 },
+    { nom: 'Fontaine',   prenom: 'Marc',      ville: 'Rennes',        cp: '35000', status: 'ACCEPTEE',  created_by: 5, assigned_to: 2 },
+    { nom: 'Girard',     prenom: 'Lucie',     ville: 'Bordeaux',      cp: '33000', status: 'ACCEPTEE',  created_by: 6, assigned_to: 2 },
+    { nom: 'Renard',     prenom: 'Thierry',   ville: 'Dijon',         cp: '21000', status: 'REFUSEE',   created_by: 5, assigned_to: 2 },
+    { nom: 'Bonnet',     prenom: 'Sylvie',    ville: 'Metz',          cp: '57000', status: 'ARCHIVEE',  created_by: 6, assigned_to: 2 },
+    { nom: 'Blanc',      prenom: 'Antoine',   ville: 'Reims',         cp: '51100', status: 'ARCHIVEE',  created_by: 5, assigned_to: 2 },
+
+    // ── Lucas Bernard (commercial2) — 4 fiches ──
+    { nom: 'Durand',     prenom: 'Anne',      ville: 'Bordeaux',      cp: '33000', status: 'AFFECTEE',  created_by: 6, assigned_to: 3 },
+    { nom: 'Laurent',    prenom: 'Thomas',    ville: 'Rennes',        cp: '35000', status: 'REFUSEE',   created_by: 5, assigned_to: 3 },
+    { nom: 'Aubert',     prenom: 'Céline',    ville: 'Caen',          cp: '14000', status: 'ACCEPTEE',  created_by: 6, assigned_to: 3 },
+    { nom: 'Leclerc',    prenom: 'Frédéric',  ville: 'Rouen',         cp: '76000', status: 'ARCHIVEE',  created_by: 5, assigned_to: 3 },
+
+    // ── Emma Petit (commercial3) — 6 fiches ──
+    { nom: 'Robert',     prenom: 'Marc',      ville: 'Nice',          cp: '06000', status: 'AFFECTEE',  created_by: 5, assigned_to: 4 },
+    { nom: 'Lefebvre',   prenom: 'Sophie',    ville: 'Lille',         cp: '59000', status: 'ACCEPTEE',  created_by: 6, assigned_to: 4 },
+    { nom: 'Moreau',     prenom: 'Luc',       ville: 'Nantes',        cp: '44000', status: 'ACCEPTEE',  created_by: 5, assigned_to: 4 },
+    { nom: 'Rousseau',   prenom: 'Émilie',    ville: 'Toulon',        cp: '83000', status: 'REFUSEE',   created_by: 6, assigned_to: 4 },
+    { nom: 'Vincent',    prenom: 'Benoît',    ville: 'Angers',        cp: '49000', status: 'ARCHIVEE',  created_by: 5, assigned_to: 4 },
+    { nom: 'Muller',     prenom: 'Hélène',    ville: 'Strasbourg',    cp: '67000', status: 'ARCHIVEE',  created_by: 6, assigned_to: 4 },
   ];
 
   for (const f of fiches) {

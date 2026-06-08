@@ -53,7 +53,7 @@ function KpiCard({
   trend?: { delta: number };
 }) {
   return (
-    <div className={`bg-card border border-border border-l-4 ${border} rounded-2xl p-5`}>
+    <div className={`bg-card/80 backdrop-blur-sm border border-border border-l-4 ${border} rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200`}>
       <div className="flex items-start justify-between mb-3">
         <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
           <Icon className={`w-5 h-5 ${iconColor}`} />
@@ -79,7 +79,7 @@ function KpiCard({
 
 function PeriodKpi({ label, value, delta, accent }: { label: string; value: number | string; delta?: number; accent?: "green" }) {
   return (
-    <div className="rounded-xl bg-muted/50 p-4">
+    <div className={`rounded-xl bg-card border border-border border-l-4 p-4 transition-all duration-200 hover:shadow-md ${accent === "green" ? "border-l-emerald-500" : "border-l-primary/40"}`}>
       <p className="text-[11px] text-muted-foreground uppercase tracking-wide truncate">{label}</p>
       <div className="flex items-baseline gap-2 mt-1.5">
         <p className={`text-2xl font-bold tabular-nums ${accent === "green" ? "text-emerald-600" : ""}`}>{value}</p>
@@ -225,7 +225,7 @@ export default function ReportingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* Répartition par statut */}
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-5 hover:shadow-md transition-all duration-200">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <BarChart3 className="w-4 h-4 text-primary" />
@@ -251,7 +251,7 @@ export default function ReportingPage() {
           </div>
 
           {/* Top prospecteurs */}
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-5 hover:shadow-md transition-all duration-200">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
                 <Trophy className="w-4 h-4 text-amber-600" />
@@ -299,7 +299,7 @@ export default function ReportingPage() {
         </div>
 
         {/* ── Évolution par période ─────────────────────────────────────────── */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-6 hover:shadow-md transition-all duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">

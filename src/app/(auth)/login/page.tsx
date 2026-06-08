@@ -36,7 +36,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-[#1E3A5F] relative overflow-hidden flex-col justify-end pb-16 px-16">
+      <div className="hidden lg:flex lg:w-1/2 bg-[#1E3A5F] relative overflow-hidden flex-col justify-center px-16">
         {/* Quadrillage de points blancs — CSS pur, 0 JS */}
         <div
           className="absolute inset-0 pointer-events-none"
@@ -61,28 +61,28 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Contenu principal en bas à gauche */}
+        {/* Contenu principal centré */}
         <div className="relative z-10">
-          <h1 className="font-heading text-[52px] leading-[1.1] text-white mb-5">
+          <h1 className="font-heading text-[62px] leading-[1.08] text-white mb-6">
             Votre rénovation<br />
             <em className="not-italic text-[#FB923C]">clé en main</em>
           </h1>
-          <p className="text-white/60 text-base leading-relaxed max-w-sm mb-12">
+          <p className="text-white/60 text-lg leading-relaxed max-w-sm mb-14">
             Gérez vos pré-visites, suivez vos fiches et pilotez votre activité
             de rénovation énergétique en toute simplicité.
           </p>
           <div className="flex gap-0">
-            <div className="pr-7 border-r border-white/15">
-              <p className="text-2xl font-bold text-[#FB923C]">500+</p>
-              <p className="text-xs text-white/40 mt-1">Fiches traitées</p>
+            <div className="pr-8 border-r border-white/15">
+              <p className="text-3xl font-bold text-[#FB923C]">500+</p>
+              <p className="text-sm text-white/40 mt-1">Fiches traitées</p>
             </div>
-            <div className="px-7 border-r border-white/15">
-              <p className="text-2xl font-bold text-[#FB923C]">98%</p>
-              <p className="text-xs text-white/40 mt-1">Satisfaction</p>
+            <div className="px-8 border-r border-white/15">
+              <p className="text-3xl font-bold text-[#FB923C]">98%</p>
+              <p className="text-sm text-white/40 mt-1">Satisfaction</p>
             </div>
-            <div className="pl-7">
-              <p className="text-2xl font-bold text-[#FB923C]">30+</p>
-              <p className="text-xs text-white/40 mt-1">Experts</p>
+            <div className="pl-8">
+              <p className="text-3xl font-bold text-[#FB923C]">30+</p>
+              <p className="text-sm text-white/40 mt-1">Experts</p>
             </div>
           </div>
         </div>

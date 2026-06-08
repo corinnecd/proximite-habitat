@@ -24,9 +24,12 @@ const STATUS_ICONS: Record<FicheStatus, React.ReactNode> = {
 };
 
 const COUNTER_STYLES: Record<FicheStatus, string> = {
-  BROUILLON: "bg-muted text-muted-foreground border-border", SOUMISE: "bg-blue-50 text-blue-600 border-blue-200",
-  AFFECTEE: "bg-orange-50 text-orange-600 border-orange-200", ACCEPTEE: "bg-green-50 text-green-600 border-green-200",
-  REFUSEE: "bg-red-50 text-red-600 border-red-200", ARCHIVEE: "bg-muted text-muted-foreground border-border",
+  BROUILLON: "border-l-slate-400   bg-card/80  backdrop-blur-sm text-muted-foreground",
+  SOUMISE:   "border-l-blue-500    bg-blue-50/80   backdrop-blur-sm text-blue-700",
+  AFFECTEE:  "border-l-orange-500  bg-orange-50/80 backdrop-blur-sm text-orange-700",
+  ACCEPTEE:  "border-l-emerald-500 bg-emerald-50/80 backdrop-blur-sm text-emerald-700",
+  REFUSEE:   "border-l-red-500     bg-red-50/80    backdrop-blur-sm text-red-700",
+  ARCHIVEE:  "border-l-slate-400   bg-muted/80 backdrop-blur-sm text-muted-foreground",
 };
 
 export default function DashboardPage() {
@@ -135,7 +138,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {visibleStatuses.map((status) => (
             <Link key={status} href={`/fiches?status=${status}`}>
-              <Card className={`border ${COUNTER_STYLES[status]} hover:shadow-md transition-all duration-200 cursor-pointer`}>
+              <Card className={`border border-border border-l-4 shadow-sm ${COUNTER_STYLES[status]} hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200 cursor-pointer`}>
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between mb-3">{STATUS_ICONS[status]}</div>
                   <p className="text-3xl font-bold">{counts[status]}</p>

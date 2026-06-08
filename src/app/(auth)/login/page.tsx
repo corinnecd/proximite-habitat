@@ -36,35 +36,49 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-primary relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1E3A5F] via-[#2A4A6F] to-[#1E3A5F]" />
-        <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
-              <Building2 className="w-7 h-7 text-orange-400" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight">Proximité Habitat</h2>
-              <p className="text-sm text-white/60">Conseil</p>
-            </div>
+      <div className="hidden lg:flex lg:w-1/2 bg-[#1E3A5F] relative overflow-hidden flex-col justify-end pb-16 px-16">
+        {/* Arches circulaires décoratives */}
+        <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full border-[70px] border-[#F97316]/20 pointer-events-none" />
+        <div className="absolute top-16 right-16 w-56 h-56 rounded-full border-[35px] border-[#FB923C]/25 pointer-events-none" />
+        {/* Ligne de couleur en bas */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#F97316] via-[#FB923C] to-transparent pointer-events-none" />
+
+        {/* Brand en haut */}
+        <div className="absolute top-12 left-16 flex items-center gap-3 z-10">
+          <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
+            <Building2 className="w-6 h-6 text-orange-400" />
           </div>
-          <h1 className="font-heading text-5xl leading-tight mb-6">
+          <div>
+            <p className="text-white font-semibold text-base leading-tight">Proximité Habitat</p>
+            <p className="text-white/50 text-xs">Conseil</p>
+          </div>
+        </div>
+
+        {/* Contenu principal en bas à gauche */}
+        <div className="relative z-10">
+          <h1 className="font-heading text-[52px] leading-[1.1] text-white mb-5">
             Votre rénovation<br />
-            <span className="text-orange-400">clé en main</span>
+            <em className="not-italic text-[#FB923C]">clé en main</em>
           </h1>
-          <p className="text-lg text-white/70 max-w-md leading-relaxed">
+          <p className="text-white/60 text-base leading-relaxed max-w-sm mb-12">
             Gérez vos pré-visites, suivez vos fiches et pilotez votre activité
             de rénovation énergétique en toute simplicité.
           </p>
-          <div className="mt-16 flex gap-8">
-            <div><p className="text-3xl font-bold text-orange-400">500+</p><p className="text-sm text-white/50">Fiches traitées</p></div>
-            <div><p className="text-3xl font-bold text-orange-400">98%</p><p className="text-sm text-white/50">Satisfaction</p></div>
-            <div><p className="text-3xl font-bold text-orange-400">30+</p><p className="text-sm text-white/50">Experts</p></div>
+          <div className="flex gap-0">
+            <div className="pr-7 border-r border-white/15">
+              <p className="text-2xl font-bold text-[#FB923C]">500+</p>
+              <p className="text-xs text-white/40 mt-1">Fiches traitées</p>
+            </div>
+            <div className="px-7 border-r border-white/15">
+              <p className="text-2xl font-bold text-[#FB923C]">98%</p>
+              <p className="text-xs text-white/40 mt-1">Satisfaction</p>
+            </div>
+            <div className="pl-7">
+              <p className="text-2xl font-bold text-[#FB923C]">30+</p>
+              <p className="text-xs text-white/40 mt-1">Experts</p>
+            </div>
           </div>
         </div>
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full border border-white/5" />
-        <div className="absolute -bottom-16 -right-16 w-64 h-64 rounded-full border border-white/10" />
-        <div className="absolute top-16 -right-8 w-32 h-32 rounded-full bg-orange-400/10" />
       </div>
 
       <div className="flex-1 flex items-center justify-center p-8 bg-background">

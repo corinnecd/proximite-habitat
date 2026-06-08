@@ -71,7 +71,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+    <div className="bg-card border border-border rounded-2xl p-6 space-y-4 hover:shadow-md transition-all duration-200">
       <div className="flex items-center gap-3">
         <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
           <span className={iconColor}>{icon}</span>
@@ -216,7 +216,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* ── Hero card ──────────────────────────────────────────────────── */}
-        <div className={`bg-card border border-border border-l-4 ${hero.border} rounded-2xl p-6`}>
+        <div className={`bg-card/80 backdrop-blur-sm border border-border border-l-4 ${hero.border} rounded-2xl p-6 shadow-sm`}>
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
 
             {/* Left: back + identity */}
@@ -528,24 +528,29 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="space-y-0">
                   {history.map((entry, idx) => (
                     <div key={entry.id} className="relative pl-6">
-                      {/* line */}
+                      {/* ligne verticale */}
                       {idx < history.length - 1 && (
-                        <div className="absolute left-[7px] top-4 bottom-0 w-[2px] bg-border" />
+                        <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
                       )}
-                      {/* dot */}
-                      <div className="absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full bg-primary/15 border-2 border-primary/40 flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      {/* point — orange pour le plus récent, bleu sinon */}
+                      <div className={`absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center
+                        ${idx === 0
+                          ? "bg-[#F97316]/15 border-[#F97316]"
+                          : "bg-primary/10 border-primary/40"}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? "bg-[#F97316]" : "bg-primary"}`} />
                       </div>
                       <div className="pb-5">
-                        <p className="text-sm font-medium leading-snug">{entry.action}</p>
+                        <p className="text-sm font-semibold leading-snug">{entry.action}</p>
                         {entry.comment && (
-                          <p className="text-xs text-muted-foreground mt-1 italic">"{entry.comment}"</p>
+                          <p className="text-xs text-muted-foreground mt-1 italic bg-muted/50 px-2 py-1 rounded-lg">"{entry.comment}"</p>
                         )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {entry.profiles
-                            ? `${entry.profiles.first_name} ${entry.profiles.last_name}`
-                            : "Système"}
-                          {" · "}
+                        <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                          <span className="font-medium text-foreground/70">
+                            {entry.profiles
+                              ? `${entry.profiles.first_name} ${entry.profiles.last_name}`
+                              : "Système"}
+                          </span>
+                          <span>·</span>
                           {new Date(entry.created_at).toLocaleDateString("fr-FR", {
                             day: "2-digit", month: "short", year: "numeric",
                             hour: "2-digit", minute: "2-digit",
@@ -559,44 +564,54 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             </div>
 
             {/* Infos */}
-            <div className="bg-card border border-border rounded-2xl p-6 space-y-4 text-sm">
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">Créée le</p>
-                <p className="font-medium">
-                  {new Date(fiche.created_at).toLocaleDateString("fr-FR", {
-                    day: "2-digit", month: "long", year: "numeric",
-                  })}
-                </p>
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-3 text-sm hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center shrink-0">
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Créée le</p>
+                  <p className="font-medium text-sm leading-tight">
+                    {new Date(fiche.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
+                  </p>
+                </div>
               </div>
               <Separator />
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">Dernière modification</p>
-                <p className="font-medium">
-                  {new Date(fiche.updated_at).toLocaleDateString("fr-FR", {
-                    day: "2-digit", month: "long", year: "numeric",
-                    hour: "2-digit", minute: "2-digit",
-                  })}
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Modifiée le</p>
+                  <p className="font-medium text-sm leading-tight">
+                    {new Date(fiche.updated_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
               </div>
-              {fiche.consentement_rgpd && (
-                <>
-                  <Separator />
-                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span className="text-xs font-medium">Consentement RGPD obtenu</span>
-                  </div>
-                </>
-              )}
               {fiche.assigned_to && (
                 <>
                   <Separator />
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">Commercial affecté</p>
-                    <p className="font-medium">
-                      {commercials.find((c) => c.id === fiche.assigned_to)
-                        ? `${commercials.find((c) => c.id === fiche.assigned_to)!.first_name} ${commercials.find((c) => c.id === fiche.assigned_to)!.last_name}`
-                        : "—"}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                      <UserCheck className="w-3.5 h-3.5 text-orange-500" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Commercial</p>
+                      <p className="font-medium text-sm leading-tight">
+                        {commercials.find((c) => c.id === fiche.assigned_to)
+                          ? `${commercials.find((c) => c.id === fiche.assigned_to)!.first_name} ${commercials.find((c) => c.id === fiche.assigned_to)!.last_name}`
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
+              {fiche.consentement_rgpd && (
+                <>
+                  <Separator />
+                  <div className="flex items-center gap-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="text-xs font-medium text-emerald-800 dark:text-emerald-300">Consentement RGPD obtenu</span>
                   </div>
                 </>
               )}

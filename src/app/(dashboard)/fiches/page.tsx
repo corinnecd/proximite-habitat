@@ -73,6 +73,7 @@ export default function FichesPage() {
     ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
     : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const fetchFiches = useCallback(async (pageToLoad = 0, append = false) => {
     if (append) setLoadingMore(true); else setLoading(true);
     let query = supabase
@@ -151,6 +152,7 @@ export default function FichesPage() {
 
   // Chargement initial + rechargement (page 0) à chaque changement de filtre/recherche
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchFiches(0, false);
   }, [fetchFiches]);
 

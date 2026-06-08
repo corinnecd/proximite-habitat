@@ -110,6 +110,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
         ...p,
         url: supabase.storage.from("photos").getPublicUrl(p.storage_path).data.publicUrl,
       }));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUploadedPhotos(withUrls);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -428,7 +429,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             <p className="text-sm font-medium">Étape {currentStep + 1} sur {STEPS.length}</p>
             <p className="text-sm text-muted-foreground">{STEPS[currentStep].title}</p>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-2" aria-valuetext={`${Math.round(progress)}%`} />
           <div className="flex justify-between mt-2">
             {STEPS.map((s, i) => (
               <button

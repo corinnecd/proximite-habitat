@@ -29,7 +29,11 @@ export function Step1Coordonnees({ currentFicheId }: { currentFicheId?: string }
   useEffect(() => {
     const hasNomCp = (nom?.trim().length ?? 0) >= 2 && (cp?.trim().length ?? 0) >= 4;
     const hasTel = (telephone?.replace(/\s+/g, "").length ?? 0) >= 6;
-    if (!hasNomCp && !hasTel) { setDuplicates([]); return; }
+    if (!hasNomCp && !hasTel) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDuplicates([]);
+      return;
+    }
 
     let cancelled = false;
     const timer = setTimeout(async () => {

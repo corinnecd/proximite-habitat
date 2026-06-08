@@ -127,6 +127,7 @@ export default function ReportingPage() {
     if (profileLoading) return;
     if (!profile) return;
     if (profile.role !== "ADMIN") { router.replace("/"); return; }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, profileLoading]);

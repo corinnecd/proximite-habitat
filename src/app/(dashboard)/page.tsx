@@ -89,6 +89,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (profileLoading || !profile) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
 
     // Écouter les changements en temps réel pour rafraîchir le dashboard

@@ -87,8 +87,22 @@ export function Sidebar() {
   useEffect(() => {
     if (!profile) return;
     async function fetchBadges() {
+      // Badge fiches : filtré selon le rôle
+      // - ADMIN       : toutes les fiches (hors brouillons des autres)
+      // - COMMERCIAL  : seulement les fiches qui lui sont affectées
+      // - PROSPECTEUR : seulement ses propres fiches (created_by)
+      let ficheQuery = supabase.from("fiches").select("id", { count: "exact", head: true });
+      if (profile?.role === "COMMERCIAL") {
+        ficheQuery = ficheQuery.eq("assigned_to", profile.id);
+      } else if (profile?.role === "PROSPECTEUR") {
+        ficheQuery = ficheQuery.eq("created_by", profile.id);
+      } else {
+        // ADMIN : toutes les fiches hors brouillons
+        ficheQuery = ficheQuery.neq("status", "BROUILLON");
+      }
+
       const [{ count: ficheCount }, { count: notifCount }] = await Promise.all([
-        supabase.from("fiches").select("id", { count: "exact", head: true }),
+        ficheQuery,
         supabase.from("notifications").select("id", { count: "exact", head: true }).eq("read", false),
       ]);
       setBadges({ fiches: ficheCount ?? 0, notifs: notifCount ?? 0 });

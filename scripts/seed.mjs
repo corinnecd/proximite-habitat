@@ -20,13 +20,35 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 });
 
 async function seed() {
-  console.log('1. Création de l\'organisation PHC...');
+  // ── 0. Nettoyage des données existantes ──────────────────────────────────────
+  console.log('0. Nettoyage des données existantes...');
+  const { data: orgs } = await supabase.from('organizations').select('id');
+  if (orgs && orgs.length > 0) {
+    const orgIds = orgs.map(o => o.id);
+    // Supprimer dans l'ordre (contraintes FK)
+    await supabase.from('notifications').delete().in('user_id',
+      (await supabase.from('profiles').select('id').in('organization_id', orgIds)).data?.map(p => p.id) ?? []
+    );
+    await supabase.from('fiche_history').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('fiche_photos').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await supabase.from('fiches').delete().in('organization_id', orgIds);
+    await supabase.from('profiles').delete().in('organization_id', orgIds);
+    await supabase.from('organizations').delete().in('id', orgIds);
+    // Supprimer les utilisateurs auth
+    const { data: authUsers } = await supabase.auth.admin.listUsers();
+    for (const u of authUsers?.users ?? []) {
+      await supabase.auth.admin.deleteUser(u.id);
+    }
+    console.log('   OK — données nettoyées');
+  } else {
+    console.log('   OK — aucune donnée existante');
+  }
+
+  // ── 1. Organisation ──────────────────────────────────────────────────────────
+  console.log('\n1. Création de l\'organisation PHC...');
   const { data: org, error: orgError } = await supabase
     .from('organizations')
-    .insert({
-      name: 'Proximité Habitat Conseil',
-      slug: 'phc',
-    })
+    .insert({ name: 'Proximité Habitat Conseil', slug: 'phc' })
     .select()
     .single();
 

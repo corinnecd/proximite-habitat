@@ -79,14 +79,6 @@ export default function ReportingPage() {
   const [totalFiches, setTotalFiches] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (profileLoading) return;
-    if (!profile) return;
-    if (profile.role !== "ADMIN") { router.replace("/"); return; }
-    loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, profileLoading]);
-
   async function loadData() {
     // ── 1. Compteurs par statut ────────────────────────────────────────────
     const statuses: FicheStatus[] = ["BROUILLON","SOUMISE","AFFECTEE","ACCEPTEE","REFUSEE","ARCHIVEE"];
@@ -130,6 +122,14 @@ export default function ReportingPage() {
     setStatPoints(await getFichesForStats(supabase));
     setLoading(false);
   }
+
+  useEffect(() => {
+    if (profileLoading) return;
+    if (!profile) return;
+    if (profile.role !== "ADMIN") { router.replace("/"); return; }
+    loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, profileLoading]);
 
   // ── KPIs rapides ──────────────────────────────────────────────────────────
   const accepted = statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0;

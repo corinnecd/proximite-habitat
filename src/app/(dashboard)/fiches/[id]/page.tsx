@@ -37,6 +37,7 @@ import {
   STATUS_LABELS,
 } from "@/lib/permissions";
 import type { FicheStatus, Fiche } from "@/types/database";
+import Image from "next/image";
 import { toast } from "sonner";
 import {
   User, Home, Flame, Wind, Shield, Camera,
@@ -479,12 +480,15 @@ export default function FicheDetailPage({
                         .from("photos")
                         .getPublicUrl(photo.storage_path);
                       return (
-                        <img
-                          key={photo.id}
-                          src={data.publicUrl}
-                          alt={photo.original_name ?? ""}
-                          className="w-full h-32 object-cover rounded-xl"
-                        />
+                        <div key={photo.id} className="relative h-32 rounded-xl overflow-hidden">
+                          <Image
+                            src={data.publicUrl}
+                            alt={photo.original_name ?? ""}
+                            fill
+                            sizes="(max-width: 640px) 50vw, 33vw"
+                            className="object-cover"
+                          />
+                        </div>
                       );
                     })}
                   </div>

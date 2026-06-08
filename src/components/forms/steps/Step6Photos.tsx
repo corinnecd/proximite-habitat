@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useFormContext } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -99,8 +100,8 @@ export function Step6Photos({
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {uploadedPhotos.map((p) => (
-                <div key={p.id} className="relative group rounded-xl overflow-hidden ring-1 ring-green-200">
-                  <img src={p.url} alt={p.original_name} className="w-full h-32 object-cover" />
+                <div key={p.id} className="relative h-32 group rounded-xl overflow-hidden ring-1 ring-green-200">
+                  <Image src={p.url} alt={p.original_name} fill sizes="(max-width: 640px) 50vw, 33vw" className="object-cover" />
                   {onRemoveUploaded && (
                     <button
                       type="button"
@@ -124,6 +125,7 @@ export function Step6Photos({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {photos.map((p, i) => (
                 <div key={i} className="relative group rounded-xl overflow-hidden ring-1 ring-orange-200">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- blob URL non optimisable par next/image */}
                   <img src={URL.createObjectURL(p)} alt={p.name} className="w-full h-32 object-cover" />
                   <button
                     type="button"

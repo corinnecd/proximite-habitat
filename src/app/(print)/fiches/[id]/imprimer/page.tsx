@@ -160,6 +160,7 @@ export default function ImprimerFichePage({ params }: { params: Promise<{ id: st
               {photos.map((p) => {
                 const { data } = supabase.storage.from("photos").getPublicUrl(p.storage_path);
                 return (
+                  // eslint-disable-next-line @next/next/no-img-element -- page d'impression CSS, next/image incompatible avec @media print
                   <img key={p.id} src={data.publicUrl} alt={p.original_name ?? ""}
                     className="w-full h-32 object-cover rounded-lg border border-gray-200" />
                 );

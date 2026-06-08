@@ -15,6 +15,19 @@ BROUILLON → SOUMISE → AFFECTEE → ACCEPTEE → ARCHIVEE
 
 ---
 
+## Fonctionnalités
+
+- **Wizard de saisie** (7 étapes) : coordonnées, habitation, chauffage, ventilation, isolation, photos, signature
+- **Workflow de validation** par rôle (ADMIN / COMMERCIAL / PROSPECTEUR) avec historique commenté
+- **Notifications temps réel** à chaque changement de statut (Supabase Realtime)
+- **Reporting** direction avec stats par période (hebdomadaire, mensuel, trimestriel, semestriel, annuel)
+- **Export CSV** de la liste des fiches (filtre en cours, compatible Excel FR)
+- **Détection de doublons** à la saisie (même nom+CP ou même téléphone)
+- **Mode sombre** (toggle topbar, mémorisation du choix)
+- **Impression / PDF** d'une fiche (page dédiée sans sidebar)
+
+---
+
 ## Stack
 
 | Couche | Technologie |
@@ -24,7 +37,8 @@ BROUILLON → SOUMISE → AFFECTEE → ACCEPTEE → ARCHIVEE
 | Langage | TypeScript 5 |
 | Backend / DB / Auth / Storage / Realtime | Supabase (`@supabase/ssr`, `@supabase/supabase-js`) |
 | Formulaires & validation | `react-hook-form` + Zod |
-| Tests | Vitest |
+| Tests | Vitest (unitaires) + Playwright (e2e) |
+| Thème | `next-themes` |
 
 ---
 
@@ -117,22 +131,29 @@ Comptes de test générés :
 ```
 src/
 ├── middleware.ts              # Garde d'authentification globale
-├── types/database.ts          # Types partagés (UserRole, FicheStatus)
+├── types/database.ts          # Types partagés (UserRole, FicheStatus, Row types)
 ├── lib/
 │   ├── permissions.ts         # RBAC : transitions de statut, droits, labels
 │   ├── validations/fiche.ts   # Schémas Zod + constantes métier
+│   ├── stats.ts               # Agrégation de statistiques par période (bucketing client)
+│   ├── csv.ts                 # Utilitaires de génération et téléchargement CSV
+│   ├── data/                  # Couche d'accès aux données (une requête = une fonction)
+│   │   ├── fiches.ts          #   getFicheById, deleteFicheCascade, findDuplicateFiches…
+│   │   ├── profiles.ts        #   getProfileById, getAllProfiles, setProfileActive…
+│   │   └── notifications.ts   #   getNotifications, markNotificationRead…
 │   ├── hooks/use-profile.ts   # Profil de l'utilisateur courant
-│   └── supabase/              # Clients (client / server / middleware)
+│   └── supabase/              # Clients Supabase (client / server / middleware)
 ├── app/
 │   ├── (auth)/                # login, mot de passe oublié / réinitialisation
 │   ├── (dashboard)/           # dashboard, fiches, utilisateurs, notifications, reporting, profil
-│   ├── (print)/               # version imprimable d'une fiche (PDF)
+│   ├── (print)/               # version imprimable d'une fiche (PDF — thème forcé clair)
 │   └── api/users/route.ts     # Création d'utilisateur (service_role, ADMIN only)
 └── components/
     ├── ui/                    # Primitives shadcn
-    ├── forms/                 # Wizard 7 étapes + signature
+    ├── forms/                 # Wizard 7 étapes + signature canvas
     ├── fiches/                # Badge de statut
-    └── layout/                # Sidebar, Topbar
+    ├── theme-provider.tsx     # ThemeProvider next-themes
+    └── layout/                # Sidebar, Topbar, ThemeToggle
 ```
 
 ### Sécurité
@@ -153,8 +174,10 @@ Tests unitaires avec Vitest (logique métier et validations) :
 npm test
 ```
 
-Couverture actuelle : matrice de permissions (`permissions.ts`) et schémas de
-validation (`validations/fiche.ts`).
+Couverture actuelle :
+- Matrice de permissions (`permissions.ts`)
+- Schémas de validation (`validations/fiche.ts`)
+- Agrégation de statistiques par période (`stats.ts`) — avec horloge figée (`vi.useFakeTimers`) pour des résultats déterministes
 
 ### Tests end-to-end (Playwright)
 
@@ -183,8 +206,6 @@ Les conseils React Compiler (`set-state-in-effect`, etc.) sont conservés en
 
 ## Dette technique connue
 
-- Avertissements ESLint React Compiler (`setState` dans des effets) à nettoyer.
-- Validation métier des transitions de statut effectuée côté client : à terme,
-  déplacer les écritures sensibles dans des RPC Postgres / Route Handlers serveur.
-- Génération des types Supabase (`supabase gen types`) pour supprimer les
-  interfaces dupliquées dans les pages.
+- Avertissements ESLint React Compiler (`setState` dans des effets) — comportements corrects mais pattern à affiner.
+- `<img>` HTML dans les galeries photos (wizard + détail) : à remplacer par `next/image` pour l'optimisation.
+- `aria-valuetext` du composant `Progress` (base-ui) formate le pourcentage différemment entre SSR et client — bug upstream, sans incidence fonctionnelle.

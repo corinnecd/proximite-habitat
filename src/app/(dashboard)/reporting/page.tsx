@@ -1,23 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Topbar } from "@/components/layout/Topbar";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
+import { getFichesForStats } from "@/lib/data/fiches";
+import {
+  type Granularity, type StatPoint,
+  GRANULARITIES, GRANULARITY_LABELS, CURRENT_PERIOD_LABELS,
+  buildBuckets, currentAndPreviousPeriod, conversionRate as periodConversion,
+} from "@/lib/stats";
 import { useProfile } from "@/lib/hooks/use-profile";
 import type { FicheStatus } from "@/types/database";
 import {
   BarChart3, TrendingUp, Users, FileText,
-  CheckCircle2, XCircle, Clock,
+  CheckCircle2, XCircle, Clock, ArrowUp, ArrowDown, Minus,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface StatusCount { status: FicheStatus; count: number; }
 interface ProspecteurRow { name: string; total: number; submitted: number; accepted: number; }
-interface MonthRow { month: string; label: string; total: number; accepted: number; }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -39,6 +45,26 @@ function Bar({ value, max, colorClass }: { value: number; max: number; colorClas
   );
 }
 
+function PeriodKpi({ label, value, delta, accent }: { label: string; value: number | string; delta?: number; accent?: "green" }) {
+  return (
+    <div className="rounded-xl bg-muted/50 p-3">
+      <p className="text-[11px] text-muted-foreground uppercase tracking-wide truncate">{label}</p>
+      <div className="flex items-baseline gap-2 mt-1">
+        <p className={`text-2xl font-bold ${accent === "green" ? "text-green-600" : ""}`}>{value}</p>
+        {delta !== undefined && (
+          delta === 0 ? (
+            <span className="flex items-center text-xs text-muted-foreground"><Minus className="w-3 h-3" /></span>
+          ) : (
+            <span className={`flex items-center text-xs font-medium ${delta > 0 ? "text-green-600" : "text-red-500"}`}>
+              {delta > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}{Math.abs(delta)}
+            </span>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Composant ──────────────────────────────────────────────────────────────
 
 export default function ReportingPage() {
@@ -48,7 +74,8 @@ export default function ReportingPage() {
 
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
   const [prospecteurs, setProspecteurs] = useState<ProspecteurRow[]>([]);
-  const [monthlyData, setMonthlyData] = useState<MonthRow[]>([]);
+  const [statPoints, setStatPoints] = useState<StatPoint[]>([]);
+  const [granularity, setGranularity] = useState<Granularity>("month");
   const [totalFiches, setTotalFiches] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -99,26 +126,8 @@ export default function ReportingPage() {
       );
     }
 
-    // ── 3. Évolution mensuelle (6 derniers mois) ───────────────────────────
-    const months: MonthRow[] = [];
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const start = d.toISOString().slice(0, 7) + "-01";
-      const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-      const end = nextMonth.toISOString().slice(0, 7) + "-01";
-      const label = d.toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
-      const month = d.toISOString().slice(0, 7);
-
-      const [totalRes, acceptedRes] = await Promise.all([
-        supabase.from("fiches").select("*", { count: "exact", head: true })
-          .gte("created_at", start).lt("created_at", end),
-        supabase.from("fiches").select("*", { count: "exact", head: true })
-          .eq("status", "ACCEPTEE").gte("created_at", start).lt("created_at", end),
-      ]);
-      months.push({ month, label, total: totalRes.count || 0, accepted: acceptedRes.count || 0 });
-    }
-    setMonthlyData(months);
+    // ── 3. Points pour l'évolution paramétrable (1 seule requête) ──────────
+    setStatPoints(await getFichesForStats(supabase));
     setLoading(false);
   }
 
@@ -130,7 +139,15 @@ export default function ReportingPage() {
                      (statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0);
   const maxStatus = Math.max(...statusCounts.map((s) => s.count), 1);
   const maxProspecteur = Math.max(...prospecteurs.map((p) => p.total), 1);
-  const maxMonth = Math.max(...monthlyData.map((m) => m.total), 1);
+
+  // Évolution paramétrable + période courante vs précédente
+  const buckets = useMemo(() => buildBuckets(statPoints, granularity), [statPoints, granularity]);
+  const { current, previous } = useMemo(
+    () => currentAndPreviousPeriod(statPoints, granularity),
+    [statPoints, granularity],
+  );
+  const maxBucket = Math.max(...buckets.map((b) => b.total), 1);
+  const totalDelta = current.total - previous.total;
 
   if (profileLoading || loading) {
     return (
@@ -199,61 +216,74 @@ export default function ReportingPage() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ── Répartition par statut ────────────────────────────────────────── */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BarChart3 className="w-4 h-4" /> Répartition par statut
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {statusCounts.map(({ status, count }) => (
+              <div key={status}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <FicheStatusBadge status={status} />
+                  <span className="text-xs text-muted-foreground">
+                    {totalFiches > 0 ? `${Math.round((count / totalFiches) * 100)}%` : "0%"}
+                  </span>
+                </div>
+                <Bar value={count} max={maxStatus} colorClass={STATUS_COLORS[status]} />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
 
-          {/* ── Répartition par statut ──────────────────────────────────────── */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <BarChart3 className="w-4 h-4" /> Répartition par statut
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {statusCounts.map(({ status, count }) => (
-                <div key={status}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <FicheStatusBadge status={status} />
-                    <span className="text-xs text-muted-foreground">
-                      {totalFiches > 0 ? `${Math.round((count / totalFiches) * 100)}%` : "0%"}
+        {/* ── Évolution par période ─────────────────────────────────────────── */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="w-4 h-4" /> Évolution
+            </CardTitle>
+            <Tabs value={granularity} onValueChange={(v) => setGranularity(v as Granularity)}>
+              <TabsList variant="line" className="h-auto flex-wrap">
+                {GRANULARITIES.map((g) => (
+                  <TabsTrigger key={g} value={g}>{GRANULARITY_LABELS[g]}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Période courante (vs précédente) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <PeriodKpi label={`Total ${CURRENT_PERIOD_LABELS[granularity]}`} value={current.total} delta={totalDelta} />
+              <PeriodKpi label="Soumises" value={current.submitted} />
+              <PeriodKpi label="Acceptées" value={current.accepted} accent="green" />
+              <PeriodKpi label="Conversion" value={`${periodConversion(current)}%`} accent="green" />
+            </div>
+
+            {/* Courbe d'évolution */}
+            <div className="space-y-4">
+              {buckets.map((b) => (
+                <div key={b.key}>
+                  <div className="flex items-center justify-between mb-1.5 text-sm">
+                    <span className="font-medium capitalize">{b.label}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {b.accepted > 0 && <span className="text-green-600 mr-2">✓ {b.accepted} acceptée{b.accepted > 1 ? "s" : ""}</span>}
+                      {b.total} fiche{b.total > 1 ? "s" : ""}
                     </span>
                   </div>
-                  <Bar value={count} max={maxStatus} colorClass={STATUS_COLORS[status]} />
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary/70 rounded-full transition-all duration-500"
+                        style={{ width: `${maxBucket > 0 ? (b.total / maxBucket) * 100 : 0}%` }} />
+                    </div>
+                    <span className="text-sm font-semibold w-6 text-right">{b.total}</span>
+                  </div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
-
-          {/* ── Évolution mensuelle ─────────────────────────────────────────── */}
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <TrendingUp className="w-4 h-4" /> Évolution mensuelle
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {monthlyData.map((m) => (
-                  <div key={m.month}>
-                    <div className="flex items-center justify-between mb-1.5 text-sm">
-                      <span className="font-medium capitalize">{m.label}</span>
-                      <span className="text-muted-foreground text-xs">
-                        {m.accepted > 0 && <span className="text-green-600 mr-2">✓ {m.accepted} acceptée{m.accepted > 1 ? "s" : ""}</span>}
-                        {m.total} fiche{m.total > 1 ? "s" : ""}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary/70 rounded-full transition-all duration-500"
-                          style={{ width: `${maxMonth > 0 ? (m.total / maxMonth) * 100 : 0}%` }} />
-                      </div>
-                      <span className="text-sm font-semibold w-6 text-right">{m.total}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* ── Top prospecteurs ─────────────────────────────────────────────── */}
         <Card className="border-0 shadow-sm">

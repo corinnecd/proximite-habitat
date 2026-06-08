@@ -208,7 +208,7 @@ src/
 - [x] Lecture individuelle de notification au clic + navigation vers la fiche
 - [x] Notifications : affectation (commercial) + acceptation/refus (prospecteur)
 - [x] Export PDF (`/fiches/[id]/imprimer`, page dédiée sans sidebar, CSS print)
-- [x] Reporting direction (`/reporting`) : KPIs, répartition statuts, évolution mensuelle, top prospecteurs
+- [x] Reporting direction (`/reporting`) : KPIs, répartition statuts, **évolution paramétrable par période (hebdo/mensuel/trim/semestriel/annuel) + KPIs de la période courante vs précédente** (bucketing client `lib/stats.ts`, 1 requête — N+1 supprimé), top prospecteurs
 
 ### Lot 5 — Industrialisation 🟡 *en cours*
 - [x] Migrations SQL versionnées + politiques RLS dans le repo (`supabase/migrations/0001`, `0002`)

@@ -183,6 +183,20 @@ export async function findDuplicateFiches(
   return (data as DuplicateFiche[]) ?? [];
 }
 
+/**
+ * Données minimales (date de création + statut) de toutes les fiches visibles,
+ * pour l'agrégation de statistiques côté client. Une seule requête.
+ */
+export async function getFichesForStats(
+  db: Db,
+  opts?: { from?: string },
+): Promise<{ created_at: string; status: FicheStatus }[]> {
+  let query = db.from("fiches").select("created_at, status");
+  if (opts?.from) query = query.gte("created_at", opts.from);
+  const { data } = await query;
+  return (data as { created_at: string; status: FicheStatus }[]) ?? [];
+}
+
 /** Les commerciaux et admins actifs (pour l'affectation d'une fiche). */
 export async function getActiveCommercialsAndAdmins(db: Db) {
   const { data } = await db

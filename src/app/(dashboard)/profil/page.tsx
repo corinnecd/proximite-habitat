@@ -1,18 +1,47 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Topbar } from "@/components/layout/Topbar";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { ROLE_LABELS } from "@/lib/permissions";
+import type { UserRole } from "@/types/database";
 import { toast } from "sonner";
-import { User, Lock, Loader2, Eye, EyeOff, Mail } from "lucide-react";
+import {
+  User, Lock, Loader2, Eye, EyeOff, Mail, Phone,
+  CheckCircle2, AlertCircle, Shield,
+} from "lucide-react";
+
+// ── Palette rôle ─────────────────────────────────────────────────────────────
+
+const ROLE_STYLE: Record<UserRole, { heroBg: string; avatarBg: string; avatarText: string; badge: string }> = {
+  ADMIN:       { heroBg: "from-purple-50 to-white dark:from-purple-950/20 dark:to-background", avatarBg: "bg-purple-100 dark:bg-purple-900/40", avatarText: "text-purple-700 dark:text-purple-300", badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
+  COMMERCIAL:  { heroBg: "from-blue-50 to-white dark:from-blue-950/20 dark:to-background",   avatarBg: "bg-blue-100 dark:bg-blue-900/40",    avatarText: "text-blue-700 dark:text-blue-300",    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+  PROSPECTEUR: { heroBg: "from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background", avatarBg: "bg-emerald-100 dark:bg-emerald-900/40", avatarText: "text-emerald-700 dark:text-emerald-300", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+};
+
+// ── Indicateur de force du mot de passe ──────────────────────────────────────
+
+function passwordStrength(pwd: string): { score: number; label: string; color: string } {
+  if (!pwd) return { score: 0, label: "", color: "" };
+  let score = 0;
+  if (pwd.length >= 8) score++;
+  if (pwd.length >= 12) score++;
+  if (/[A-Z]/.test(pwd)) score++;
+  if (/[0-9]/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  if (score <= 1) return { score, label: "Faible", color: "bg-red-500" };
+  if (score <= 2) return { score, label: "Moyen", color: "bg-orange-400" };
+  if (score <= 3) return { score, label: "Bon", color: "bg-yellow-400" };
+  return { score, label: "Excellent", color: "bg-emerald-500" };
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProfilPage() {
   const { profile, loading } = useProfile();
@@ -20,10 +49,12 @@ export default function ProfilPage() {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
   const supabase = createClient();
@@ -41,34 +72,26 @@ export default function ProfilPage() {
     e.preventDefault();
     if (!profile) return;
     setSavingProfile(true);
-
     const { error } = await supabase
       .from("profiles")
       .update({ first_name: firstName.trim(), last_name: lastName.trim(), phone: phone.trim() || null })
       .eq("id", profile.id);
-
     if (error) {
-      toast.error("Erreur lors de la sauvegarde : " + error.message);
+      toast.error("Erreur : " + error.message);
     } else {
       toast.success("Profil mis à jour");
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 2500);
     }
     setSavingProfile(false);
   }
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
-    if (newPassword.length < 8) {
-      toast.error("Le mot de passe doit contenir au moins 8 caractères");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error("Les mots de passe ne correspondent pas");
-      return;
-    }
+    if (newPassword.length < 8) { toast.error("8 caractères minimum"); return; }
+    if (newPassword !== confirmPassword) { toast.error("Les mots de passe ne correspondent pas"); return; }
     setSavingPassword(true);
-
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-
     if (error) {
       toast.error("Erreur : " + error.message);
     } else {
@@ -79,158 +102,213 @@ export default function ProfilPage() {
     setSavingPassword(false);
   }
 
+  // ── Loading ────────────────────────────────────────────────────────────────
+
   if (loading || !profile) {
     return (
       <>
         <Topbar title="Mon profil" />
         <div className="p-6 lg:p-8 max-w-2xl mx-auto animate-pulse space-y-4">
-          <div className="h-48 bg-card rounded-xl" />
-          <div className="h-48 bg-card rounded-xl" />
+          <div className="h-36 bg-card rounded-2xl border border-border" />
+          <div className="h-64 bg-card rounded-2xl border border-border" />
+          <div className="h-48 bg-card rounded-2xl border border-border" />
         </div>
       </>
     );
   }
+
+  const roleStyle = ROLE_STYLE[profile.role];
+  const initials = `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
+  const pwdStrength = passwordStrength(newPassword);
+  const passwordsMatch = confirmPassword.length > 0 && newPassword === confirmPassword;
+  const passwordsMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
 
   return (
     <>
       <Topbar title="Mon profil" />
       <div className="p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
 
-        {/* Informations personnelles */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <User className="w-4 h-4" /> Informations personnelles
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Avatar + rôle */}
-            <div className="flex items-center gap-4 p-4 bg-secondary/30 rounded-xl">
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary shrink-0">
-                {profile.first_name[0]}{profile.last_name[0]}
+        {/* ── Hero card ─────────────────────────────────────────────────── */}
+        <div className={`bg-gradient-to-br ${roleStyle.heroBg} border border-border rounded-2xl p-6`}>
+          <div className="flex items-center gap-5">
+            <div className={`w-20 h-20 rounded-2xl ${roleStyle.avatarBg} flex items-center justify-center text-3xl font-bold ${roleStyle.avatarText} shrink-0 select-none`}>
+              {initials}
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-heading text-2xl leading-tight">{profile.first_name} {profile.last_name}</h2>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                <Mail className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{profile.email}</span>
               </div>
-              <div>
-                <p className="font-semibold">{profile.first_name} {profile.last_name}</p>
-                <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-                  <Mail className="w-3 h-3" />{profile.email}
-                </p>
-                <Badge
-                  variant="secondary"
-                  className={`mt-1.5 text-xs ${profile.role === "ADMIN" ? "bg-purple-100 text-purple-700" : profile.role === "COMMERCIAL" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}
-                >
-                  {ROLE_LABELS[profile.role]}
-                </Badge>
+              {profile.phone && (
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
+                  <Phone className="w-3.5 h-3.5 shrink-0" />
+                  <span>{profile.phone}</span>
+                </div>
+              )}
+              <Badge variant="secondary" className={`mt-2 text-xs rounded-lg ${roleStyle.badge}`}>
+                {ROLE_LABELS[profile.role]}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Informations personnelles ──────────────────────────────────── */}
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <User className="w-4 h-4 text-primary" />
+            </div>
+            <h3 className="font-semibold text-sm">Informations personnelles</h3>
+          </div>
+
+          <Separator />
+
+          <form onSubmit={handleSaveProfile} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Prénom</Label>
+                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} required className="bg-background h-11 rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label>Nom</Label>
+                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} required className="bg-background h-11 rounded-xl" />
               </div>
             </div>
-
-            <Separator />
-
-            <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Prénom</Label>
-                  <Input
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    required
-                    className="bg-card"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Nom</Label>
-                  <Input
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    required
-                    className="bg-card"
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label>Téléphone</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="06 12 34 56 78" className="bg-background h-11 rounded-xl pl-10" />
               </div>
-              <div className="space-y-2">
-                <Label>Téléphone</Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input value={profile.email} disabled className="bg-muted/50 h-11 rounded-xl pl-10 text-muted-foreground cursor-not-allowed" />
+              </div>
+              <p className="text-xs text-muted-foreground">L&apos;adresse email ne peut pas être modifiée.</p>
+            </div>
+            <Button
+              type="submit"
+              disabled={savingProfile}
+              className={`rounded-xl gap-2 transition-all ${profileSaved ? "bg-emerald-600 hover:bg-emerald-700" : "bg-[#F97316] hover:bg-[#EA580C]"} text-white`}
+            >
+              {savingProfile
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : profileSaved
+                  ? <CheckCircle2 className="w-4 h-4" />
+                  : null}
+              {profileSaved ? "Modifications enregistrées" : "Enregistrer les modifications"}
+            </Button>
+          </form>
+        </div>
+
+        {/* ── Changer le mot de passe ────────────────────────────────────── */}
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4 text-orange-600" />
+            </div>
+            <h3 className="font-semibold text-sm">Changer le mot de passe</h3>
+          </div>
+
+          <Separator />
+
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            {/* Nouveau mot de passe */}
+            <div className="space-y-2">
+              <Label>Nouveau mot de passe</Label>
+              <div className="relative">
                 <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="06 12 34 56 78"
-                  className="bg-card"
+                  type={showNew ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className="bg-background h-11 rounded-xl pr-12"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowNew(!showNew)}
+                  aria-label={showNew ? "Masquer" : "Afficher"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  value={profile.email}
-                  disabled
-                  className="bg-secondary/50 text-muted-foreground cursor-not-allowed"
-                />
-                <p className="text-xs text-muted-foreground">L&apos;adresse email ne peut pas être modifiée</p>
-              </div>
-              <Button
-                type="submit"
-                disabled={savingProfile}
-                className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2"
-              >
-                {savingProfile && <Loader2 className="w-4 h-4 animate-spin" />}
-                Enregistrer les modifications
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Changer le mot de passe */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Lock className="w-4 h-4" /> Changer le mot de passe
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Nouveau mot de passe</Label>
-                <div className="relative">
-                  <Input
-                    type={showNew ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    className="bg-card pr-12"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNew(!showNew)}
-                    aria-label={showNew ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+              {/* Indicateur de force */}
+              {newPassword.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${i <= pwdStrength.score ? pwdStrength.color : "bg-muted"}`}
+                      />
+                    ))}
+                  </div>
+                  <p className={`text-xs font-medium ${pwdStrength.score >= 4 ? "text-emerald-600" : pwdStrength.score >= 3 ? "text-yellow-600" : pwdStrength.score >= 2 ? "text-orange-500" : "text-red-500"}`}>
+                    {pwdStrength.label}
+                  </p>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Confirmer le nouveau mot de passe</Label>
+              )}
+            </div>
+
+            {/* Confirmation */}
+            <div className="space-y-2">
+              <Label>Confirmer le mot de passe</Label>
+              <div className="relative">
                 <Input
-                  type="password"
+                  type={showConfirm ? "text" : "password"}
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="bg-card"
+                  className={`bg-background h-11 rounded-xl pr-12 transition-colors ${passwordsMismatch ? "border-red-400 focus-visible:ring-red-400/30" : passwordsMatch ? "border-emerald-400" : ""}`}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  aria-label={showConfirm ? "Masquer" : "Afficher"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
-              <p className="text-xs text-muted-foreground">8 caractères minimum</p>
-              <Button
-                type="submit"
-                disabled={savingPassword}
-                variant="outline"
-                className="rounded-xl gap-2"
-              >
-                {savingPassword && <Loader2 className="w-4 h-4 animate-spin" />}
-                Modifier le mot de passe
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+              {passwordsMatch && (
+                <p className="text-xs text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />Les mots de passe correspondent
+                </p>
+              )}
+              {passwordsMismatch && (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />Les mots de passe ne correspondent pas
+                </p>
+              )}
+            </div>
+
+            {/* Note de sécurité */}
+            <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-xl">
+              <Shield className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Utilisez au moins 8 caractères avec des majuscules, chiffres et symboles pour un mot de passe sécurisé.
+              </p>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={savingPassword || passwordsMismatch}
+              variant="outline"
+              className="rounded-xl gap-2 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-700 dark:hover:bg-orange-950/30 dark:hover:text-orange-300 transition-all"
+            >
+              {savingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+              Modifier le mot de passe
+            </Button>
+          </form>
+        </div>
       </div>
     </>
   );

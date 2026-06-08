@@ -128,4 +128,8 @@
   html {
     @apply font-sans;
   }
+  ::placeholder {
+    color: var(--muted-foreground);
+    opacity: 0.45;
+  }
 }

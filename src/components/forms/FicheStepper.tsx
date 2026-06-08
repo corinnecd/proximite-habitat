@@ -423,25 +423,41 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
           </div>
         )}
 
-        {/* Barre de progression */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium">Étape {currentStep + 1} sur {STEPS.length}</p>
-            <p className="text-sm text-muted-foreground">{STEPS[currentStep].title}</p>
-          </div>
-          <Progress value={progress} className="h-2" aria-valuetext={`${Math.round(progress)}%`} />
-          <div className="flex justify-between mt-2">
-            {STEPS.map((s, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setCurrentStep(i)}
-                aria-current={i === currentStep ? "step" : undefined}
-                className={`text-xs transition-colors ${i <= currentStep ? "text-primary font-medium" : "text-muted-foreground"} hidden sm:block`}
-              >
-                {s.title}
-              </button>
-            ))}
+        {/* Stepper visuel */}
+        <div className="mb-8 bg-card border border-border rounded-2xl px-6 py-5">
+          <div className="flex items-center">
+            {STEPS.map((s, i) => {
+              const done   = i < currentStep;
+              const active = i === currentStep;
+              return (
+                <div key={i} className="flex items-center flex-1 last:flex-none">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(i)}
+                    aria-current={active ? "step" : undefined}
+                    className="flex flex-col items-center gap-1.5 group"
+                  >
+                    <span className={`
+                      w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-200
+                      ${done   ? "bg-primary border-primary text-white"                                   : ""}
+                      ${active ? "bg-white border-primary text-primary shadow-[0_0_0_4px_rgba(30,58,95,.1)]" : ""}
+                      ${!done && !active ? "bg-card border-border text-muted-foreground group-hover:border-primary/40" : ""}
+                    `}>
+                      {done ? "✓" : i + 1}
+                    </span>
+                    <span className={`text-[10px] font-medium hidden sm:block transition-colors whitespace-nowrap
+                      ${done || active ? "text-primary" : "text-muted-foreground"}`}>
+                      {s.title}
+                    </span>
+                  </button>
+                  {i < STEPS.length - 1 && (
+                    <div className={`flex-1 h-[2px] mx-2 mb-4 rounded-full transition-colors duration-300
+                      ${i < currentStep ? "bg-primary" : "bg-border"}`}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

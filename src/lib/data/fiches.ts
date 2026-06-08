@@ -143,6 +143,46 @@ export async function getFichesForExport(
   return (data as unknown as FicheExportRow[]) ?? [];
 }
 
+export type DuplicateFiche = {
+  id: string;
+  reference: string;
+  status: FicheStatus;
+  prospect_nom: string;
+  prospect_prenom: string;
+  prospect_ville: string | null;
+  created_at: string;
+};
+
+/**
+ * Recherche les fiches susceptibles d'être des doublons du prospect en cours de saisie :
+ * même téléphone, OU même nom + même code postal. Exclut la fiche courante (`excludeId`).
+ * Limité aux fiches visibles par l'utilisateur (RLS) et aux 5 plus récentes.
+ */
+export async function findDuplicateFiches(
+  db: Db,
+  opts: { nom?: string; cp?: string; telephone?: string; excludeId?: string },
+): Promise<DuplicateFiche[]> {
+  const nom = opts.nom?.trim();
+  const cp = opts.cp?.trim();
+  const tel = opts.telephone?.trim();
+
+  const conditions: string[] = [];
+  if (tel && tel.replace(/\s+/g, "").length >= 6) conditions.push(`prospect_telephone.eq.${tel}`);
+  if (nom && cp) conditions.push(`and(prospect_nom.ilike.${nom},prospect_cp.eq.${cp})`);
+  if (conditions.length === 0) return [];
+
+  let query = db
+    .from("fiches")
+    .select("id, reference, status, prospect_nom, prospect_prenom, prospect_ville, created_at")
+    .or(conditions.join(","))
+    .order("created_at", { ascending: false })
+    .limit(5);
+  if (opts.excludeId) query = query.neq("id", opts.excludeId);
+
+  const { data } = await query;
+  return (data as DuplicateFiche[]) ?? [];
+}
+
 /** Les commerciaux et admins actifs (pour l'affectation d'une fiche). */
 export async function getActiveCommercialsAndAdmins(db: Db) {
   const { data } = await db

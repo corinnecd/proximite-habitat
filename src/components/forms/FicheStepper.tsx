@@ -30,6 +30,8 @@ interface StepAllProps {
   uploadedPhotos?: UploadedPhoto[];
   onRemoveUploaded?: (id: string) => void;
   onAddValidFiles?: (files: File[]) => Promise<void>;
+  /** ID de la fiche courante (mode édition) — pour exclure la fiche d'elle-même en détection de doublons. */
+  currentFicheId?: string;
 }
 
 export interface FicheStepperProps {
@@ -82,10 +84,10 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  // State pour l'affichage, ref pour les lectures synchrones dans les callbacks async
-  // Valeur non lue directement (la logique passe par ficheIdRef) ; le setter
-  // sert uniquement à déclencher un re-render après la première sauvegarde.
-  const [, setSavedFicheId] = useState<string | undefined>(ficheIdProp);
+  // State pour l'affichage (lecture render-safe, ex. détection de doublons),
+  // ref pour les lectures synchrones dans les callbacks async. Le setter met à
+  // jour l'affichage après la première sauvegarde.
+  const [savedFicheId, setSavedFicheId] = useState<string | undefined>(ficheIdProp);
   const ficheIdRef = useRef<string | undefined>(ficheIdProp);
 
   const [photos, setPhotos] = useState<File[]>([]);
@@ -452,6 +454,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             uploadedPhotos={uploadedPhotos}
             onRemoveUploaded={handleRemoveUploaded}
             onAddValidFiles={handleAddValidFiles}
+            currentFicheId={savedFicheId}
           />
         </div>
 

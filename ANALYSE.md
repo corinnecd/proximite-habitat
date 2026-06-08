@@ -246,7 +246,7 @@ src/
 13. **README** réel + doc d'onboarding.
 14. ✅ ~~Couche data/services~~ — `src/lib/data/{fiches,profiles,notifications}.ts` centralise les requêtes Supabase (getFicheById, getFichePhotos, getFicheHistory, countFichesByStatus, deleteFicheCascade, getActiveCommercialsAndAdmins, get/markNotifications, getAllProfiles…). Câblée dans dashboard, détail, modifier, impression, notifications, utilisateurs et la Topbar. **Corrige au passage un bug** : la suppression d'un brouillon depuis le dashboard ne nettoyait pas photos ni notifications.
 15. ✅ ~~Export Excel / CSV de la liste des fiches~~ — bouton « Exporter CSV » sur `/fiches` : exporte **toutes** les fiches du filtre/recherche courant (hors pagination) via `getFichesForExport`, fichier `;`-séparé compatible Excel FR (BOM UTF-8) avec libellés de statut et nom du commercial. Utilitaires dans `src/lib/csv.ts`.
-16. Détection de doublons (même prospect/adresse).
+16. ✅ ~~Détection de doublons~~ — à l'étape Coordonnées du wizard, une recherche débouncée (`findDuplicateFiches`) alerte si une fiche existe déjà pour le même prospect (même téléphone, ou même nom + même code postal), avec liens cliquables vers les fiches concernées (exclut la fiche courante en édition).
 
 ---
 

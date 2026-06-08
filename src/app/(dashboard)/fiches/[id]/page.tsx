@@ -21,6 +21,14 @@ import {
 import { Topbar } from "@/components/layout/Topbar";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
+import {
+  getFicheById,
+  getFicheHistory,
+  getFichePhotos,
+  getActiveCommercialsAndAdmins,
+  deleteFicheCascade,
+} from "@/lib/data/fiches";
+import { getProfileFullName } from "@/lib/data/profiles";
 import { useProfile } from "@/lib/hooks/use-profile";
 import {
   getAvailableTransitions,
@@ -81,26 +89,21 @@ export default function FicheDetailPage({
   const supabase = createClient();
 
   const fetchData = useCallback(async () => {
-    const [ficheRes, historyRes, photosRes, commercialsRes] = await Promise.all([
-      supabase.from("fiches").select("*").eq("id", id).single(),
-      supabase
-        .from("fiche_history")
-        .select("*, profiles(first_name, last_name)")
-        .eq("fiche_id", id)
-        .order("created_at", { ascending: false }),
-      supabase.from("fiche_photos").select("id, storage_path, original_name").eq("fiche_id", id),
-      supabase.from("profiles").select("id, first_name, last_name, role").in("role", ["COMMERCIAL", "ADMIN"]).eq("is_active", true),
+    const [ficheData, historyData, photosData, commercialsData] = await Promise.all([
+      getFicheById(supabase, id),
+      getFicheHistory(supabase, id),
+      getFichePhotos(supabase, id),
+      getActiveCommercialsAndAdmins(supabase),
     ]);
 
-    setFiche(ficheRes.data);
-    setHistory((historyRes.data as unknown as HistoryEntry[]) || []);
-    setPhotos(photosRes.data || []);
-    setCommercials(commercialsRes.data || []);
+    setFiche(ficheData);
+    setHistory(historyData);
+    setPhotos(photosData);
+    setCommercials(commercialsData);
 
-    if (ficheRes.data?.created_by) {
-      const { data: creator } = await supabase
-        .from("profiles").select("first_name, last_name").eq("id", ficheRes.data.created_by).single();
-      if (creator) setCreatorName(`${creator.first_name} ${creator.last_name}`);
+    if (ficheData?.created_by) {
+      const name = await getProfileFullName(supabase, ficheData.created_by);
+      if (name) setCreatorName(name);
     }
     setLoading(false);
   }, [id, supabase]);
@@ -123,14 +126,7 @@ export default function FicheDetailPage({
             setFiche((prev) => prev ? { ...prev, status: payload.new.status as FicheStatus } : prev);
           }
           // Recharge l'historique pour afficher le nouveau commentaire
-          supabase
-            .from("fiche_history")
-            .select("*, profiles(first_name, last_name)")
-            .eq("fiche_id", id)
-            .order("created_at", { ascending: false })
-            .then(({ data }) => {
-              if (data) setHistory(data as unknown as HistoryEntry[]);
-            });
+          getFicheHistory(supabase, id).then(setHistory);
         }
       )
       .subscribe();
@@ -165,18 +161,7 @@ export default function FicheDetailPage({
     if (!fiche || !profile) return;
     setDeleting(true);
     try {
-      // Supprimer les photos du storage puis en DB
-      const { data: fichePhotos } = await supabase
-        .from("fiche_photos").select("storage_path").eq("fiche_id", fiche.id);
-      if (fichePhotos && fichePhotos.length > 0) {
-        await supabase.storage.from("photos").remove(fichePhotos.map((p) => p.storage_path));
-        await supabase.from("fiche_photos").delete().eq("fiche_id", fiche.id);
-      }
-      // Supprimer l'historique, les notifications, puis la fiche
-      await supabase.from("fiche_history").delete().eq("fiche_id", fiche.id);
-      await supabase.from("notifications").delete().eq("fiche_id", fiche.id);
-      const { error } = await supabase.from("fiches").delete().eq("id", fiche.id);
-      if (error) throw error;
+      await deleteFicheCascade(supabase, fiche.id);
       toast.success("Brouillon supprimé");
       router.push("/");
     } catch (e) {
@@ -211,8 +196,8 @@ export default function FicheDetailPage({
       <>
         <Topbar title="Détail de la fiche" />
         <div className="p-6 lg:p-8 animate-pulse space-y-4">
-          <div className="h-32 bg-white rounded-xl" />
-          <div className="h-64 bg-white rounded-xl" />
+          <div className="h-32 bg-card rounded-xl" />
+          <div className="h-64 bg-card rounded-xl" />
         </div>
       </>
     );
@@ -256,7 +241,7 @@ export default function FicheDetailPage({
 
             {/* Supprimer brouillon */}
             {fiche.status === "BROUILLON" && profile &&
-              canEditFiche(profile.role, profile.id, fiche.created_by, fiche.assigned_to) && (
+              canEditFiche(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status) && (
                 <Button variant="outline" size="sm"
                   onClick={() => setShowDeleteConfirm(true)}
                   className="rounded-xl gap-2 text-destructive hover:text-destructive border-destructive/30 hover:bg-red-50">
@@ -267,17 +252,18 @@ export default function FicheDetailPage({
             {/* Reprendre la saisie (brouillon — prospecteur/admin) */}
             {fiche.status === "BROUILLON" &&
               profile &&
-              canEditFiche(profile.role, profile.id, fiche.created_by, fiche.assigned_to) && (
+              canEditFiche(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status) && (
                 <Button size="sm" onClick={() => router.push(`/fiches/${fiche.id}/modifier`)}
                   className="rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white gap-2">
                   <Pencil className="w-4 h-4" />Reprendre la saisie
                 </Button>
               )}
 
-            {/* Modifier la fiche (admin/commercial — fiches soumises) */}
+            {/* Modifier la fiche (admin/commercial — fiches soumises, hors archivées) */}
             {fiche.status !== "BROUILLON" &&
               profile &&
-              (profile.role === "ADMIN" || profile.role === "COMMERCIAL") && (
+              (profile.role === "ADMIN" || profile.role === "COMMERCIAL") &&
+              canEditFiche(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status) && (
                 <Button size="sm" variant="outline" onClick={() => router.push(`/fiches/${fiche.id}/modifier`)}
                   className="rounded-xl gap-2">
                   <Pencil className="w-4 h-4" />Modifier la fiche
@@ -358,6 +344,20 @@ export default function FicheDetailPage({
                       </Badge>
                     ))}
                   </div>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Visite souhaitée</p>
+                  <p className="font-medium">
+                    {fiche.date_visite
+                      ? new Date(fiche.date_visite).toLocaleDateString("fr-FR", {
+                          weekday: "long",
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })
+                      : "—"}
+                    {fiche.heure_visite ? ` à ${fiche.heure_visite}` : ""}
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -626,7 +626,7 @@ export default function FicheDetailPage({
               value={statusComment}
               onChange={(e) => setStatusComment(e.target.value)}
               rows={3}
-              className="bg-white resize-none"
+              className="bg-card resize-none"
             />
           </div>
           <DialogFooter className="gap-2">

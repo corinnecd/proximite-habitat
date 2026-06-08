@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Topbar } from "@/components/layout/Topbar";
 import { FicheStepper } from "@/components/forms/FicheStepper";
 import { createClient } from "@/lib/supabase/client";
+import { getFicheById, getFichePhotos } from "@/lib/data/fiches";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { canEditFiche } from "@/lib/permissions";
 import type { FicheStatus } from "@/types/database";
@@ -29,21 +30,19 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
     if (profileLoading || !profile) return;
 
     async function load() {
-      const [ficheRes, photosRes] = await Promise.all([
-        supabase.from("fiches").select("*").eq("id", id).single(),
-        supabase.from("fiche_photos").select("id, storage_path, original_name").eq("fiche_id", id),
+      const [fiche, photos] = await Promise.all([
+        getFicheById(supabase, id),
+        getFichePhotos(supabase, id),
       ]);
 
-      if (ficheRes.error || !ficheRes.data) {
+      if (!fiche) {
         setError("Fiche introuvable");
         setLoading(false);
         return;
       }
 
-      const fiche = ficheRes.data;
-
       // Vérification des droits
-      if (!profile || !canEditFiche(profile.role, profile.id, fiche.created_by, fiche.assigned_to)) {
+      if (!profile || !canEditFiche(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status as FicheStatus)) {
         setError("Vous n'avez pas l'autorisation de modifier cette fiche.");
         setLoading(false);
         return;
@@ -90,7 +89,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
         consentement_rgpd:   fiche.consentement_rgpd   ?? false,
       });
 
-      setInitialPhotos((photosRes.data ?? []).map((p) => ({ ...p, original_name: p.original_name ?? "" })));
+      setInitialPhotos(photos.map((p) => ({ ...p, original_name: p.original_name ?? "" })));
       setLoading(false);
     }
 

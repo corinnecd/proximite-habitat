@@ -20,7 +20,15 @@ export function getAvailableTransitions(role: UserRole, currentStatus: FicheStat
 export function canManageUsers(role: UserRole): boolean { return role === "ADMIN"; }
 export function canAssignFiche(role: UserRole): boolean { return role === "ADMIN"; }
 
-export function canEditFiche(role: UserRole, userId: string, ficheCreatedBy: string, ficheAssignedTo: string | null): boolean {
+export function canEditFiche(
+  role: UserRole,
+  userId: string,
+  ficheCreatedBy: string,
+  ficheAssignedTo: string | null,
+  status: FicheStatus,
+): boolean {
+  // Une fiche archivée est définitivement en lecture seule, quel que soit le rôle.
+  if (status === "ARCHIVEE") return false;
   if (role === "ADMIN") return true;
   if (role === "COMMERCIAL") return ficheCreatedBy === userId || ficheAssignedTo === userId;
   if (role === "PROSPECTEUR") return ficheCreatedBy === userId;

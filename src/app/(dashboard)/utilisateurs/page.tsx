@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Topbar } from "@/components/layout/Topbar";
 import { createClient } from "@/lib/supabase/client";
+import { getAllProfiles, setProfileActive } from "@/lib/data/profiles";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { ROLE_LABELS } from "@/lib/permissions";
 import type { UserRole, Profile } from "@/types/database";
@@ -25,7 +26,7 @@ export default function UtilisateursPage() {
   const { profile } = useProfile();
   const supabase = createClient();
 
-  useEffect(() => { supabase.from("profiles").select("*").order("created_at", { ascending: false }).then(({ data }) => { setUsers(data || []); setLoading(false); }); }, [supabase]);
+  useEffect(() => { getAllProfiles(supabase).then((data) => { setUsers(data); setLoading(false); }); }, [supabase]);
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
@@ -43,7 +44,7 @@ export default function UtilisateursPage() {
   }
 
   async function toggleActive(userId: string, isActive: boolean) {
-    await supabase.from("profiles").update({ is_active: !isActive }).eq("id", userId);
+    await setProfileActive(supabase, userId, !isActive);
     setUsers(users.map((u) => u.id === userId ? { ...u, is_active: !isActive } : u));
     toast.success(isActive ? "Désactivé" : "Activé");
   }
@@ -61,19 +62,19 @@ export default function UtilisateursPage() {
               <DialogHeader><DialogTitle>Créer un utilisateur</DialogTitle></DialogHeader>
               <form onSubmit={handleCreateUser} className="space-y-4 mt-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label>Prénom</Label><Input value={newUser.first_name} onChange={(e) => setNewUser({ ...newUser, first_name: e.target.value })} required className="bg-white" /></div>
-                  <div className="space-y-2"><Label>Nom</Label><Input value={newUser.last_name} onChange={(e) => setNewUser({ ...newUser, last_name: e.target.value })} required className="bg-white" /></div>
+                  <div className="space-y-2"><Label>Prénom</Label><Input value={newUser.first_name} onChange={(e) => setNewUser({ ...newUser, first_name: e.target.value })} required className="bg-card" /></div>
+                  <div className="space-y-2"><Label>Nom</Label><Input value={newUser.last_name} onChange={(e) => setNewUser({ ...newUser, last_name: e.target.value })} required className="bg-card" /></div>
                 </div>
-                <div className="space-y-2"><Label>Email</Label><Input type="email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} required className="bg-white" /></div>
-                <div className="space-y-2"><Label>Mot de passe</Label><Input type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} required minLength={8} className="bg-white" /></div>
-                <div className="space-y-2"><Label>Rôle</Label><Select value={newUser.role} onValueChange={(v) => v && setNewUser({ ...newUser, role: v as UserRole })}><SelectTrigger className="bg-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ADMIN">Direction</SelectItem><SelectItem value="COMMERCIAL">Commercial</SelectItem><SelectItem value="PROSPECTEUR">Prospecteur</SelectItem></SelectContent></Select></div>
+                <div className="space-y-2"><Label>Email</Label><Input type="email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} required className="bg-card" /></div>
+                <div className="space-y-2"><Label>Mot de passe</Label><Input type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} required minLength={8} className="bg-card" /></div>
+                <div className="space-y-2"><Label>Rôle</Label><Select value={newUser.role} onValueChange={(v) => v && setNewUser({ ...newUser, role: v as UserRole })}><SelectTrigger className="bg-card"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ADMIN">Direction</SelectItem><SelectItem value="COMMERCIAL">Commercial</SelectItem><SelectItem value="PROSPECTEUR">Prospecteur</SelectItem></SelectContent></Select></div>
                 <Button type="submit" disabled={creating} className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl">{creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Créer"}</Button>
               </form>
             </DialogContent>
           </Dialog>
         </div>
         <div className="grid gap-4">
-          {loading ? Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-20 bg-white rounded-xl animate-pulse" />) : users.map((user) => (
+          {loading ? Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-20 bg-card rounded-xl animate-pulse" />) : users.map((user) => (
             <Card key={user.id} className="border-0 shadow-sm"><CardContent className="p-5 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">{user.first_name[0]}{user.last_name[0]}</div>

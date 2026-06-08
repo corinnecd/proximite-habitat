@@ -67,7 +67,7 @@ export default function LoginPage() {
         <div className="absolute top-16 -right-8 w-32 h-32 rounded-full bg-orange-400/10" />
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-8 bg-[#FAF9F6]">
+      <div className="flex-1 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-10 justify-center">
             <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
@@ -87,13 +87,13 @@ export default function LoginPage() {
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-2">
                   <Label htmlFor="email">Adresse email</Label>
-                  <Input id="email" type="email" placeholder="votre@email.fr" value={email} onChange={(e) => setEmail(e.target.value)} required className="h-12 bg-white" />
+                  <Input id="email" type="email" placeholder="votre@email.fr" value={email} onChange={(e) => setEmail(e.target.value)} required className="h-12 bg-card" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Mot de passe</Label>
                   <div className="relative">
-                    <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="h-12 bg-white pr-12" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                    <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required className="h-12 bg-card pr-12" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>

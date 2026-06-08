@@ -433,6 +433,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
                 key={i}
                 type="button"
                 onClick={() => setCurrentStep(i)}
+                aria-current={i === currentStep ? "step" : undefined}
                 className={`text-xs transition-colors ${i <= currentStep ? "text-primary font-medium" : "text-muted-foreground"} hidden sm:block`}
               >
                 {s.title}

@@ -2,6 +2,8 @@
 
 import { useEffect, useState, use } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getFicheById, getFichePhotos } from "@/lib/data/fiches";
+import { getProfileFullName } from "@/lib/data/profiles";
 import { Badge } from "@/components/ui/badge";
 import { STATUS_LABELS } from "@/lib/permissions";
 import type { Fiche } from "@/types/database";
@@ -40,19 +42,18 @@ export default function ImprimerFichePage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     async function load() {
-      const [ficheRes, photosRes] = await Promise.all([
-        supabase.from("fiches").select("*").eq("id", id).single(),
-        supabase.from("fiche_photos").select("id, storage_path, original_name").eq("fiche_id", id),
+      const [ficheData, photosData] = await Promise.all([
+        getFicheById(supabase, id),
+        getFichePhotos(supabase, id),
       ]);
-      if (ficheRes.data) {
-        setFiche(ficheRes.data);
-        if (ficheRes.data.created_by) {
-          const { data: c } = await supabase.from("profiles")
-            .select("first_name, last_name").eq("id", ficheRes.data.created_by).single();
-          if (c) setCreatorName(`${c.first_name} ${c.last_name}`);
+      if (ficheData) {
+        setFiche(ficheData);
+        if (ficheData.created_by) {
+          const name = await getProfileFullName(supabase, ficheData.created_by);
+          if (name) setCreatorName(name);
         }
       }
-      setPhotos(photosRes.data || []);
+      setPhotos(photosData);
       setLoading(false);
     }
     load();

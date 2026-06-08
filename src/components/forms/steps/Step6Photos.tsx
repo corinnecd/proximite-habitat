@@ -70,7 +70,7 @@ export function Step6Photos({
       <div className="space-y-3">
         <Label>Photos du logement {totalCount > 0 && `(${totalCount})`}</Label>
         <div
-          className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-white"
+          className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-card"
           onClick={() => document.getElementById("photo-input")?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
@@ -104,6 +104,7 @@ export function Step6Photos({
                   {onRemoveUploaded && (
                     <button
                       type="button"
+                      aria-label={`Supprimer la photo ${p.original_name ?? ""}`.trim()}
                       onClick={() => onRemoveUploaded(p.id)}
                       className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
@@ -126,6 +127,7 @@ export function Step6Photos({
                   <img src={URL.createObjectURL(p)} alt={p.name} className="w-full h-32 object-cover" />
                   <button
                     type="button"
+                    aria-label={`Retirer la photo ${p.name}`}
                     onClick={() => setPhotos(photos.filter((_, j) => j !== i))}
                     className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -142,7 +144,7 @@ export function Step6Photos({
         <Label>Notes / Observations</Label>
         <Textarea
           placeholder="Observations sur le logement..."
-          className="min-h-[150px] bg-white"
+          className="min-h-[150px] bg-card"
           {...register("observations")}
         />
       </div>

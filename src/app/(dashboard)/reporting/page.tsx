@@ -31,7 +31,7 @@ function Bar({ value, max, colorClass }: { value: number; max: number; colorClas
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
     <div className="flex items-center gap-3">
-      <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+      <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all duration-500 ${colorClass}`} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-sm font-semibold w-8 text-right">{value}</span>
@@ -138,9 +138,9 @@ export default function ReportingPage() {
         <Topbar title="Reporting" />
         <div className="p-6 lg:p-8 animate-pulse space-y-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-28 bg-white rounded-xl" />)}
+            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-28 bg-card rounded-xl" />)}
           </div>
-          <div className="h-64 bg-white rounded-xl" />
+          <div className="h-64 bg-card rounded-xl" />
         </div>
       </>
     );
@@ -242,7 +242,7 @@ export default function ReportingPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
                         <div className="h-full bg-primary/70 rounded-full transition-all duration-500"
                           style={{ width: `${maxMonth > 0 ? (m.total / maxMonth) * 100 : 0}%` }} />
                       </div>

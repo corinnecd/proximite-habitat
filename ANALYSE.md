@@ -235,17 +235,17 @@ src/
 ### 🟠 Important (fonctionnel) — ce qui reste
 5. ✅ ~~**Confirmation avant de quitter le wizard**~~ — garde `beforeunload` ajouté dans `FicheStepper` (formulaire modifié / photos ou signature non envoyées).
 6. ✅ ~~**Pagination** des listes~~ — `range()` Supabase + « Charger plus » sur `/fiches` et `/notifications` (page de 20).
-7. **Fiche archivée en lecture seule** — pas de verrou UI sur les fiches `ARCHIVEE`.
+7. ✅ ~~**Fiche archivée en lecture seule**~~ — `canEditFiche` prend désormais le statut en compte (retourne `false` si `ARCHIVEE`), branché sur les 3 chemins d'édition (reprise brouillon, modification admin/commercial, accès direct `/modifier`) ; transitions déjà bloquées. Couvert par test unitaire.
 8. ✅ ~~Types DB générés~~ — `src/types/database.types.ts` (type `Database` complet), clients Supabase typés, interfaces dupliquées remplacées par des types dérivés (`Fiche`, `Profile`, `Notification`…).
 9. **Tests** (aucun actuellement) + **CI**.
 
 ### 🟡 Souhaitable (qualité / produit)
-10. Affichage `date_visite`/`heure_visite` dans le détail (champs saisis mais pas affichés).
-11. Mode sombre (déjà câblé techniquement via `next-themes`).
-12. Accessibilité (a11y) : rôles ARIA, navigation clavier, contrastes.
+10. ✅ ~~Affichage `date_visite`/`heure_visite` dans le détail~~ — champ « Visite souhaitée » (date formatée FR + heure) ajouté dans la carte Coordonnées (la page PDF l'affichait déjà).
+11. ✅ ~~Mode sombre~~ — `ThemeProvider` (next-themes), bloc `.dark` complet dans `globals.css`, toggle dans la `Topbar`, et ~23 fichiers migrés des couleurs codées en dur vers les tokens sémantiques (`bg-card`, `text-foreground`, `bg-muted`…). Page d'impression et `SignatureCanvas` volontairement laissés clairs.
+12. ✅ ~~Accessibilité (a11y)~~ — cartes notification rendues opérables au clavier (`role="button"` + `tabIndex` + `onKeyDown` + focus ring) ; `aria-label` sur tous les boutons icônes (toggles mot de passe, suppression, marquer-lu, hamburger/croix sidebar, suppression photo) ; `SignatureCanvas` en `role="img"` labellisé ; `aria-pressed` sur les filtres, `aria-current` sur le stepper ; overlay sidebar `aria-hidden` ; contraste du bouton Déconnexion relevé.
 13. **README** réel + doc d'onboarding.
-14. Couche data/services pour centraliser les requêtes Supabase (actuellement dupliquées dans chaque page).
-15. Export Excel / CSV de la liste des fiches.
+14. ✅ ~~Couche data/services~~ — `src/lib/data/{fiches,profiles,notifications}.ts` centralise les requêtes Supabase (getFicheById, getFichePhotos, getFicheHistory, countFichesByStatus, deleteFicheCascade, getActiveCommercialsAndAdmins, get/markNotifications, getAllProfiles…). Câblée dans dashboard, détail, modifier, impression, notifications, utilisateurs et la Topbar. **Corrige au passage un bug** : la suppression d'un brouillon depuis le dashboard ne nettoyait pas photos ni notifications.
+15. ✅ ~~Export Excel / CSV de la liste des fiches~~ — bouton « Exporter CSV » sur `/fiches` : exporte **toutes** les fiches du filtre/recherche courant (hors pagination) via `getFichesForExport`, fichier `;`-séparé compatible Excel FR (BOM UTF-8) avec libellés de statut et nom du commercial. Utilitaires dans `src/lib/csv.ts`.
 16. Détection de doublons (même prospect/adresse).
 
 ---

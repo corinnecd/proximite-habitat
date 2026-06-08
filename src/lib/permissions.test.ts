@@ -64,17 +64,23 @@ describe("canEditFiche", () => {
   const other = "user-2";
 
   it("l'admin peut toujours éditer", () => {
-    expect(canEditFiche("ADMIN", me, other, null)).toBe(true);
+    expect(canEditFiche("ADMIN", me, other, null, "SOUMISE")).toBe(true);
   });
 
   it("le commercial édite ses fiches ou celles qui lui sont affectées", () => {
-    expect(canEditFiche("COMMERCIAL", me, me, null)).toBe(true);
-    expect(canEditFiche("COMMERCIAL", me, other, me)).toBe(true);
-    expect(canEditFiche("COMMERCIAL", me, other, other)).toBe(false);
+    expect(canEditFiche("COMMERCIAL", me, me, null, "AFFECTEE")).toBe(true);
+    expect(canEditFiche("COMMERCIAL", me, other, me, "AFFECTEE")).toBe(true);
+    expect(canEditFiche("COMMERCIAL", me, other, other, "AFFECTEE")).toBe(false);
   });
 
   it("le prospecteur n'édite que ses propres fiches", () => {
-    expect(canEditFiche("PROSPECTEUR", me, me, null)).toBe(true);
-    expect(canEditFiche("PROSPECTEUR", me, other, me)).toBe(false);
+    expect(canEditFiche("PROSPECTEUR", me, me, null, "BROUILLON")).toBe(true);
+    expect(canEditFiche("PROSPECTEUR", me, other, me, "BROUILLON")).toBe(false);
+  });
+
+  it("une fiche archivée n'est jamais éditable, même par l'admin", () => {
+    expect(canEditFiche("ADMIN", me, me, null, "ARCHIVEE")).toBe(false);
+    expect(canEditFiche("COMMERCIAL", me, me, me, "ARCHIVEE")).toBe(false);
+    expect(canEditFiche("PROSPECTEUR", me, me, null, "ARCHIVEE")).toBe(false);
   });
 });

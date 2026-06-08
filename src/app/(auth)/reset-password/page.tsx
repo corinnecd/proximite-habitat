@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
 
   if (!ready) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAF9F6]">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center text-muted-foreground">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-primary" />
           <p className="text-sm">Vérification du lien en cours…</p>
@@ -70,7 +70,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-8 bg-[#FAF9F6]">
+    <div className="min-h-screen flex items-center justify-center p-8 bg-background">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-10 justify-center">
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
@@ -100,11 +100,12 @@ export default function ResetPasswordPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={8}
-                    className="h-12 bg-white pr-12"
+                    className="h-12 bg-card pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -119,7 +120,7 @@ export default function ResetPasswordPage() {
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   required
-                  className="h-12 bg-white"
+                  className="h-12 bg-card"
                 />
               </div>
               {error && (

@@ -7,6 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Topbar } from "@/components/layout/Topbar";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
+import {
+  countFichesByStatus,
+  deleteFicheCascade,
+  FICHE_LIST_COLUMNS,
+  type FicheListItem,
+} from "@/lib/data/fiches";
 import { useProfile } from "@/lib/hooks/use-profile";
 import type { FicheStatus } from "@/types/database";
 import { FileText, FilePlus, Clock, CheckCircle2, XCircle, Send, UserCheck, Archive, History, Trash2 } from "lucide-react";
@@ -18,22 +24,16 @@ const STATUS_ICONS: Record<FicheStatus, React.ReactNode> = {
 };
 
 const COUNTER_STYLES: Record<FicheStatus, string> = {
-  BROUILLON: "bg-gray-50 text-gray-600 border-gray-200", SOUMISE: "bg-blue-50 text-blue-600 border-blue-200",
+  BROUILLON: "bg-muted text-muted-foreground border-border", SOUMISE: "bg-blue-50 text-blue-600 border-blue-200",
   AFFECTEE: "bg-orange-50 text-orange-600 border-orange-200", ACCEPTEE: "bg-green-50 text-green-600 border-green-200",
-  REFUSEE: "bg-red-50 text-red-600 border-red-200", ARCHIVEE: "bg-gray-50 text-gray-400 border-gray-200",
+  REFUSEE: "bg-red-50 text-red-600 border-red-200", ARCHIVEE: "bg-muted text-muted-foreground border-border",
 };
-
-interface FicheRow {
-  id: string; reference: string; status: FicheStatus;
-  prospect_nom: string; prospect_prenom: string; prospect_ville: string;
-  created_at: string; created_by: string;
-}
 
 export default function DashboardPage() {
   const { profile, loading: profileLoading } = useProfile();
   const [counts, setCounts] = useState<Record<FicheStatus, number>>({ BROUILLON: 0, SOUMISE: 0, AFFECTEE: 0, ACCEPTEE: 0, REFUSEE: 0, ARCHIVEE: 0 });
-  const [recentFiches, setRecentFiches] = useState<FicheRow[]>([]);
-  const [historyFiches, setHistoryFiches] = useState<FicheRow[]>([]);
+  const [recentFiches, setRecentFiches] = useState<FicheListItem[]>([]);
+  const [historyFiches, setHistoryFiches] = useState<FicheListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
@@ -48,12 +48,8 @@ export default function DashboardPage() {
       : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
 
     const countPromises = statusesToCount.map(async (s) => {
-      let query = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
-      if (isProspecteur) {
-        query = query.eq("created_by", profile.id);
-      }
-      const { count } = await query;
-      return [s, count || 0] as const;
+      const count = await countFichesByStatus(supabase, s, isProspecteur ? { createdBy: profile.id } : undefined);
+      return [s, count] as const;
     });
 
     const results = await Promise.all(countPromises);
@@ -64,7 +60,7 @@ export default function DashboardPage() {
     // Prospecteur : section principale = uniquement ses brouillons EN COURS
     // Admin/Commercial : fiches récentes excluant les brouillons (réservés au créateur)
     let recentQuery = supabase.from("fiches")
-      .select("id, reference, status, prospect_nom, prospect_prenom, prospect_ville, created_at, created_by")
+      .select(FICHE_LIST_COLUMNS)
       .order("created_at", { ascending: false })
       .limit(5);
 
@@ -75,17 +71,17 @@ export default function DashboardPage() {
     }
 
     const { data } = await recentQuery;
-    setRecentFiches((data as FicheRow[]) || []);
+    setRecentFiches((data as FicheListItem[]) || []);
 
     // Historique prospecteur (toutes ses fiches soumises et au-delà)
     if (isProspecteur) {
       const { data: history } = await supabase.from("fiches")
-        .select("id, reference, status, prospect_nom, prospect_prenom, prospect_ville, created_at, created_by")
+        .select(FICHE_LIST_COLUMNS)
         .eq("created_by", profile.id)
         .neq("status", "BROUILLON")
         .order("created_at", { ascending: false })
         .limit(20);
-      setHistoryFiches((history as FicheRow[]) || []);
+      setHistoryFiches((history as FicheListItem[]) || []);
     }
 
     setLoading(false);
@@ -115,7 +111,7 @@ export default function DashboardPage() {
     : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
 
   if (profileLoading || loading) {
-    return (<><Topbar title="Tableau de bord" /><div className="p-6 lg:p-8"><div className="animate-pulse space-y-6"><div className="grid grid-cols-2 lg:grid-cols-3 gap-4">{Array.from({ length: 6 }).map((_, i) => (<div key={i} className="h-28 bg-white rounded-xl" />))}</div></div></div></>);
+    return (<><Topbar title="Tableau de bord" /><div className="p-6 lg:p-8"><div className="animate-pulse space-y-6"><div className="grid grid-cols-2 lg:grid-cols-3 gap-4">{Array.from({ length: 6 }).map((_, i) => (<div key={i} className="h-28 bg-card rounded-xl" />))}</div></div></div></>);
   }
 
   return (
@@ -177,11 +173,11 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         title="Supprimer le brouillon"
+                        aria-label={`Supprimer le brouillon ${fiche.reference}`}
                         onClick={async (e) => {
                           e.preventDefault();
                           if (!window.confirm(`Supprimer définitivement le brouillon "${fiche.reference}" ?`)) return;
-                          await supabase.from("fiche_history").delete().eq("fiche_id", fiche.id);
-                          await supabase.from("fiches").delete().eq("id", fiche.id);
+                          await deleteFicheCascade(supabase, fiche.id);
                           fetchData();
                         }}
                         className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 transition-all"

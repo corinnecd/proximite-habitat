@@ -83,8 +83,8 @@ export default function ProfilPage() {
       <>
         <Topbar title="Mon profil" />
         <div className="p-6 lg:p-8 max-w-2xl mx-auto animate-pulse space-y-4">
-          <div className="h-48 bg-white rounded-xl" />
-          <div className="h-48 bg-white rounded-xl" />
+          <div className="h-48 bg-card rounded-xl" />
+          <div className="h-48 bg-card rounded-xl" />
         </div>
       </>
     );
@@ -132,7 +132,7 @@ export default function ProfilPage() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     required
-                    className="bg-white"
+                    className="bg-card"
                   />
                 </div>
                 <div className="space-y-2">
@@ -141,7 +141,7 @@ export default function ProfilPage() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     required
-                    className="bg-white"
+                    className="bg-card"
                   />
                 </div>
               </div>
@@ -151,7 +151,7 @@ export default function ProfilPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="06 12 34 56 78"
-                  className="bg-white"
+                  className="bg-card"
                 />
               </div>
               <div className="space-y-2">
@@ -194,11 +194,12 @@ export default function ProfilPage() {
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
                     minLength={8}
-                    className="bg-white pr-12"
+                    className="bg-card pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNew(!showNew)}
+                    aria-label={showNew ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -213,7 +214,7 @@ export default function ProfilPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="bg-white"
+                  className="bg-card"
                 />
               </div>
               <p className="text-xs text-muted-foreground">8 caractères minimum</p>

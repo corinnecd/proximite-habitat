@@ -58,7 +58,9 @@ export function SignatureCanvas({ onSignatureChange }: SignatureCanvasProps) {
   return (
     <div className="space-y-3">
       <div className="relative">
-        <canvas ref={canvasRef} width={600} height={200} className="w-full h-48 border-2 border-dashed border-border rounded-xl bg-white cursor-crosshair touch-none"
+        <canvas ref={canvasRef} width={600} height={200} role="img"
+          aria-label={hasSignature ? "Zone de signature manuscrite (signée)" : "Zone de signature manuscrite — dessinez votre signature avec la souris ou le doigt"}
+          className="w-full h-48 border-2 border-dashed border-border rounded-xl bg-white cursor-crosshair touch-none"
           onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing}
           onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} />
         {!hasSignature && <p className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground/40 pointer-events-none">Signez ici</p>}

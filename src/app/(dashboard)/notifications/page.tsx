@@ -6,6 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Topbar } from "@/components/layout/Topbar";
 import { createClient } from "@/lib/supabase/client";
+import {
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from "@/lib/data/notifications";
 import { Bell, CheckCheck, FileText, Check, Loader2 } from "lucide-react";
 import type { Notification } from "@/types/database";
 
@@ -24,13 +29,7 @@ export default function NotificationsPage() {
   const fetchNotifications = useCallback(async (uid: string, pageToLoad = 0, append = false) => {
     if (append) setLoadingMore(true);
     const from = pageToLoad * PAGE_SIZE;
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq("user_id", uid)
-      .order("created_at", { ascending: false })
-      .range(from, from + PAGE_SIZE - 1);
-    const rows = (data as Notification[]) || [];
+    const rows = await getNotifications(supabase, uid, { from, to: from + PAGE_SIZE - 1 });
     setNotifications((prev) => (append ? [...prev, ...rows] : rows));
     setHasMore(rows.length === PAGE_SIZE);
     setPage(pageToLoad);
@@ -54,7 +53,7 @@ export default function NotificationsPage() {
 
   // Marque une notification individuelle comme lue
   async function markAsRead(notifId: string) {
-    await supabase.from("notifications").update({ read: true }).eq("id", notifId);
+    await markNotificationRead(supabase, notifId);
     setNotifications((prev) =>
       prev.map((n) => (n.id === notifId ? { ...n, read: true } : n))
     );
@@ -63,8 +62,7 @@ export default function NotificationsPage() {
   // Marque toutes comme lues
   async function markAllRead() {
     if (!userId) return;
-    await supabase.from("notifications").update({ read: true })
-      .eq("user_id", userId).eq("read", false);
+    await markAllNotificationsRead(supabase, userId);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   }
 
@@ -99,7 +97,7 @@ export default function NotificationsPage() {
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 bg-white rounded-xl animate-pulse" />
+              <div key={i} className="h-24 bg-card rounded-xl animate-pulse" />
             ))}
           </div>
         ) : notifications.length === 0 ? (
@@ -114,11 +112,15 @@ export default function NotificationsPage() {
             {notifications.map((n) => (
               <div
                 key={n.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`${n.read ? "" : "Non lue. "}${n.title}${n.fiche_id ? " — ouvrir la fiche" : ""}`}
                 onClick={() => handleClick(n)}
-                className={`rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(n); } }}
+                className={`rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50
                   ${!n.read
                     ? "bg-blue-50/60 ring-1 ring-blue-100"
-                    : "bg-white ring-1 ring-border/30"
+                    : "bg-card ring-1 ring-border/30"
                   } ${n.fiche_id ? "hover:ring-primary/30" : ""}`}
               >
                 <div className="p-5 flex items-start justify-between gap-4">
@@ -126,7 +128,7 @@ export default function NotificationsPage() {
                     {/* Icône + point non-lu */}
                     <div className="relative shrink-0">
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center
-                        ${!n.read ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-400"}`}>
+                        ${!n.read ? "bg-blue-100 text-blue-600" : "bg-muted text-muted-foreground"}`}>
                         <FileText className="w-5 h-5" />
                       </div>
                       {!n.read && (
@@ -153,6 +155,7 @@ export default function NotificationsPage() {
                     <button
                       type="button"
                       title="Marquer comme lu"
+                      aria-label="Marquer comme lu"
                       onClick={(e) => { e.stopPropagation(); markAsRead(n.id); }}
                       className="shrink-0 w-8 h-8 rounded-full hover:bg-blue-100 flex items-center justify-center text-blue-500 transition-colors"
                     >

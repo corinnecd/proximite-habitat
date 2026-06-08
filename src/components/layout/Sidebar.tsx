@@ -73,7 +73,7 @@ export function Sidebar() {
               <p className="text-xs text-white/40">{ROLE_LABELS[profile.role]}</p>
             </div>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-white/40 hover:text-white hover:bg-white/5 transition-all duration-200 w-full">
+          <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-white/70 hover:text-white hover:bg-white/5 transition-all duration-200 w-full">
             <LogOut className="w-5 h-5" />Déconnexion
           </button>
         </div>
@@ -83,12 +83,12 @@ export function Sidebar() {
 
   return (
     <>
-      <button onClick={() => setMobileOpen(true)} className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
+      <button onClick={() => setMobileOpen(true)} aria-label="Ouvrir le menu" className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
         <Menu className="w-5 h-5" />
       </button>
-      {mobileOpen && <div className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />}
+      {mobileOpen && <div aria-hidden="true" className="lg:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />}
       <aside className={cn("lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-[#1E3A5F] transform transition-transform duration-300", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
-        <button onClick={() => setMobileOpen(false)} className="absolute top-4 right-4 text-white/60 hover:text-white"><X className="w-5 h-5" /></button>
+        <button onClick={() => setMobileOpen(false)} aria-label="Fermer le menu" className="absolute top-4 right-4 text-white/60 hover:text-white"><X className="w-5 h-5" /></button>
         {sidebarContent}
       </aside>
       <aside className="hidden lg:flex lg:w-72 lg:flex-col lg:fixed lg:inset-y-0 bg-[#1E3A5F]">{sidebarContent}</aside>

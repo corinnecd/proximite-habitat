@@ -51,12 +51,12 @@ interface ProfileEntry { id: string; first_name: string; last_name: string; role
 // ── Status accent colors (same palette as fiches list) ────────────────────────
 
 const STATUS_HERO: Record<FicheStatus, { border: string; iconBg: string; icon: string }> = {
-  BROUILLON: { border: "border-l-slate-400",   iconBg: "bg-slate-100",   icon: "text-slate-500" },
-  SOUMISE:   { border: "border-l-blue-500",    iconBg: "bg-blue-50",     icon: "text-blue-500" },
-  AFFECTEE:  { border: "border-l-orange-500",  iconBg: "bg-orange-50",   icon: "text-orange-500" },
-  ACCEPTEE:  { border: "border-l-emerald-500", iconBg: "bg-emerald-50",  icon: "text-emerald-600" },
-  REFUSEE:   { border: "border-l-red-500",     iconBg: "bg-red-50",      icon: "text-red-500" },
-  ARCHIVEE:  { border: "border-l-slate-300",   iconBg: "bg-slate-100",   icon: "text-slate-400" },
+  BROUILLON: { border: "border-l-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800",      icon: "text-slate-500" },
+  SOUMISE:   { border: "border-l-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",      icon: "text-blue-500" },
+  AFFECTEE:  { border: "border-l-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",  icon: "text-orange-500" },
+  ACCEPTEE:  { border: "border-l-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "text-emerald-600 dark:text-emerald-400" },
+  REFUSEE:   { border: "border-l-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",        icon: "text-red-500" },
+  ARCHIVEE:  { border: "border-l-slate-300",   iconBg: "bg-slate-100 dark:bg-slate-800",      icon: "text-slate-400" },
 };
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -542,7 +542,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                       <div className="pb-5">
                         <p className="text-sm font-semibold leading-snug">{entry.action}</p>
                         {entry.comment && (
-                          <p className="text-xs text-muted-foreground mt-1 italic bg-muted/50 px-2 py-1 rounded-lg">"{entry.comment}"</p>
+                          <p className="text-xs text-muted-foreground mt-1 italic bg-muted/50 px-2 py-1 rounded-lg">&quot;{entry.comment}&quot;</p>
                         )}
                         <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
                           <span className="font-medium text-foreground/70">
@@ -592,7 +592,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 <>
                   <Separator />
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-950/40 flex items-center justify-center shrink-0">
                       <UserCheck className="w-3.5 h-3.5 text-orange-500" />
                     </div>
                     <div>

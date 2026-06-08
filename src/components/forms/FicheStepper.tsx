@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { ficheSchema, step1Schema } from "@/lib/validations/fiche";
@@ -408,7 +408,6 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
 
   // Cast nécessaire : toutes les étapes reçoivent les mêmes props mais n'en utilisent qu'une partie
   const StepComponent = STEPS[currentStep].component as React.ComponentType<StepAllProps>;
-  const progress = ((currentStep + 1) / STEPS.length) * 100;
   const isEditMode = Boolean(ficheIdProp);
   const submitLabel = mode === "edit-submitted" ? "Enregistrer les modifications" : "Soumettre";
 
@@ -417,7 +416,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
       <div>
         {/* Bandeau mode édition */}
         {isEditMode && (
-          <div className="mb-6 flex items-center gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl p-3">
+          <div className="mb-6 flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 rounded-xl p-3">
             <Edit className="w-4 h-4 text-amber-500 shrink-0" />
             <span>Vous modifiez un brouillon. Les modifications sont sauvegardées automatiquement.</span>
           </div>

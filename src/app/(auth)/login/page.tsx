@@ -119,7 +119,7 @@ export default function LoginPage() {
                     </button>
                   </div>
                 </div>
-                {error && <p className="text-sm text-destructive bg-red-50 p-3 rounded-lg">{error}</p>}
+                {error && <p className="text-sm text-destructive bg-red-50 dark:bg-red-950/30 p-3 rounded-lg">{error}</p>}
                 <Button type="submit" disabled={loading} className="w-full h-12 bg-[#F97316] hover:bg-[#EA580C] text-white font-medium text-base rounded-xl transition-all duration-200">
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Se connecter"}
                 </Button>

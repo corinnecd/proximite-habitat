@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Topbar } from "@/components/layout/Topbar";
@@ -52,12 +52,12 @@ const CSV_COLUMNS: CsvColumn<FicheCsvRow>[] = [
 const PAGE_SIZE = 20;
 
 const STATUS_CARD_STYLES: Record<FicheStatus, { border: string; icon: string; iconBg: string; Icon: React.ElementType }> = {
-  BROUILLON: { border: "border-l-slate-400",   icon: "text-slate-500",   iconBg: "bg-slate-100",   Icon: Clock },
-  SOUMISE:   { border: "border-l-blue-500",    icon: "text-blue-500",    iconBg: "bg-blue-50",     Icon: Send },
-  AFFECTEE:  { border: "border-l-orange-500",  icon: "text-orange-500",  iconBg: "bg-orange-50",   Icon: UserCheck },
-  ACCEPTEE:  { border: "border-l-emerald-500", icon: "text-emerald-600", iconBg: "bg-emerald-50",  Icon: CheckCircle2 },
-  REFUSEE:   { border: "border-l-red-500",     icon: "text-red-500",     iconBg: "bg-red-50",      Icon: XCircle },
-  ARCHIVEE:  { border: "border-l-slate-400",   icon: "text-slate-400",   iconBg: "bg-slate-100",   Icon: Archive },
+  BROUILLON: { border: "border-l-slate-400",   icon: "text-slate-500",   iconBg: "bg-slate-100 dark:bg-slate-800",    Icon: Clock },
+  SOUMISE:   { border: "border-l-blue-500",    icon: "text-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",    Icon: Send },
+  AFFECTEE:  { border: "border-l-orange-500",  icon: "text-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40", Icon: UserCheck },
+  ACCEPTEE:  { border: "border-l-emerald-500", icon: "text-emerald-600", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", Icon: CheckCircle2 },
+  REFUSEE:   { border: "border-l-red-500",     icon: "text-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",      Icon: XCircle },
+  ARCHIVEE:  { border: "border-l-slate-400",   icon: "text-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800",    Icon: Archive },
 };
 
 interface FicheRow { id: string; reference: string; status: FicheStatus; prospect_nom: string; prospect_prenom: string; prospect_ville: string; prospect_cp: string; updated_at: string; assigned_to_profile: { first_name: string; last_name: string } | null; }

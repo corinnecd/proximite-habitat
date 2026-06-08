@@ -119,7 +119,7 @@ export default function NotificationsPage() {
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(n); } }}
                 className={`rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50
                   ${!n.read
-                    ? "bg-blue-50/60 ring-1 ring-blue-100"
+                    ? "bg-blue-50/60 dark:bg-blue-950/20 ring-1 ring-blue-100 dark:ring-blue-900"
                     : "bg-card ring-1 ring-border/30"
                   } ${n.fiche_id ? "hover:ring-primary/30" : ""}`}
               >

@@ -25,10 +25,10 @@ const STATUS_ICONS: Record<FicheStatus, React.ReactNode> = {
 
 const COUNTER_STYLES: Record<FicheStatus, string> = {
   BROUILLON: "border-l-slate-400   bg-card/80  backdrop-blur-sm text-muted-foreground",
-  SOUMISE:   "border-l-blue-500    bg-blue-50/80   backdrop-blur-sm text-blue-700",
-  AFFECTEE:  "border-l-orange-500  bg-orange-50/80 backdrop-blur-sm text-orange-700",
-  ACCEPTEE:  "border-l-emerald-500 bg-emerald-50/80 backdrop-blur-sm text-emerald-700",
-  REFUSEE:   "border-l-red-500     bg-red-50/80    backdrop-blur-sm text-red-700",
+  SOUMISE:   "border-l-blue-500    bg-blue-50/80   dark:bg-blue-950/30   backdrop-blur-sm text-blue-700   dark:text-blue-400",
+  AFFECTEE:  "border-l-orange-500  bg-orange-50/80 dark:bg-orange-950/30 backdrop-blur-sm text-orange-700 dark:text-orange-400",
+  ACCEPTEE:  "border-l-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/30 backdrop-blur-sm text-emerald-700 dark:text-emerald-400",
+  REFUSEE:   "border-l-red-500     bg-red-50/80    dark:bg-red-950/30    backdrop-blur-sm text-red-700    dark:text-red-400",
   ARCHIVEE:  "border-l-slate-400   bg-muted/80 backdrop-blur-sm text-muted-foreground",
 };
 

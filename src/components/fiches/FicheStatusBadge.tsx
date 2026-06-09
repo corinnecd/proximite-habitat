@@ -7,8 +7,8 @@ const STATUS_LABELS_SHORT: Record<FicheStatus, string> = {
   BROUILLON: "Brouillon",
   SOUMISE: "À valider",
   AFFECTEE: "Affectée",
-  ACCEPTEE: "Acceptée",
-  RETRACTATION: "Rétractation",
+  RETRACTATION: "Att. Validation",
+  ACCEPTEE: "Validée",
   REFUSEE: "Refusée",
   ARCHIVEE: "Archivée",
 };

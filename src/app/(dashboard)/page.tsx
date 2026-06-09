@@ -153,7 +153,7 @@ function UrgencyBadge({ days }: { days: number }) {
 
 const STATUS_LABELS_FR: Record<string, string> = {
   BROUILLON: "Brouillon", SOUMISE: "À valider", AFFECTEE: "Affectée",
-  ACCEPTEE: "Acceptée", RETRACTATION: "Rétractation", REFUSEE: "Refusée", ARCHIVEE: "Archivée",
+  RETRACTATION: "Att. Validation", ACCEPTEE: "Validée", REFUSEE: "Refusée", ARCHIVEE: "Archivée",
 };
 
 function StatusBlock({
@@ -350,7 +350,7 @@ export default function DashboardPage() {
   const [assigning, setAssigning] = useState(false);
   const [commercials, setCommercials] = useState<{ id: string; first_name: string; last_name: string; role: string }[]>([]);
   const [ficheToTraiter, setFicheToTraiter] = useState<{ id: string; reference: string; nom: string; created_by: string } | null>(null);
-  const [traiterDecision, setTraiterDecision] = useState<"ACCEPTEE" | "REFUSEE">("ACCEPTEE");
+  const [traiterDecision, setTraiterDecision] = useState<"RETRACTATION" | "REFUSEE">("RETRACTATION");
   const [traiterComment, setTraiterComment] = useState("");
   const [traiting, setTraiting] = useState(false);
   const supabase = createClient();
@@ -613,10 +613,10 @@ export default function DashboardPage() {
         AFFECTEE: Math.max(0, prev.AFFECTEE - 1),
         [traiterDecision]: prev[traiterDecision] + 1,
       }));
-      toast.success(`Fiche ${ficheToTraiter.reference} marquée ${traiterDecision === "ACCEPTEE" ? "acceptée ✓" : "refusée"}`);
+      toast.success(`Fiche ${ficheToTraiter.reference} ${traiterDecision === "RETRACTATION" ? "en attente de validation ✓" : "refusée"}`);
 
-      // Email au prospecteur (non bloquant)
-      if (ficheToTraiter.created_by) {
+      // Email au prospecteur uniquement pour REFUSEE (RETRACTATION = étape intermédiaire)
+      if (traiterDecision === "REFUSEE" && ficheToTraiter.created_by) {
         void (async () => {
           try {
             const { data: prospProfile } = await supabase
@@ -628,7 +628,7 @@ export default function DashboardPage() {
               await sendEmailFicheDecision({
                 ficheId: ficheToTraiter.id,
                 reference: ficheToTraiter.reference,
-                decision: traiterDecision,
+                decision: "REFUSEE",
                 prospecteurPrenom: prospProfile.first_name,
                 prospecteurEmail: prospProfile.email,
                 motif: traiterComment.trim() || undefined,
@@ -805,7 +805,7 @@ export default function DashboardPage() {
       {assignDialog}
 
       {/* Dialog traitement rapide (commercial) */}
-      <Dialog open={!!ficheToTraiter} onOpenChange={(open) => { if (!open) { setFicheToTraiter(null); setTraiterComment(""); setTraiterDecision("ACCEPTEE"); } }}>
+      <Dialog open={!!ficheToTraiter} onOpenChange={(open) => { if (!open) { setFicheToTraiter(null); setTraiterComment(""); setTraiterDecision("RETRACTATION"); } }}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>Traiter la fiche</DialogTitle>
@@ -819,15 +819,15 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setTraiterDecision("ACCEPTEE")}
+              onClick={() => setTraiterDecision("RETRACTATION")}
               className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                traiterDecision === "ACCEPTEE"
-                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30"
-                  : "border-border hover:border-emerald-300"
+                traiterDecision === "RETRACTATION"
+                  ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30"
+                  : "border-border hover:border-purple-300"
               }`}
             >
-              <CheckCircle2 className={`w-6 h-6 ${traiterDecision === "ACCEPTEE" ? "text-emerald-600" : "text-muted-foreground"}`} />
-              <span className={`text-sm font-medium ${traiterDecision === "ACCEPTEE" ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>Acceptée</span>
+              <CheckCircle2 className={`w-6 h-6 ${traiterDecision === "RETRACTATION" ? "text-purple-600" : "text-muted-foreground"}`} />
+              <span className={`text-sm font-medium ${traiterDecision === "RETRACTATION" ? "text-purple-700 dark:text-purple-400" : "text-muted-foreground"}`}>Attente Validation</span>
             </button>
             <button
               type="button"
@@ -849,7 +849,7 @@ export default function DashboardPage() {
             <Textarea
               value={traiterComment}
               onChange={(e) => setTraiterComment(e.target.value)}
-              placeholder={traiterDecision === "REFUSEE" ? "Motif du refus…" : "Notes sur la visite…"}
+              placeholder={traiterDecision === "REFUSEE" ? "Motif du refus…" : "Notes sur la visite / attente client…"}
               className="min-h-[80px] rounded-xl resize-none"
             />
           </div>
@@ -859,10 +859,10 @@ export default function DashboardPage() {
             <Button
               onClick={handleTraiter}
               disabled={traiting}
-              className={`rounded-xl gap-2 text-white ${traiterDecision === "ACCEPTEE" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-500 hover:bg-red-600"}`}
+              className={`rounded-xl gap-2 text-white ${traiterDecision === "RETRACTATION" ? "bg-purple-600 hover:bg-purple-700" : "bg-red-500 hover:bg-red-600"}`}
             >
-              {traiting ? <Loader2 className="w-4 h-4 animate-spin" /> : traiterDecision === "ACCEPTEE" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-              {traiterDecision === "ACCEPTEE" ? "Accepter" : "Refuser"}
+              {traiting ? <Loader2 className="w-4 h-4 animate-spin" /> : traiterDecision === "RETRACTATION" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+              {traiterDecision === "RETRACTATION" ? "Mettre en attente" : "Refuser"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1109,7 +1109,7 @@ export default function DashboardPage() {
               fiches={fichesAffecteesAdmin}
             />
             <StatusBlock
-              title="Acceptées par le client"
+              title="Validées par le Client"
               total={counts.ACCEPTEE}
               icon={<CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
               iconBg="bg-emerald-100 dark:bg-emerald-900/40"
@@ -1155,7 +1155,7 @@ export default function DashboardPage() {
                 {mesVentes} vente{mesVentes > 1 ? "s" : ""} réalisée{mesVentes > 1 ? "s" : ""}
               </p>
               <p className="text-xs text-emerald-700/70 dark:text-emerald-400/70 mt-0.5">
-                Total de vos fiches acceptées par le client
+                Total de vos fiches validées par le client
               </p>
             </div>
             <Link href="/reporting">
@@ -1243,7 +1243,7 @@ export default function DashboardPage() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              setTraiterDecision("ACCEPTEE");
+                              setTraiterDecision("RETRACTATION");
                               setTraiterComment("");
                               setFicheToTraiter({ id: fiche.id, reference: fiche.reference, nom: `${fiche.prospect_prenom} ${fiche.prospect_nom}`, created_by: fiche.created_by });
                             }}

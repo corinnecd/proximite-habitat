@@ -205,7 +205,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#1E3A5F", "#F97316", "#10B981", "#F59E0B"] });
     }
 
-    // Email au prospecteur pour ACCEPTEE ou REFUSEE (non bloquant)
+    // Email au prospecteur pour ACCEPTEE (Validée) ou REFUSEE (non bloquant)
     if ((newStatus === "ACCEPTEE" || newStatus === "REFUSEE") && fiche.created_by) {
       void (async () => {
         try {
@@ -685,7 +685,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                       : (idx === 0 ? "bg-[#F97316]" : "bg-primary");
                     const statusLabels: Record<string, string> = {
                       BROUILLON: "Brouillon", SOUMISE: "À valider", AFFECTEE: "Affectée",
-                      ACCEPTEE: "Acceptée", RETRACTATION: "Rétractation", REFUSEE: "Refusée", ARCHIVEE: "Archivée",
+                      RETRACTATION: "Att. Validation", ACCEPTEE: "Validée", REFUSEE: "Refusée", ARCHIVEE: "Archivée",
                     };
                     return (
                       <div
@@ -942,15 +942,19 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             <DialogTitle className={`flex items-center gap-2 ${
               pendingStatus === "REFUSEE"
                 ? "text-red-600 dark:text-red-400"
-                : pendingStatus === "ACCEPTEE"
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-foreground"
+                : pendingStatus === "RETRACTATION"
+                  ? "text-purple-600 dark:text-purple-400"
+                  : pendingStatus === "ACCEPTEE"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-foreground"
             }`}>
               {pendingStatus === "REFUSEE"
                 ? <><Ban className="w-5 h-5" />Refuser la fiche</>
-                : pendingStatus === "ACCEPTEE"
-                  ? <><CheckCircle2 className="w-5 h-5" />Accepter la fiche</>
-                  : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
+                : pendingStatus === "RETRACTATION"
+                  ? <><CheckCircle2 className="w-5 h-5" />Attente Validation Client</>
+                  : pendingStatus === "ACCEPTEE"
+                    ? <><CheckCircle2 className="w-5 h-5" />Valider la fiche</>
+                    : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
               }
             </DialogTitle>
           </DialogHeader>
@@ -1023,16 +1027,18 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               className={`rounded-xl gap-2 text-white ${
                 pendingStatus === "REFUSEE"
                   ? "bg-red-600 hover:bg-red-700"
-                  : pendingStatus === "ACCEPTEE"
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-[#F97316] hover:bg-[#EA580C]"
+                  : pendingStatus === "RETRACTATION"
+                    ? "bg-purple-600 hover:bg-purple-700"
+                    : pendingStatus === "ACCEPTEE"
+                      ? "bg-emerald-600 hover:bg-emerald-700"
+                      : "bg-[#F97316] hover:bg-[#EA580C]"
               }`}
             >
               {transitioning
                 ? <Loader2 className="w-4 h-4 animate-spin" />
                 : pendingStatus === "REFUSEE"
                   ? <Ban className="w-4 h-4" />
-                  : pendingStatus === "ACCEPTEE"
+                  : pendingStatus === "RETRACTATION" || pendingStatus === "ACCEPTEE"
                     ? <CheckCircle2 className="w-4 h-4" />
                     : null
               }

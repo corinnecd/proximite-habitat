@@ -3,9 +3,9 @@ import type { UserRole, FicheStatus } from "@/types/database";
 const STATUS_TRANSITIONS: Record<FicheStatus, { to: FicheStatus[]; roles: UserRole[] }[]> = {
   BROUILLON: [{ to: ["SOUMISE"], roles: ["PROSPECTEUR", "COMMERCIAL", "ADMIN"] }],
   SOUMISE: [{ to: ["AFFECTEE"], roles: ["ADMIN"] }, { to: ["BROUILLON"], roles: ["ADMIN"] }],
-  AFFECTEE: [{ to: ["ACCEPTEE", "REFUSEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
-  ACCEPTEE: [{ to: ["RETRACTATION", "ARCHIVEE"], roles: ["ADMIN"] }],
-  RETRACTATION: [{ to: ["ARCHIVEE"], roles: ["ADMIN"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
+  AFFECTEE: [{ to: ["RETRACTATION", "REFUSEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
+  RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
+  ACCEPTEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN"] }],
   REFUSEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
   ARCHIVEE: [],
 };
@@ -38,7 +38,7 @@ export function canEditFiche(
 
 export const STATUS_LABELS: Record<FicheStatus, string> = {
   BROUILLON: "Brouillon", SOUMISE: "À valider", AFFECTEE: "Affectée",
-  ACCEPTEE: "Acceptée par le client", RETRACTATION: "Attente délai rétractation",
+  RETRACTATION: "Attente Validation Client", ACCEPTEE: "Validée par le Client",
   REFUSEE: "Refusée par le client", ARCHIVEE: "Archivée",
 };
 

@@ -59,6 +59,50 @@ function templateFicheAffectee(reference: string, ficheId: string, commercialPre
   };
 }
 
+function templateFicheDecision(
+  reference: string,
+  ficheId: string,
+  prospecteurPrenom: string,
+  decision: "ACCEPTEE" | "REFUSEE",
+  motif?: string,
+) {
+  const url = `${APP_URL}/fiches/${ficheId}`;
+  const accepted = decision === "ACCEPTEE";
+  return {
+    subject: accepted
+      ? `[Proximité Habitat] Votre fiche a été acceptée — ${reference}`
+      : `[Proximité Habitat] Votre fiche a été refusée — ${reference}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#1E3A5F">
+        <div style="background:#1E3A5F;padding:24px 32px;border-radius:12px 12px 0 0">
+          <h1 style="color:#fff;margin:0;font-size:20px">Proximité Habitat Conseil</h1>
+        </div>
+        <div style="background:#fff;padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
+          <h2 style="color:${accepted ? "#10B981" : "#EF4444"};margin-top:0">
+            ${accepted ? "✅ Votre fiche a été acceptée" : "❌ Votre fiche a été refusée"}
+          </h2>
+          <p>Bonjour ${prospecteurPrenom},</p>
+          <p>Votre fiche de pré-visite <strong>${reference}</strong> a été ${accepted ? "acceptée" : "refusée"} par la direction.</p>
+          ${!accepted && motif ? `
+          <div style="background:#fef2f2;border-left:4px solid #EF4444;padding:12px 16px;border-radius:0 8px 8px 0;margin:16px 0">
+            <p style="margin:0;font-size:14px;color:#991b1b"><strong>Motif :</strong> ${motif}</p>
+          </div>` : ""}
+          <div style="margin:24px 0">
+            <a href="${url}" style="background:${accepted ? "#10B981" : "#F97316"};color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">
+              Voir la fiche →
+            </a>
+          </div>
+          ${accepted
+            ? `<p style="color:#6b7280;font-size:14px">Félicitations ! Un commercial va prendre contact avec le prospect prochainement.</p>`
+            : `<p style="color:#6b7280;font-size:14px">Si vous avez des questions, n'hésitez pas à contacter votre responsable.</p>`
+          }
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
+          <p style="color:#9ca3af;font-size:12px">Proximité Habitat Conseil · Ce message est envoyé automatiquement, merci de ne pas y répondre.</p>
+        </div>
+      </div>`,
+  };
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -77,13 +121,17 @@ export async function POST(request: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY);
 
   const body = await request.json() as {
-    type: "FICHE_SOUMISE" | "FICHE_AFFECTEE";
+    type: "FICHE_SOUMISE" | "FICHE_AFFECTEE" | "FICHE_DECISION";
     ficheId: string;
     reference: string;
     prospecteurNom?: string;
+    prospecteurPrenom?: string;
+    prospecteurEmail?: string;
     commercialPrenom?: string;
     commercialEmail?: string;
     adminEmails?: string[];
+    decision?: "ACCEPTEE" | "REFUSEE";
+    motif?: string;
   };
 
   const { type, ficheId, reference } = body;
@@ -111,6 +159,20 @@ export async function POST(request: NextRequest) {
       await resend.emails.send({
         from: FROM_EMAIL,
         to: commercialEmail,
+        subject: tpl.subject,
+        html: tpl.html,
+      });
+      return NextResponse.json({ sent: 1 });
+    }
+
+    if (type === "FICHE_DECISION") {
+      const { prospecteurEmail, prospecteurPrenom = "Prospecteur", decision, motif } = body;
+      if (!prospecteurEmail || !decision) return NextResponse.json({ sent: 0 });
+
+      const tpl = templateFicheDecision(reference, ficheId, prospecteurPrenom, decision, motif);
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to: prospecteurEmail,
         subject: tpl.subject,
         html: tpl.html,
       });

@@ -25,7 +25,7 @@ import { useProfile } from "@/lib/hooks/use-profile";
 import {
   getAvailableTransitions, canAssignFiche, canEditFiche, STATUS_LABELS,
 } from "@/lib/permissions";
-import { sendEmailFicheAffectee } from "@/lib/email";
+import { sendEmailFicheAffectee, sendEmailFicheDecision } from "@/lib/email";
 import type { FicheStatus, Fiche } from "@/types/database";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -203,6 +203,30 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     if (newStatus === "ACCEPTEE") {
       confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#1E3A5F", "#F97316", "#10B981", "#F59E0B"] });
     }
+
+    // Email au prospecteur pour ACCEPTEE ou REFUSEE (non bloquant)
+    if ((newStatus === "ACCEPTEE" || newStatus === "REFUSEE") && fiche.created_by) {
+      void (async () => {
+        try {
+          const { data: prospProfile } = await supabase
+            .from("profiles")
+            .select("email, first_name")
+            .eq("id", fiche.created_by)
+            .single();
+          if (prospProfile) {
+            await sendEmailFicheDecision({
+              ficheId: fiche.id,
+              reference: fiche.reference,
+              decision: newStatus,
+              prospecteurPrenom: prospProfile.first_name,
+              prospecteurEmail: prospProfile.email,
+              motif: comment,
+            });
+          }
+        } catch { /* silencieux */ }
+      })();
+    }
+
     setTransitioning(false);
   }
 

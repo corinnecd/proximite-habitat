@@ -29,7 +29,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
-import { sendEmailFicheAffectee } from "@/lib/email";
+import { sendEmailFicheAffectee, sendEmailFicheDecision } from "@/lib/email";
 import { toast } from "sonner";
 
 // ── Styles compteurs ──────────────────────────────────────────────────────────
@@ -61,6 +61,7 @@ interface FicheEnAttente {
   prospect_prenom: string;
   prospect_ville: string | null;
   created_at: string;
+  created_by: string;
   created_by_profile: { first_name: string; last_name: string } | null;
 }
 
@@ -117,6 +118,7 @@ interface FicheAffectee {
   prospect_cp: string | null;
   updated_at: string;
   created_at: string;
+  created_by: string;
   created_by_profile: { first_name: string; last_name: string } | null;
   fiche_history: HistoryEntry[];
 }
@@ -341,11 +343,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [ficheToDelete, setFicheToDelete] = useState<{ id: string; reference: string } | null>(null);
-  const [ficheToAssign, setFicheToAssign] = useState<{ id: string; reference: string; nom: string } | null>(null);
+  const [ficheToAssign, setFicheToAssign] = useState<{ id: string; reference: string; nom: string; created_by: string } | null>(null);
   const [assignCommercialId, setAssignCommercialId] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [commercials, setCommercials] = useState<{ id: string; first_name: string; last_name: string; role: string }[]>([]);
-  const [ficheToTraiter, setFicheToTraiter] = useState<{ id: string; reference: string; nom: string } | null>(null);
+  const [ficheToTraiter, setFicheToTraiter] = useState<{ id: string; reference: string; nom: string; created_by: string } | null>(null);
   const [traiterDecision, setTraiterDecision] = useState<"ACCEPTEE" | "REFUSEE">("ACCEPTEE");
   const [traiterComment, setTraiterComment] = useState("");
   const [traiting, setTraiting] = useState(false);
@@ -386,7 +388,7 @@ export default function DashboardPage() {
     // ── Fiches par statut (ADMIN uniquement) ────────────────────────────────
     if (isAdmin) {
       const ficheAdminCols =
-        "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, created_at, updated_at, " +
+        "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, created_at, updated_at, created_by, " +
         "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name), " +
         "fiche_history(action, old_status, new_status, comment, created_at, user:profiles!fiche_history_user_id_fkey(first_name, last_name))";
 
@@ -478,7 +480,7 @@ export default function DashboardPage() {
       const { data: affectees } = await supabase
         .from("fiches")
         .select(
-          "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, updated_at, " +
+          "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, updated_at, created_by, " +
           "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name)"
         )
         .eq("status", "AFFECTEE")
@@ -610,6 +612,30 @@ export default function DashboardPage() {
         [traiterDecision]: prev[traiterDecision] + 1,
       }));
       toast.success(`Fiche ${ficheToTraiter.reference} marquée ${traiterDecision === "ACCEPTEE" ? "acceptée ✓" : "refusée"}`);
+
+      // Email au prospecteur (non bloquant)
+      if (ficheToTraiter.created_by) {
+        void (async () => {
+          try {
+            const { data: prospProfile } = await supabase
+              .from("profiles")
+              .select("email, first_name")
+              .eq("id", ficheToTraiter.created_by)
+              .single();
+            if (prospProfile) {
+              await sendEmailFicheDecision({
+                ficheId: ficheToTraiter.id,
+                reference: ficheToTraiter.reference,
+                decision: traiterDecision,
+                prospecteurPrenom: prospProfile.first_name,
+                prospecteurEmail: prospProfile.email,
+                motif: traiterComment.trim() || undefined,
+              });
+            }
+          } catch { /* silencieux */ }
+        })();
+      }
+
       setFicheToTraiter(null);
       setTraiterComment("");
     } catch {
@@ -1051,7 +1077,7 @@ export default function DashboardPage() {
                               e.preventDefault();
                               e.stopPropagation();
                               setAssignCommercialId("");
-                              setFicheToAssign({ id: fiche.id, reference: fiche.reference, nom: `${fiche.prospect_prenom} ${fiche.prospect_nom}` });
+                              setFicheToAssign({ id: fiche.id, reference: fiche.reference, nom: `${fiche.prospect_prenom} ${fiche.prospect_nom}`, created_by: fiche.created_by });
                             }}
                           >
                             <UserCheck className="w-3.5 h-3.5" />Affecter
@@ -1217,7 +1243,7 @@ export default function DashboardPage() {
                               e.stopPropagation();
                               setTraiterDecision("ACCEPTEE");
                               setTraiterComment("");
-                              setFicheToTraiter({ id: fiche.id, reference: fiche.reference, nom: `${fiche.prospect_prenom} ${fiche.prospect_nom}` });
+                              setFicheToTraiter({ id: fiche.id, reference: fiche.reference, nom: `${fiche.prospect_prenom} ${fiche.prospect_nom}`, created_by: fiche.created_by });
                             }}
                           >
                             <ArrowRight className="w-3.5 h-3.5" />Traiter

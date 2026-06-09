@@ -353,10 +353,10 @@ export default function FichesPage() {
               )}
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* Période de réception */}
+              {/* Période de soumission */}
               <div className="col-span-2 space-y-1">
                 <label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                  <CalendarDays className="w-3 h-3" />Période de réception
+                  <CalendarDays className="w-3 h-3" />Période de soumission
                 </label>
                 <div className="flex gap-2 flex-wrap">
                   {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((p) => (

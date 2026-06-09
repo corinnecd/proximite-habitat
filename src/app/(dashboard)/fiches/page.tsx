@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import {
   Search, FilePlus, FileText, Filter, Loader2, Download, Send,
   UserCheck, CheckCircle2, XCircle, Archive, Clock, CalendarRange, CalendarDays, X, AlertCircle,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -77,7 +78,8 @@ const CSV_COLUMNS: CsvColumn<FicheCsvRow>[] = [
   { key: "modifie_le", label: "Modifiée le" },
 ];
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 100;
+const VISIBLE_INIT = 6;
 
 const STATUS_CARD_STYLES: Record<FicheStatus, { border: string; icon: string; iconBg: string; Icon: React.ElementType }> = {
   BROUILLON: { border: "border-l-slate-400",   icon: "text-slate-500",   iconBg: "bg-slate-100 dark:bg-slate-800",       Icon: Clock },
@@ -110,6 +112,7 @@ export default function FichesPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(VISIBLE_INIT);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<FicheStatus | "ALL">(initialStatus || "ALL");
@@ -226,6 +229,7 @@ export default function FichesPage() {
       if (error) throw error;
       const rows = (data as unknown as FicheRow[]) || [];
       setFiches((prev) => (append ? [...prev, ...rows] : rows));
+      if (!append) setVisibleCount(VISIBLE_INIT);
       setHasMore(rows.length === PAGE_SIZE);
       setPage(pageToLoad);
       setFetchError(null);
@@ -498,7 +502,7 @@ export default function FichesPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {fiches.map((fiche, idx) => {
+            {fiches.slice(0, visibleCount).map((fiche, idx) => {
               const s = STATUS_CARD_STYLES[fiche.status];
               const StatusIcon = s.Icon;
               return (
@@ -547,12 +551,31 @@ export default function FichesPage() {
           </div>
         )}
 
-        {!loading && hasMore && (
-          <div className="flex justify-center">
-            <Button variant="outline" onClick={loadMore} disabled={loadingMore} className="rounded-xl gap-2">
-              {loadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Charger plus
-            </Button>
+        {!loading && fiches.length > VISIBLE_INIT && (
+          <div className="flex justify-center gap-3">
+            {visibleCount < fiches.length ? (
+              <Button
+                variant="outline"
+                onClick={() => setVisibleCount((n) => n + VISIBLE_INIT)}
+                className="rounded-xl gap-2"
+              >
+                <ChevronDown className="w-4 h-4" />
+                Voir plus
+                <span className="text-xs text-muted-foreground">
+                  ({fiches.length - visibleCount} restante{fiches.length - visibleCount > 1 ? "s" : ""})
+                </span>
+              </Button>
+            ) : null}
+            {visibleCount > VISIBLE_INIT ? (
+              <Button
+                variant="outline"
+                onClick={() => setVisibleCount(VISIBLE_INIT)}
+                className="rounded-xl gap-2"
+              >
+                <ChevronUp className="w-4 h-4" />
+                Voir moins
+              </Button>
+            ) : null}
           </div>
         )}
       </div>

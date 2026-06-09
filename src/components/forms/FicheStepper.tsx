@@ -28,6 +28,8 @@ interface StepAllProps {
   setPhotos?: (p: File[]) => void;
   signatureDataUrl?: string | null;
   setSignatureDataUrl?: (url: string | null) => void;
+  /** URL publique de la signature déjà en storage (mode édition) */
+  existingSignatureUrl?: string | null;
   uploadedPhotos?: UploadedPhoto[];
   onRemoveUploaded?: (id: string) => void;
   onAddValidFiles?: (files: File[]) => Promise<void>;
@@ -42,6 +44,8 @@ export interface FicheStepperProps {
   initialData?: Partial<Record<string, unknown>>;
   /** Photos déjà persistées (chargées depuis fiche_photos) */
   initialPhotos?: Array<{ id: string; storage_path: string; original_name: string }>;
+  /** URL publique de la signature déjà enregistrée (mode édition) */
+  existingSignatureUrl?: string | null;
   /**
    * create        — nouvelle fiche (défaut) : soumettre → SOUMISE
    * edit-draft    — reprise d'un brouillon  : soumettre → SOUMISE
@@ -80,7 +84,7 @@ const DEFAULT_FORM_VALUES = {
 
 // ── Composant ─────────────────────────────────────────────────────────────────
 
-export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos, mode = "create" }: FicheStepperProps) {
+export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos, existingSignatureUrl, mode = "create" }: FicheStepperProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [stepDirection, setStepDirection] = useState<"next" | "prev">("next");
   const [saving, setSaving] = useState(false);
@@ -377,6 +381,13 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
       return;
     }
 
+    // Vérification de la signature (obligatoire pour soumettre)
+    if (!signatureDataUrl && !existingSignatureUrl) {
+      toast.error("La signature du prospect est obligatoire");
+      setCurrentStep(6);
+      return;
+    }
+
     // Sauvegarder si pas encore fait — ficheIdRef.current mis à jour de façon synchrone
     if (!ficheIdRef.current) await saveDraft();
     if (!ficheIdRef.current) { toast.error("Erreur : impossible de sauvegarder la fiche"); return; }
@@ -385,7 +396,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     try {
       const id = ficheIdRef.current;
 
-      // Signature
+      // Signature : upload si nouvelle, sinon on conserve l'existante (pas d'écrasement)
       if (signatureDataUrl) {
         try {
           const blob = await fetch(signatureDataUrl).then((r) => r.blob());
@@ -396,6 +407,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
           toast.error("La signature n'a pas pu être enregistrée");
         }
       }
+      // Si pas de nouvelle signature mais une existante → on ne fait rien (déjà en storage)
 
       // Photos encore en attente
       if (photos.length > 0) {
@@ -528,6 +540,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             setPhotos={setPhotos}
             signatureDataUrl={signatureDataUrl}
             setSignatureDataUrl={setSignatureDataUrl}
+            existingSignatureUrl={existingSignatureUrl}
             uploadedPhotos={uploadedPhotos}
             onRemoveUploaded={handleRemoveUploaded}
             onAddValidFiles={handleAddValidFiles}

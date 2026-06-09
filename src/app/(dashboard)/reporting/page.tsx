@@ -18,7 +18,7 @@ import { STATUS_LABELS } from "@/lib/permissions";
 import {
   BarChart3, TrendingUp, Users, FileText,
   CheckCircle2, XCircle, Clock, ArrowUp, ArrowDown, Minus,
-  Medal, Trophy, RefreshCw,
+  Medal, Trophy, RefreshCw, CalendarDays,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -35,12 +35,14 @@ interface ProspecteurRow { name: string; total: number; submitted: number; accep
 const STATUS_COLORS_HEX: Record<FicheStatus, string> = {
   BROUILLON: "#94a3b8", SOUMISE: "#3b82f6",
   AFFECTEE: "#f97316", ACCEPTEE: "#10b981",
+  RETRACTATION: "#a855f7",
   REFUSEE: "#ef4444", ARCHIVEE: "#cbd5e1",
 };
 
 const STATUS_BAR_COLORS: Record<FicheStatus, string> = {
   BROUILLON: "bg-slate-400", SOUMISE: "bg-blue-500",
   AFFECTEE: "bg-orange-500", ACCEPTEE: "bg-emerald-500",
+  RETRACTATION: "bg-purple-500",
   REFUSEE: "bg-red-500", ARCHIVEE: "bg-slate-300",
 };
 
@@ -141,6 +143,36 @@ function CustomPieLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }:
   );
 }
 
+// ── Filtre période de soumission ──────────────────────────────────────────────
+type PeriodFilter = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER";
+
+const PERIOD_LABELS: Record<PeriodFilter, string> = {
+  ALL: "Toutes les dates", TODAY: "Aujourd'hui",
+  WEEK: "Cette semaine", MONTH: "Ce mois", QUARTER: "Ce trimestre",
+};
+
+function getPeriodDates(period: PeriodFilter): { from: string; to: string } | null {
+  if (period === "ALL") return null;
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  if (period === "TODAY") { const t = fmt(now); return { from: t, to: t }; }
+  if (period === "WEEK") {
+    const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const mon = new Date(now); mon.setDate(now.getDate() - day);
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return { from: fmt(mon), to: fmt(sun) };
+  }
+  if (period === "MONTH") {
+    return { from: fmt(new Date(now.getFullYear(), now.getMonth(), 1)), to: fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
+  }
+  if (period === "QUARTER") {
+    const q = Math.floor(now.getMonth() / 3);
+    return { from: fmt(new Date(now.getFullYear(), q * 3, 1)), to: fmt(new Date(now.getFullYear(), q * 3 + 3, 0)) };
+  }
+  return null;
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportingPage() {
@@ -155,19 +187,48 @@ export default function ReportingPage() {
   const [totalFiches, setTotalFiches] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("ALL");
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
-  async function loadData(profileId: string, role: string) {
+  async function loadData(profileId: string, role: string, period: PeriodFilter = "ALL") {
     const isComm = role === "COMMERCIAL";
     const statuses: FicheStatus[] = isComm
-      ? ["AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
-      : ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+      ? ["AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+      : ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+
+    // Construire les bornes de la période si filtre actif
+    const dates = getPeriodDates(period);
+    let ficheIdsForPeriod: string[] | null = null;
+    if (dates) {
+      const from = `${dates.from}T00:00:00Z`;
+      const to   = `${dates.to}T23:59:59Z`;
+      // IDs via historique (passage à SOUMISE)
+      const { data: histRows } = await supabase
+        .from("fiche_history").select("fiche_id")
+        .eq("new_status", "SOUMISE").gte("created_at", from).lte("created_at", to);
+      const idSet = new Set((histRows ?? []).map((h: { fiche_id: string }) => h.fiche_id));
+      // Fallback sur created_at pour fiches sans historique
+      const { data: legacyRows } = await supabase
+        .from("fiches").select("id").neq("status", "BROUILLON")
+        .gte("created_at", from).lte("created_at", to);
+      (legacyRows ?? []).forEach((f: { id: string }) => idSet.add(f.id));
+      ficheIdsForPeriod = Array.from(idSet);
+      if (ficheIdsForPeriod.length === 0) {
+        setStatusCounts(statuses.map((s) => ({ status: s, count: 0 })));
+        setTotalFiches(0);
+        setProspecteurs([]);
+        setStatPoints([]);
+        setLoading(false);
+        return;
+      }
+    }
 
     const countResults = await Promise.all(
       statuses.map(async (s) => {
         let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
         if (isComm) q = q.eq("assigned_to", profileId);
+        if (ficheIdsForPeriod) q = q.in("id", ficheIdsForPeriod);
         const { count } = await q;
         return { status: s, count: count || 0 };
       })
@@ -176,10 +237,12 @@ export default function ReportingPage() {
     setTotalFiches(countResults.reduce((a, b) => a + b.count, 0));
 
     if (!isComm) {
-      const { data: fichesRaw } = await supabase
+      let fichesQuery = supabase
         .from("fiches")
         .select("created_by, status, profiles!created_by(first_name, last_name)")
         .neq("status", "BROUILLON");
+      if (ficheIdsForPeriod) fichesQuery = fichesQuery.in("id", ficheIdsForPeriod);
+      const { data: fichesRaw } = await fichesQuery;
 
       if (fichesRaw) {
         const map: Record<string, ProspecteurRow> = {};
@@ -209,9 +272,9 @@ export default function ReportingPage() {
     if (!profile) return;
     if (profile.role !== "ADMIN" && profile.role !== "COMMERCIAL") { router.replace("/"); return; }
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadData(profile.id, profile.role);
+    loadData(profile.id, profile.role, periodFilter);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, profileLoading]);
+  }, [profile, profileLoading, periodFilter]);
 
   const accepted   = statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0;
   const refused    = statusCounts.find((s) => s.status === "REFUSEE")?.count ?? 0;
@@ -285,7 +348,7 @@ export default function ReportingPage() {
             onClick={async () => {
               if (!profile) return;
               setRefreshing(true);
-              await loadData(profile.id, profile.role);
+              await loadData(profile.id, profile.role, periodFilter);
               setRefreshing(false);
             }}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-secondary border border-border/50"
@@ -293,6 +356,26 @@ export default function ReportingPage() {
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
             {refreshing ? "Actualisation…" : "Actualiser"}
           </button>
+        </div>
+
+        {/* ── Filtre période de soumission ─────────────────────────────────── */}
+        <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <CalendarDays className="w-3.5 h-3.5" />Période de soumission
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriodFilter(p)}
+                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
+                  periodFilter === p ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-secondary border border-border"
+                }`}
+              >
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ── KPIs ─────────────────────────────────────────────────────────── */}

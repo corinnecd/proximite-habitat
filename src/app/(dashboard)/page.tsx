@@ -35,21 +35,23 @@ import { toast } from "sonner";
 // ── Styles compteurs ──────────────────────────────────────────────────────────
 
 const STATUS_ICONS: Record<FicheStatus, React.ReactNode> = {
-  BROUILLON: <Clock className="w-5 h-5" />,
-  SOUMISE:   <Send className="w-5 h-5" />,
-  AFFECTEE:  <UserCheck className="w-5 h-5" />,
-  ACCEPTEE:  <CheckCircle2 className="w-5 h-5" />,
-  REFUSEE:   <XCircle className="w-5 h-5" />,
-  ARCHIVEE:  <Archive className="w-5 h-5" />,
+  BROUILLON:    <Clock className="w-5 h-5" />,
+  SOUMISE:      <Send className="w-5 h-5" />,
+  AFFECTEE:     <UserCheck className="w-5 h-5" />,
+  ACCEPTEE:     <CheckCircle2 className="w-5 h-5" />,
+  RETRACTATION: <AlertCircle className="w-5 h-5" />,
+  REFUSEE:      <XCircle className="w-5 h-5" />,
+  ARCHIVEE:     <Archive className="w-5 h-5" />,
 };
 
 const COUNTER_STYLES: Record<FicheStatus, string> = {
-  BROUILLON: "border-l-slate-400   bg-card/80  backdrop-blur-sm text-muted-foreground",
-  SOUMISE:   "border-l-blue-500    bg-blue-50/80   dark:bg-blue-950/30   backdrop-blur-sm text-blue-700   dark:text-blue-400",
-  AFFECTEE:  "border-l-orange-500  bg-orange-50/80 dark:bg-orange-950/30 backdrop-blur-sm text-orange-700 dark:text-orange-400",
-  ACCEPTEE:  "border-l-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/30 backdrop-blur-sm text-emerald-700 dark:text-emerald-400",
-  REFUSEE:   "border-l-red-500     bg-red-50/80    dark:bg-red-950/30    backdrop-blur-sm text-red-700    dark:text-red-400",
-  ARCHIVEE:  "border-l-slate-400   bg-muted/80 backdrop-blur-sm text-muted-foreground",
+  BROUILLON:    "border-l-slate-400   bg-card/80  backdrop-blur-sm text-muted-foreground",
+  SOUMISE:      "border-l-blue-500    bg-blue-50/80   dark:bg-blue-950/30   backdrop-blur-sm text-blue-700   dark:text-blue-400",
+  AFFECTEE:     "border-l-orange-500  bg-orange-50/80 dark:bg-orange-950/30 backdrop-blur-sm text-orange-700 dark:text-orange-400",
+  ACCEPTEE:     "border-l-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/30 backdrop-blur-sm text-emerald-700 dark:text-emerald-400",
+  RETRACTATION: "border-l-purple-500  bg-purple-50/80 dark:bg-purple-950/30 backdrop-blur-sm text-purple-700 dark:text-purple-400",
+  REFUSEE:      "border-l-red-500     bg-red-50/80    dark:bg-red-950/30    backdrop-blur-sm text-red-700    dark:text-red-400",
+  ARCHIVEE:     "border-l-slate-400   bg-muted/80 backdrop-blur-sm text-muted-foreground",
 };
 
 // ── Types locaux ──────────────────────────────────────────────────────────────
@@ -151,7 +153,7 @@ function UrgencyBadge({ days }: { days: number }) {
 
 const STATUS_LABELS_FR: Record<string, string> = {
   BROUILLON: "Brouillon", SOUMISE: "À valider", AFFECTEE: "Affectée",
-  ACCEPTEE: "Acceptée", REFUSEE: "Refusée", ARCHIVEE: "Archivée",
+  ACCEPTEE: "Acceptée", RETRACTATION: "Rétractation", REFUSEE: "Refusée", ARCHIVEE: "Archivée",
 };
 
 function StatusBlock({
@@ -325,7 +327,7 @@ function StatusBlock({
 export default function DashboardPage() {
   const { profile, loading: profileLoading } = useProfile();
   const [counts, setCounts] = useState<Record<FicheStatus, number>>({
-    BROUILLON: 0, SOUMISE: 0, AFFECTEE: 0, ACCEPTEE: 0, REFUSEE: 0, ARCHIVEE: 0,
+    BROUILLON: 0, SOUMISE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
   });
   const [recentFiches, setRecentFiches]   = useState<FicheListItem[]>([]);
   const [historyFiches, setHistoryFiches] = useState<FicheListItem[]>([]);
@@ -362,8 +364,8 @@ export default function DashboardPage() {
 
     // ── Compteurs ────────────────────────────────────────────────────────────
     const statusesToCount: FicheStatus[] = isProspecteur
-      ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
-      : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+      ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+      : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
     const results = await Promise.all(
       statusesToCount.map(async (s) => {
@@ -374,7 +376,7 @@ export default function DashboardPage() {
       })
     );
     const allCounts: Record<FicheStatus, number> = {
-      BROUILLON: 0, SOUMISE: 0, AFFECTEE: 0, ACCEPTEE: 0, REFUSEE: 0, ARCHIVEE: 0,
+      BROUILLON: 0, SOUMISE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
     };
     results.forEach(([s, c]) => { allCounts[s] = c; });
     setCounts(allCounts);

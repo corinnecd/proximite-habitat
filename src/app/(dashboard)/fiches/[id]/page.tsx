@@ -54,12 +54,13 @@ interface ProfileEntry { id: string; first_name: string; last_name: string; role
 // ── Status accent colors (same palette as fiches list) ────────────────────────
 
 const STATUS_HERO: Record<FicheStatus, { border: string; iconBg: string; icon: string }> = {
-  BROUILLON: { border: "border-l-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800",      icon: "text-slate-500" },
-  SOUMISE:   { border: "border-l-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",      icon: "text-blue-500" },
-  AFFECTEE:  { border: "border-l-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",  icon: "text-orange-500" },
-  ACCEPTEE:  { border: "border-l-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "text-emerald-600 dark:text-emerald-400" },
-  REFUSEE:   { border: "border-l-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",        icon: "text-red-500" },
-  ARCHIVEE:  { border: "border-l-slate-300",   iconBg: "bg-slate-100 dark:bg-slate-800",      icon: "text-slate-400" },
+  BROUILLON:    { border: "border-l-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800",       icon: "text-slate-500" },
+  SOUMISE:      { border: "border-l-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",       icon: "text-blue-500" },
+  AFFECTEE:     { border: "border-l-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",   icon: "text-orange-500" },
+  ACCEPTEE:     { border: "border-l-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "text-emerald-600 dark:text-emerald-400" },
+  RETRACTATION: { border: "border-l-purple-500",  iconBg: "bg-purple-50 dark:bg-purple-950/40",   icon: "text-purple-600 dark:text-purple-400" },
+  REFUSEE:      { border: "border-l-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",         icon: "text-red-500" },
+  ARCHIVEE:     { border: "border-l-slate-300",   iconBg: "bg-slate-100 dark:bg-slate-800",       icon: "text-slate-400" },
 };
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -659,20 +660,22 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   {history.map((entry, idx) => {
                     // Couleur du point selon le nouveau statut
                     const dotColors: Record<string, string> = {
-                      SOUMISE:  "border-blue-500 bg-blue-50",
-                      AFFECTEE: "border-orange-500 bg-orange-50",
-                      ACCEPTEE: "border-emerald-500 bg-emerald-50",
-                      REFUSEE:  "border-red-500 bg-red-50",
-                      ARCHIVEE: "border-slate-400 bg-slate-50",
-                      BROUILLON:"border-slate-400 bg-slate-50",
+                      SOUMISE:      "border-blue-500 bg-blue-50",
+                      AFFECTEE:     "border-orange-500 bg-orange-50",
+                      ACCEPTEE:     "border-emerald-500 bg-emerald-50",
+                      RETRACTATION: "border-purple-500 bg-purple-50",
+                      REFUSEE:      "border-red-500 bg-red-50",
+                      ARCHIVEE:     "border-slate-400 bg-slate-50",
+                      BROUILLON:    "border-slate-400 bg-slate-50",
                     };
                     const innerColors: Record<string, string> = {
-                      SOUMISE:  "bg-blue-500",
-                      AFFECTEE: "bg-orange-500",
-                      ACCEPTEE: "bg-emerald-500",
-                      REFUSEE:  "bg-red-500",
-                      ARCHIVEE: "bg-slate-400",
-                      BROUILLON:"bg-slate-400",
+                      SOUMISE:      "bg-blue-500",
+                      AFFECTEE:     "bg-orange-500",
+                      ACCEPTEE:     "bg-emerald-500",
+                      RETRACTATION: "bg-purple-500",
+                      REFUSEE:      "bg-red-500",
+                      ARCHIVEE:     "bg-slate-400",
+                      BROUILLON:    "bg-slate-400",
                     };
                     const dotClass = entry.new_status
                       ? (dotColors[entry.new_status] ?? "border-primary/40 bg-primary/10")
@@ -682,7 +685,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                       : (idx === 0 ? "bg-[#F97316]" : "bg-primary");
                     const statusLabels: Record<string, string> = {
                       BROUILLON: "Brouillon", SOUMISE: "À valider", AFFECTEE: "Affectée",
-                      ACCEPTEE: "Acceptée", REFUSEE: "Refusée", ARCHIVEE: "Archivée",
+                      ACCEPTEE: "Acceptée", RETRACTATION: "Rétractation", REFUSEE: "Refusée", ARCHIVEE: "Archivée",
                     };
                     return (
                       <div
@@ -705,11 +708,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                               </span>
                               <span className="text-xs text-muted-foreground">→</span>
                               <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                                entry.new_status === "ACCEPTEE" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
-                                entry.new_status === "REFUSEE"  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
-                                entry.new_status === "AFFECTEE" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
-                                entry.new_status === "SOUMISE"  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
-                                entry.new_status === "ARCHIVEE" ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400" :
+                                entry.new_status === "ACCEPTEE"     ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
+                                entry.new_status === "RETRACTATION" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" :
+                                entry.new_status === "REFUSEE"      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                                entry.new_status === "AFFECTEE"     ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
+                                entry.new_status === "SOUMISE"      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                                entry.new_status === "ARCHIVEE"     ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400" :
                                 "bg-muted text-muted-foreground"
                               }`}>
                                 {statusLabels[entry.new_status] ?? entry.new_status}

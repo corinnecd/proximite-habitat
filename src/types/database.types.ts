@@ -7,6 +7,7 @@ export type FicheStatus =
   | "SOUMISE"
   | "AFFECTEE"
   | "ACCEPTEE"
+  | "RETRACTATION"
   | "REFUSEE"
   | "ARCHIVEE";
 

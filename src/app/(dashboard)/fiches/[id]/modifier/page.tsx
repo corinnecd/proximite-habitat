@@ -22,6 +22,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
 
   const [initialData, setInitialData] = useState<Record<string, unknown> | null>(null);
   const [initialPhotos, setInitialPhotos] = useState<PhotoRow[]>([]);
+  const [existingSignatureUrl, setExistingSignatureUrl] = useState<string | null>(null);
   const [ficheStatus, setFicheStatus] = useState<FicheStatus>("BROUILLON");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +91,19 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
       });
 
       setInitialPhotos(photos.map((p) => ({ ...p, original_name: p.original_name ?? "" })));
+
+      // Charger l'URL de la signature existante (si elle existe)
+      const { data: signData } = supabase.storage
+        .from("signatures")
+        .getPublicUrl(`${fiche.organization_id}/${id}/signature.png`);
+      if (signData?.publicUrl) {
+        // Vérifier que le fichier existe vraiment avec un HEAD request silencieux
+        try {
+          const res = await fetch(signData.publicUrl, { method: "HEAD" });
+          if (res.ok) setExistingSignatureUrl(signData.publicUrl);
+        } catch { /* pas de signature */ }
+      }
+
       setLoading(false);
     }
 
@@ -142,6 +156,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
               ficheId={id}
               initialData={initialData ?? undefined}
               initialPhotos={initialPhotos}
+              existingSignatureUrl={existingSignatureUrl}
               mode={isEditSubmitted ? "edit-submitted" : "edit-draft"}
             />
           </CardContent>

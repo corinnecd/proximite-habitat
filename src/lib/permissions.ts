@@ -4,7 +4,8 @@ const STATUS_TRANSITIONS: Record<FicheStatus, { to: FicheStatus[]; roles: UserRo
   BROUILLON: [{ to: ["SOUMISE"], roles: ["PROSPECTEUR", "COMMERCIAL", "ADMIN"] }],
   SOUMISE: [{ to: ["AFFECTEE"], roles: ["ADMIN"] }, { to: ["BROUILLON"], roles: ["ADMIN"] }],
   AFFECTEE: [{ to: ["ACCEPTEE", "REFUSEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
-  ACCEPTEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN"] }],
+  ACCEPTEE: [{ to: ["RETRACTATION", "ARCHIVEE"], roles: ["ADMIN"] }],
+  RETRACTATION: [{ to: ["ARCHIVEE"], roles: ["ADMIN"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
   REFUSEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
   ARCHIVEE: [],
 };
@@ -28,7 +29,7 @@ export function canEditFiche(
   status: FicheStatus,
 ): boolean {
   // Une fiche archivée est définitivement en lecture seule, quel que soit le rôle.
-  if (status === "ARCHIVEE") return false;
+  if (status === "ARCHIVEE" || status === "RETRACTATION") return false;
   if (role === "ADMIN") return true;
   if (role === "COMMERCIAL") return ficheCreatedBy === userId || ficheAssignedTo === userId;
   if (role === "PROSPECTEUR") return ficheCreatedBy === userId;
@@ -37,12 +38,14 @@ export function canEditFiche(
 
 export const STATUS_LABELS: Record<FicheStatus, string> = {
   BROUILLON: "Brouillon", SOUMISE: "À valider", AFFECTEE: "Affectée",
-  ACCEPTEE: "Acceptée par le client", REFUSEE: "Refusée par le client", ARCHIVEE: "Archivée",
+  ACCEPTEE: "Acceptée par le client", RETRACTATION: "Attente délai rétractation",
+  REFUSEE: "Refusée par le client", ARCHIVEE: "Archivée",
 };
 
 export const STATUS_COLORS: Record<FicheStatus, string> = {
   BROUILLON: "bg-gray-100 text-gray-700", SOUMISE: "bg-blue-100 text-blue-700",
   AFFECTEE: "bg-orange-100 text-orange-700", ACCEPTEE: "bg-green-100 text-green-700",
+  RETRACTATION: "bg-purple-100 text-purple-700",
   REFUSEE: "bg-red-100 text-red-700", ARCHIVEE: "bg-gray-200 text-gray-500",
 };
 

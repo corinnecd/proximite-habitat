@@ -1,0 +1,14 @@
+import { chromium } from "@playwright/test";
+const b = await chromium.launch();
+const ctx = await b.newContext({ viewport:{width:1440,height:900} });
+const p = await ctx.newPage();
+await p.goto("http://localhost:3001/login", { waitUntil:"networkidle" });
+await p.waitForTimeout(2000);
+await p.fill('input[type="email"]', "admin@phc.fr");
+await p.fill('input[type="password"]', "Admin123!");
+await p.click('button[type="submit"]');
+await p.waitForURL(/localhost:3001\//, { timeout:15000 });
+await p.waitForTimeout(2500);
+await p.screenshot({ path:"/tmp/shots/sidebar-fixed.png" });
+await b.close();
+console.log("OK");

@@ -381,7 +381,7 @@ export default function FichesPage() {
               </div>
               {/* Filtre prospecteur */}
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground uppercase tracking-wide">Prospecteur</label>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Prospecteurs</label>
                 <Select value={prospecteurFilter} onValueChange={(v) => setProspecteurFilter(v ?? "ALL")}>
                   <SelectTrigger className="h-10 bg-background rounded-xl text-sm">
                     <SelectValue>
@@ -402,7 +402,7 @@ export default function FichesPage() {
               </div>
               {/* Filtre commercial */}
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground uppercase tracking-wide">Commercial</label>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Commerciaux</label>
                 <Select value={commercialFilter} onValueChange={(v) => setCommercialFilter(v ?? "ALL")}>
                   <SelectTrigger className="h-10 bg-background rounded-xl text-sm">
                     <SelectValue>

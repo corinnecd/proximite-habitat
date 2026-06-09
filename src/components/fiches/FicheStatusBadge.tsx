@@ -2,6 +2,17 @@ import { Badge } from "@/components/ui/badge";
 import { STATUS_LABELS, STATUS_COLORS } from "@/lib/permissions";
 import type { FicheStatus } from "@/types/database";
 
-export function FicheStatusBadge({ status }: { status: FicheStatus }) {
-  return <Badge variant="secondary" className={STATUS_COLORS[status]}>{STATUS_LABELS[status]}</Badge>;
+// Labels courts pour les espaces contraints (cartes dashboard mobile, etc.)
+const STATUS_LABELS_SHORT: Record<FicheStatus, string> = {
+  BROUILLON: "Brouillon",
+  SOUMISE: "À valider",
+  AFFECTEE: "Affectée",
+  ACCEPTEE: "Acceptée",
+  REFUSEE: "Refusée",
+  ARCHIVEE: "Archivée",
+};
+
+export function FicheStatusBadge({ status, short = false }: { status: FicheStatus; short?: boolean }) {
+  const label = short ? STATUS_LABELS_SHORT[status] : STATUS_LABELS[status];
+  return <Badge variant="secondary" className={STATUS_COLORS[status]}>{label}</Badge>;
 }

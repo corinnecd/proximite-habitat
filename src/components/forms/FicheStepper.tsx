@@ -18,6 +18,7 @@ import type { UploadedPhoto } from "./steps/Step6Photos";
 import { Step7Signature } from "./steps/Step7Signature";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Save, Send, Loader2, Edit } from "lucide-react";
+import { sendEmailFicheSoumise } from "@/lib/email";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -81,8 +82,10 @@ const DEFAULT_FORM_VALUES = {
 
 export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos, mode = "create" }: FicheStepperProps) {
   const [currentStep, setCurrentStep] = useState(0);
+  const [stepDirection, setStepDirection] = useState<"next" | "prev">("next");
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   // State pour l'affichage (lecture render-safe, ex. détection de doublons),
   // ref pour les lectures synchrones dans les callbacks async. Le setter met à
@@ -102,6 +105,15 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     defaultValues: { ...DEFAULT_FORM_VALUES, ...(initialData ?? {}) },
     mode: "onChange",
   });
+
+  // Réinitialise le formulaire avec les données de la fiche en mode édition.
+  // Nécessaire car useForm n'utilise defaultValues qu'au premier rendu.
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      methods.reset({ ...DEFAULT_FORM_VALUES, ...initialData });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Initialise les photos déjà persistées au montage (mode édition)
   useEffect(() => {
@@ -224,8 +236,9 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
 
     try {
       if (ficheIdRef.current) {
-        // Mise à jour — on exclut les champs immuables
-        const { organization_id, created_by, reference, ...updateData } = cleanData;
+        // Mise à jour — on exclut les champs immuables ET le statut
+        // (le statut ne change que via le RPC transition_fiche, jamais ici)
+        const { organization_id, created_by, reference, status, ...updateData } = cleanData;
         const { error } = await supabase.from("fiches").update(updateData).eq("id", ficheIdRef.current);
         if (error) { toast.error("Erreur de sauvegarde : " + error.message); setSaving(false); return; }
       } else {
@@ -245,6 +258,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
         }
       }
       toast.success(mode === "edit-submitted" ? "Modifications enregistrées" : "Brouillon sauvegardé");
+      setLastSavedAt(new Date());
     } catch (e) {
       console.error("Save error:", e);
       toast.error("Erreur inattendue");
@@ -295,6 +309,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
       }
     }
     await saveDraft();
+    setStepDirection("next");
     setCurrentStep((s) => Math.min(STEPS.length - 1, s + 1));
   }
 
@@ -372,10 +387,14 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
 
       // Signature
       if (signatureDataUrl) {
-        const blob = await fetch(signatureDataUrl).then((r) => r.blob());
-        await supabase.storage
-          .from("signatures")
-          .upload(`${profile.organization_id}/${id}/signature.png`, blob, { contentType: "image/png", upsert: true });
+        try {
+          const blob = await fetch(signatureDataUrl).then((r) => r.blob());
+          await supabase.storage
+            .from("signatures")
+            .upload(`${profile.organization_id}/${id}/signature.png`, blob, { contentType: "image/png", upsert: true });
+        } catch {
+          toast.error("La signature n'a pas pu être enregistrée");
+        }
       }
 
       // Photos encore en attente
@@ -385,7 +404,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
 
       // Soumission validée et écrite côté serveur (statut + RGPD + historique,
       // de façon atomique). Voir supabase/migrations/0003_rpc_transitions.sql.
-      const { error: submitError } = await supabase.rpc("transition_fiche", {
+      const { data: submittedFiche, error: submitError } = await supabase.rpc("transition_fiche", {
         p_fiche_id: id,
         p_new_status: "SOUMISE",
       });
@@ -396,6 +415,24 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
       }
 
       toast.success("Fiche soumise avec succès !");
+
+      // Email aux admins de l'organisation (non bloquant)
+      const ficheReference = (submittedFiche as { reference?: string } | null)?.reference ?? id;
+      const { data: admins } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("organization_id", profile.organization_id)
+        .eq("role", "ADMIN")
+        .eq("is_active", true);
+      if (admins && admins.length > 0) {
+        await sendEmailFicheSoumise({
+          ficheId: id,
+          reference: ficheReference,
+          prospecteurNom: `${profile.first_name} ${profile.last_name}`,
+          adminEmails: admins.map((a) => a.email),
+        });
+      }
+
       router.push("/");
     } catch {
       toast.error("Erreur lors de la soumission");
@@ -423,7 +460,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
         )}
 
         {/* Stepper visuel */}
-        <div className="mb-8 bg-card border border-border rounded-2xl px-6 py-5">
+        <div className="mb-8 bg-card border border-border rounded-2xl px-6 pt-5 pb-4">
           <div className="flex items-center">
             {STEPS.map((s, i) => {
               const done   = i < currentStep;
@@ -432,7 +469,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
                 <div key={i} className="flex items-center flex-1 last:flex-none">
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(i)}
+                    onClick={() => { setStepDirection(i > currentStep ? "next" : "prev"); setCurrentStep(i); }}
                     aria-current={active ? "step" : undefined}
                     className="flex flex-col items-center gap-1.5 group"
                   >
@@ -458,10 +495,34 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
               );
             })}
           </div>
+
+          {/* Barre de progression globale */}
+          <div className="mt-4 space-y-1.5">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-400"
+                style={{ width: `${(currentStep / (STEPS.length - 1)) * 100}%` }}
+              />
+            </div>
+            <div className="flex justify-between items-center">
+              <p className="text-xs text-muted-foreground">
+                Étape <span className="font-semibold text-foreground">{currentStep + 1}</span> sur {STEPS.length}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-primary">{Math.round((currentStep / (STEPS.length - 1)) * 100)}%</span> complété
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Contenu de l'étape */}
-        <div className="min-h-[400px]">
+        <div
+          key={currentStep}
+          className="min-h-[400px]"
+          style={{
+            animation: `${stepDirection === "next" ? "slideInFromRight" : "slideInFromLeft"} 0.25s ease both`,
+          }}
+        >
           <StepComponent
             photos={photos}
             setPhotos={setPhotos}
@@ -475,11 +536,21 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
         </div>
 
         {/* Navigation */}
+        {/* Indicateur auto-save */}
+        {lastSavedAt && (
+          <div className="flex items-center justify-center mt-4">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground" style={{ animation: "fadeIn 0.3s ease" }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+              Sauvegardé à {lastSavedAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-8 pt-6 border-t">
           <Button
             type="button"
             variant="outline"
-            onClick={() => setCurrentStep((s) => Math.max(0, s - 1))}
+            onClick={() => { setStepDirection("prev"); setCurrentStep((s) => Math.max(0, s - 1)); }}
             disabled={currentStep === 0}
             className="rounded-xl gap-2"
           >

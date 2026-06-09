@@ -138,6 +138,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6 lg:p-10">
             <FicheStepper
+              key={id}
               ficheId={id}
               initialData={initialData ?? undefined}
               initialPhotos={initialPhotos}

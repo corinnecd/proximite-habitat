@@ -103,11 +103,17 @@ export default function UtilisateursPage() {
   async function handleToggleActive() {
     if (!confirmUser) return;
     setToggling(true);
-    await setProfileActive(supabase, confirmUser.id, !confirmUser.is_active);
-    setUsers(users.map((u) => u.id === confirmUser.id ? { ...u, is_active: !confirmUser.is_active } : u));
-    toast.success(confirmUser.is_active ? `${confirmUser.first_name} désactivé` : `${confirmUser.first_name} activé`);
-    setConfirmUser(null);
-    setToggling(false);
+    try {
+      const { error } = await setProfileActive(supabase, confirmUser.id, !confirmUser.is_active);
+      if (error) throw error;
+      setUsers(users.map((u) => u.id === confirmUser.id ? { ...u, is_active: !confirmUser.is_active } : u));
+      toast.success(confirmUser.is_active ? `${confirmUser.first_name} désactivé` : `${confirmUser.first_name} activé`);
+      setConfirmUser(null);
+    } catch {
+      toast.error("Erreur lors de la modification du compte");
+    } finally {
+      setToggling(false);
+    }
   }
 
   // Accès refusé
@@ -246,10 +252,21 @@ export default function UtilisateursPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 bg-card rounded-2xl border border-border text-muted-foreground">
-            <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="font-medium">Aucun utilisateur trouvé</p>
-            <p className="text-sm mt-1">Essayez de modifier votre recherche ou vos filtres.</p>
+          <div className="text-center py-16 bg-card rounded-2xl border border-border text-muted-foreground space-y-3">
+            <Users className="w-12 h-12 mx-auto opacity-30" />
+            <div>
+              <p className="font-medium text-foreground">Aucun utilisateur trouvé</p>
+              <p className="text-sm mt-1">{search || roleFilter !== "ALL" ? "Essayez de modifier votre recherche ou vos filtres." : "Commencez par créer un premier utilisateur."}</p>
+            </div>
+            {!search && roleFilter === "ALL" && (
+              <button
+                type="button"
+                onClick={() => setDialogOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-medium transition-colors"
+              >
+                <UserPlus className="w-4 h-4" />Créer un utilisateur
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-2">

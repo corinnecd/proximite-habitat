@@ -14,17 +14,30 @@ import {
 } from "@/lib/stats";
 import { useProfile } from "@/lib/hooks/use-profile";
 import type { FicheStatus } from "@/types/database";
+import { STATUS_LABELS } from "@/lib/permissions";
 import {
   BarChart3, TrendingUp, Users, FileText,
   CheckCircle2, XCircle, Clock, ArrowUp, ArrowDown, Minus,
-  Medal, Trophy,
+  Medal, Trophy, RefreshCw,
 } from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell,
+  Area, AreaChart,
+  type PieLabelRenderProps,
+} from "recharts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface StatusCount { status: FicheStatus; count: number; }
 interface ProspecteurRow { name: string; total: number; submitted: number; accepted: number; }
 
 // ── Palette statuts ───────────────────────────────────────────────────────────
+const STATUS_COLORS_HEX: Record<FicheStatus, string> = {
+  BROUILLON: "#94a3b8", SOUMISE: "#3b82f6",
+  AFFECTEE: "#f97316", ACCEPTEE: "#10b981",
+  REFUSEE: "#ef4444", ARCHIVEE: "#cbd5e1",
+};
+
 const STATUS_BAR_COLORS: Record<FicheStatus, string> = {
   BROUILLON: "bg-slate-400", SOUMISE: "bg-blue-500",
   AFFECTEE: "bg-orange-500", ACCEPTEE: "bg-emerald-500",
@@ -33,7 +46,7 @@ const STATUS_BAR_COLORS: Record<FicheStatus, string> = {
 
 // ── Composants locaux ─────────────────────────────────────────────────────────
 
-function Bar({ value, max, colorClass }: { value: number; max: number; colorClass: string }) {
+function Bar2({ value, max, colorClass }: { value: number; max: number; colorClass: string }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
   return (
     <div className="flex items-center gap-3">
@@ -95,6 +108,42 @@ function PeriodKpi({ label, value, delta, accent }: { label: string; value: numb
   );
 }
 
+// Tooltip personnalisé pour les charts
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-popover border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-1">
+      <p className="font-semibold text-foreground capitalize">{label}</p>
+      {payload.map((p) => (
+        <div key={p.name} className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
+          <span className="text-muted-foreground">{p.name}</span>
+          <span className="font-bold ml-auto pl-3">{p.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CustomPieLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }: PieLabelRenderProps) {
+  const pct = percent ?? 0;
+  if (pct < 0.05) return null;
+  const RADIAN = Math.PI / 180;
+  const ir = typeof innerRadius === "number" ? innerRadius : 0;
+  const or = typeof outerRadius === "number" ? outerRadius : 0;
+  const ma = typeof midAngle === "number" ? midAngle : 0;
+  const cxn = typeof cx === "number" ? cx : 0;
+  const cyn = typeof cy === "number" ? cy : 0;
+  const radius = ir + (or - ir) * 0.5;
+  const x = cxn + radius * Math.cos(-ma * RADIAN);
+  const y = cyn + radius * Math.sin(-ma * RADIAN);
+  return (
+    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">
+      {`${Math.round(pct * 100)}%`}
+    </text>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportingPage() {
@@ -108,6 +157,7 @@ export default function ReportingPage() {
   const [granularity, setGranularity] = useState<Granularity>("month");
   const [totalFiches, setTotalFiches] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
@@ -128,7 +178,6 @@ export default function ReportingPage() {
     setStatusCounts(countResults);
     setTotalFiches(countResults.reduce((a, b) => a + b.count, 0));
 
-    // Top prospecteurs (direction uniquement)
     if (!isComm) {
       const { data: fichesRaw } = await supabase
         .from("fiches")
@@ -173,13 +222,34 @@ export default function ReportingPage() {
   const inProgress = (statusCounts.find((s) => s.status === "SOUMISE")?.count ?? 0) +
                      (statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0);
   const conversionRate = submitted > 0 ? Math.round((accepted / submitted) * 100) : 0;
-  const maxStatus = Math.max(...statusCounts.map((s) => s.count), 1);
   const maxProspecteur = Math.max(...prospecteurs.map((p) => p.total), 1);
 
   const buckets = useMemo(() => buildBuckets(statPoints, granularity), [statPoints, granularity]);
   const { current, previous } = useMemo(() => currentAndPreviousPeriod(statPoints, granularity), [statPoints, granularity]);
-  const maxBucket = Math.max(...buckets.map((b) => b.total), 1);
   const totalDelta = current.total - previous.total;
+
+  // Données pour le pie chart (filtrer les 0)
+  const pieData = statusCounts.filter((s) => s.count > 0).map((s) => ({
+    name: STATUS_LABELS[s.status],
+    value: s.count,
+    color: STATUS_COLORS_HEX[s.status],
+  }));
+
+  // Données pour le bar/area chart d'évolution
+  const chartData = buckets.map((b) => ({
+    name: b.label,
+    Acceptées: b.accepted,
+    Autres: b.total - b.accepted,
+    Total: b.total,
+  }));
+
+  // Données pour le bar chart des prospecteurs
+  const prospecteurChartData = prospecteurs.slice(0, 6).map((p) => ({
+    name: p.name.split(" ")[0], // Prénom uniquement pour économiser l'espace
+    fullName: p.name,
+    Fiches: p.total,
+    Acceptées: p.accepted,
+  }));
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (profileLoading || loading) {
@@ -205,11 +275,27 @@ export default function ReportingPage() {
       <Topbar title={isCommercial ? "Mon reporting" : "Reporting direction"} />
       <div className="p-6 lg:p-8 space-y-6">
 
-        {/* Sous-titre contextuel */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {isCommercial
-            ? <><Users className="w-4 h-4" /> Statistiques personnelles — vos fiches affectées</>
-            : <><BarChart3 className="w-4 h-4" /> Vue globale — tous commerciaux et prospecteurs réunis</>}
+        {/* Sous-titre contextuel + bouton refresh */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {isCommercial
+              ? <><Users className="w-4 h-4" /> Statistiques personnelles — vos fiches affectées</>
+              : <><BarChart3 className="w-4 h-4" /> Vue globale — tous commerciaux et prospecteurs réunis</>}
+          </div>
+          <button
+            type="button"
+            disabled={refreshing}
+            onClick={async () => {
+              if (!profile) return;
+              setRefreshing(true);
+              await loadData(profile.id, profile.role);
+              setRefreshing(false);
+            }}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-secondary border border-border/50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "Actualisation…" : "Actualiser"}
+          </button>
         </div>
 
         {/* ── KPIs ─────────────────────────────────────────────────────────── */}
@@ -239,45 +325,70 @@ export default function ReportingPage() {
           />
         </div>
 
-        {/* ── Ligne 2 : Répartition + Prospecteurs ────────────────────────── */}
+        {/* ── Ligne 2 : Pie chart + Prospecteurs ──────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          {/* Répartition par statut */}
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-5 hover:shadow-md transition-all duration-200">
-            <div className="flex items-center gap-3">
+          {/* Pie chart — répartition par statut */}
+          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center gap-3 mb-5">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <BarChart3 className="w-4 h-4 text-primary" />
               </div>
               <h3 className="font-semibold text-sm">Répartition par statut</h3>
             </div>
-            <div className="space-y-4">
-              {statusCounts.map(({ status, count }) => (
-                <div key={status}>
-                  <div className="flex items-center justify-between mb-2">
-                    <FicheStatusBadge status={status} />
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="tabular-nums font-medium text-foreground">{count}</span>
-                      <span className="w-9 text-right">
-                        {totalFiches > 0 ? `${Math.round((count / totalFiches) * 100)}%` : "0%"}
-                      </span>
+            {pieData.length === 0 ? (
+              <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
+                Aucune donnée disponible
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={95}
+                      paddingAngle={2}
+                      dataKey="value"
+                      labelLine={false}
+                      label={CustomPieLabel}
+                      animationBegin={0}
+                      animationDuration={700}
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Légende */}
+                <div className="grid grid-cols-2 gap-2">
+                  {statusCounts.filter((s) => s.count > 0).map(({ status, count }) => (
+                    <div key={status} className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: STATUS_COLORS_HEX[status] }} />
+                      <div className="flex items-center justify-between flex-1 min-w-0">
+                        <FicheStatusBadge status={status} />
+                        <span className="text-xs font-semibold tabular-nums ml-1">{count}</span>
+                      </div>
                     </div>
-                  </div>
-                  <Bar value={count} max={maxStatus} colorClass={STATUS_BAR_COLORS[status]} />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
 
-          {/* Top prospecteurs (direction) ou résumé performance (commercial) */}
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-5 hover:shadow-md transition-all duration-200">
-            <div className="flex items-center gap-3">
+          {/* Top prospecteurs (direction) ou performance (commercial) */}
+          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center gap-3 mb-5">
               <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
                 <Trophy className="w-4 h-4 text-amber-600" />
               </div>
               <h3 className="font-semibold text-sm">{isCommercial ? "Ma performance" : "Top prospecteurs"}</h3>
             </div>
             {isCommercial ? (
-              /* Vue commercial : récap statuts */
               <div className="space-y-3">
                 {statusCounts.filter(s => s.count > 0).map(({ status, count }) => (
                   <div key={status}>
@@ -285,7 +396,7 @@ export default function ReportingPage() {
                       <FicheStatusBadge status={status} />
                       <span className="text-sm font-semibold tabular-nums">{count}</span>
                     </div>
-                    <Bar value={count} max={Math.max(...statusCounts.map(s => s.count), 1)} colorClass={STATUS_BAR_COLORS[status]} />
+                    <Bar2 value={count} max={Math.max(...statusCounts.map(s => s.count), 1)} colorClass={STATUS_BAR_COLORS[status]} />
                   </div>
                 ))}
                 {statusCounts.every(s => s.count === 0) && (
@@ -298,43 +409,55 @@ export default function ReportingPage() {
                 <p className="text-sm">Aucune fiche soumise pour le moment</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {prospecteurs.map((p, i) => {
-                  const medalColor = i === 0 ? "text-amber-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-700" : "text-muted-foreground";
-                  const convRate = p.total > 0 ? Math.round((p.accepted / p.total) * 100) : 0;
-                  return (
-                    <div key={p.name} className="flex items-center gap-3">
-                      <div className="w-7 flex items-center justify-center shrink-0">
-                        {i < 3
-                          ? <Medal className={`w-5 h-5 ${medalColor}`} />
-                          : <span className="text-sm font-bold text-muted-foreground tabular-nums">{i + 1}</span>}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <p className="text-sm font-medium truncate">{p.name}</p>
-                          <div className="flex items-center gap-2 text-xs shrink-0 ml-2">
-                            {p.accepted > 0 && (
-                              <span className="text-emerald-600 font-medium">✓ {p.accepted}</span>
-                            )}
-                            <span className="text-muted-foreground">{p.total} fiche{p.total > 1 ? "s" : ""}</span>
-                            <span className={`font-medium ${convRate >= 50 ? "text-emerald-600" : convRate >= 25 ? "text-orange-500" : "text-muted-foreground"}`}>
-                              {convRate}%
-                            </span>
-                          </div>
+              <>
+                {/* Bar chart prospecteurs */}
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={prospecteurChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--muted))", radius: 6 }} />
+                    <Bar dataKey="Fiches" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={32} animationDuration={700} />
+                    <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={32} animationDuration={700} />
+                  </BarChart>
+                </ResponsiveContainer>
+                {/* Classement détaillé */}
+                <div className="mt-4 space-y-3">
+                  {prospecteurs.slice(0, 5).map((p, i) => {
+                    const medalColor = i === 0 ? "text-amber-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-700" : "text-muted-foreground";
+                    const convRate = p.total > 0 ? Math.round((p.accepted / p.total) * 100) : 0;
+                    return (
+                      <div key={p.name} className="flex items-center gap-3">
+                        <div className="w-7 flex items-center justify-center shrink-0">
+                          {i < 3
+                            ? <Medal className={`w-5 h-5 ${medalColor}`} />
+                            : <span className="text-sm font-bold text-muted-foreground tabular-nums">{i + 1}</span>}
                         </div>
-                        <Bar value={p.total} max={maxProspecteur} colorClass="bg-primary/70" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium truncate">{p.name}</p>
+                            <div className="flex items-center gap-2 text-xs shrink-0 ml-2">
+                              {p.accepted > 0 && <span className="text-emerald-600 font-medium">✓ {p.accepted}</span>}
+                              <span className="text-muted-foreground">{p.total} fiche{p.total > 1 ? "s" : ""}</span>
+                              <span className={`font-medium ${convRate >= 50 ? "text-emerald-600" : convRate >= 25 ? "text-orange-500" : "text-muted-foreground"}`}>
+                                {convRate}%
+                              </span>
+                            </div>
+                          </div>
+                          <Bar2 value={p.total} max={maxProspecteur} colorClass="bg-primary/70" />
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         </div>
 
-        {/* ── Évolution par période ─────────────────────────────────────────── */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-6 hover:shadow-md transition-all duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* ── Évolution par période (Area chart) ───────────────────────────── */}
+        <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                 <TrendingUp className="w-4 h-4 text-blue-600" />
@@ -351,52 +474,68 @@ export default function ReportingPage() {
           </div>
 
           {/* KPIs période courante */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <PeriodKpi label={`Total ${CURRENT_PERIOD_LABELS[granularity]}`} value={current.total} delta={totalDelta} />
             <PeriodKpi label="Soumises" value={current.submitted} />
             <PeriodKpi label="Acceptées" value={current.accepted} accent="green" />
             <PeriodKpi label="Conversion" value={`${periodConversion(current)}%`} accent="green" />
           </div>
 
-          {/* Barres d'évolution */}
-          {buckets.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Pas de données pour cette période</p>
+          {/* Area chart */}
+          {chartData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Pas de données pour cette période</p>
           ) : (
-            <div className="space-y-3">
-              {buckets.map((b) => {
-                const acceptedPct = b.total > 0 ? Math.round((b.accepted / b.total) * 100) : 0;
-                return (
-                  <div key={b.key}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm font-medium capitalize">{b.label}</span>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        {b.accepted > 0 && (
-                          <span className="text-emerald-600 font-medium">{acceptedPct}% acceptées</span>
-                        )}
-                        <span className="tabular-nums font-semibold text-foreground">{b.total}</span>
-                      </div>
-                    </div>
-                    {/* Barre composite : acceptées en vert + reste en primary */}
-                    <div className="h-3 bg-muted rounded-full overflow-hidden flex">
-                      <div
-                        className="h-full bg-emerald-500 transition-all duration-700"
-                        style={{ width: `${maxBucket > 0 ? (b.accepted / maxBucket) * 100 : 0}%` }}
-                      />
-                      <div
-                        className="h-full bg-primary/50 transition-all duration-700"
-                        style={{ width: `${maxBucket > 0 ? ((b.total - b.accepted) / maxBucket) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-              <div className="flex items-center gap-4 pt-1 text-xs text-muted-foreground">
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorAcceptees" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorAutres" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v: string) => v.length > 10 ? v.slice(0, 8) + "…" : v}
+                  />
+                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="Autres"
+                    stackId="1"
+                    stroke="#f97316"
+                    strokeWidth={2}
+                    fill="url(#colorAutres)"
+                    animationDuration={700}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="Acceptées"
+                    stackId="1"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fill="url(#colorAcceptees)"
+                    animationDuration={700}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+              <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-primary/50 inline-block" />Autres</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#f97316]/60 inline-block" />Autres</span>
               </div>
-            </div>
+            </>
           )}
         </div>
+
       </div>
     </>
   );

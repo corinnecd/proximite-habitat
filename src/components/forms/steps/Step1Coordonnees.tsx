@@ -70,15 +70,39 @@ export function Step1Coordonnees({ currentFicheId }: { currentFicheId?: string }
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="space-y-2"><Label>Nom *</Label><Input placeholder="Dupont" className="h-12 bg-card" {...register("prospect_nom")} />{errors.prospect_nom && <p className="text-sm text-destructive">{errors.prospect_nom.message}</p>}</div>
-        <div className="space-y-2"><Label>Prénom *</Label><Input placeholder="Jean" className="h-12 bg-card" {...register("prospect_prenom")} />{errors.prospect_prenom && <p className="text-sm text-destructive">{errors.prospect_prenom.message}</p>}</div>
+        <div className="space-y-2">
+          <Label>Nom *</Label>
+          <Input placeholder="Dupont" className="h-12 bg-card" aria-invalid={!!errors.prospect_nom} {...register("prospect_nom")} />
+          {errors.prospect_nom && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.prospect_nom.message}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label>Prénom *</Label>
+          <Input placeholder="Jean" className="h-12 bg-card" aria-invalid={!!errors.prospect_prenom} {...register("prospect_prenom")} />
+          {errors.prospect_prenom && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.prospect_prenom.message}</p>}
+        </div>
       </div>
-      <div className="space-y-2"><Label className="flex items-center gap-2"><MapPin className="w-4 h-4" />Adresse *</Label><Input placeholder="12 rue de la Paix" className="h-12 bg-card" {...register("prospect_adresse")} />{errors.prospect_adresse && <p className="text-sm text-destructive">{errors.prospect_adresse.message}</p>}</div>
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2"><MapPin className="w-4 h-4" />Adresse *</Label>
+        <Input placeholder="12 rue de la Paix" className="h-12 bg-card" aria-invalid={!!errors.prospect_adresse} {...register("prospect_adresse")} />
+        {errors.prospect_adresse && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.prospect_adresse.message}</p>}
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="space-y-2"><Label>Code postal *</Label><Input placeholder="75001" maxLength={5} className="h-12 bg-card" {...register("prospect_cp")} />{errors.prospect_cp && <p className="text-sm text-destructive">{errors.prospect_cp.message}</p>}</div>
-        <div className="space-y-2"><Label>Ville *</Label><Input placeholder="Paris" className="h-12 bg-card" {...register("prospect_ville")} />{errors.prospect_ville && <p className="text-sm text-destructive">{errors.prospect_ville.message}</p>}</div>
+        <div className="space-y-2">
+          <Label>Code postal *</Label>
+          <Input placeholder="75001" maxLength={5} className="h-12 bg-card" aria-invalid={!!errors.prospect_cp} {...register("prospect_cp")} />
+          {errors.prospect_cp && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.prospect_cp.message}</p>}
+        </div>
+        <div className="space-y-2">
+          <Label>Ville *</Label>
+          <Input placeholder="Paris" className="h-12 bg-card" aria-invalid={!!errors.prospect_ville} {...register("prospect_ville")} />
+          {errors.prospect_ville && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.prospect_ville.message}</p>}
+        </div>
       </div>
-      <div className="space-y-2"><Label className="flex items-center gap-2"><Phone className="w-4 h-4" />Téléphone *</Label><Input placeholder="06 12 34 56 78" className="h-12 bg-card" {...register("prospect_telephone")} />{errors.prospect_telephone && <p className="text-sm text-destructive">{errors.prospect_telephone.message}</p>}</div>
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2"><Phone className="w-4 h-4" />Téléphone *</Label>
+        <Input placeholder="06 12 34 56 78" className="h-12 bg-card" aria-invalid={!!errors.prospect_telephone} {...register("prospect_telephone")} />
+        {errors.prospect_telephone && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.prospect_telephone.message}</p>}
+      </div>
       <div className="space-y-3"><Label className="flex items-center gap-2"><Calendar className="w-4 h-4" />Disponibilités</Label><div className="flex flex-wrap gap-3">{JOURS_DISPONIBILITES.map((j) => (<button key={j} type="button" onClick={() => toggleJour(j)} className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all ${disponibilites.includes(j) ? "bg-primary text-white border-primary" : "bg-card border-border hover:border-primary/50"}`}>{j}</button>))}</div></div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2"><Label>Date de visite</Label><Input type="date" className="h-12 bg-card" {...register("date_visite")} /></div>

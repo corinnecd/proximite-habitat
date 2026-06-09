@@ -133,3 +133,37 @@
     opacity: 0.45;
   }
 }
+
+/* Bouton primaire orange — couleur brand centralisée ici */
+.btn-brand {
+  background-color: #F97316;
+  color: #fff;
+}
+.btn-brand:hover {
+  background-color: #EA580C;
+}
+
+@keyframes slideInFromRight {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInFromLeft {
+  from { opacity: 0; transform: translateX(-32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}

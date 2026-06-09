@@ -14,7 +14,7 @@ import type { UserRole } from "@/types/database";
 import { toast } from "sonner";
 import {
   User, Lock, Loader2, Eye, EyeOff, Mail, Phone,
-  CheckCircle2, AlertCircle, Shield,
+  CheckCircle2, AlertCircle, Shield, FileText, TrendingUp, Clock, Star,
 } from "lucide-react";
 
 // ── Palette rôle ─────────────────────────────────────────────────────────────
@@ -43,6 +43,14 @@ function passwordStrength(pwd: string): { score: number; label: string; color: s
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+interface UserStats {
+  total: number;
+  soumises: number;
+  acceptees: number;
+  refusees: number;
+  lastActivity: string | null;
+}
+
 export default function ProfilPage() {
   const { profile, loading } = useProfile();
   const [firstName, setFirstName] = useState("");
@@ -57,15 +65,39 @@ export default function ProfilPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
+  const [stats, setStats] = useState<UserStats | null>(null);
+
   const supabase = createClient();
 
   useEffect(() => {
     if (profile) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFirstName(profile.first_name);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLastName(profile.last_name);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPhone(profile.phone || "");
+
+      // Fetch personal stats (non critique — silencieux en cas d'erreur)
+      void (async () => {
+        try {
+          const { data, error } = await supabase
+            .from("fiches")
+            .select("status, created_at")
+            .eq("created_by", profile.id)
+            .order("created_at", { ascending: false });
+          if (error || !data) return;
+          setStats({
+            total: data.length,
+            soumises: data.filter((f) => f.status !== "BROUILLON").length,
+            acceptees: data.filter((f) => f.status === "ACCEPTEE").length,
+            refusees: data.filter((f) => f.status === "REFUSEE").length,
+            lastActivity: data[0]?.created_at ?? null,
+          });
+        } catch { /* stats non critiques */ }
+      })();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
   async function handleSaveProfile(e: React.FormEvent) {
@@ -152,6 +184,61 @@ export default function ProfilPage() {
             </div>
           </div>
         </div>
+
+        {/* ── Statistiques personnelles ──────────────────────────────────── */}
+        {stats && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              {
+                icon: FileText,
+                label: "Fiches créées",
+                value: stats.total,
+                sub: "au total",
+                color: "text-primary",
+                bg: "bg-primary/10",
+              },
+              {
+                icon: TrendingUp,
+                label: "Soumises",
+                value: stats.soumises,
+                sub: "au traitement",
+                color: "text-blue-600",
+                bg: "bg-blue-50 dark:bg-blue-950/30",
+              },
+              {
+                icon: Star,
+                label: "Acceptées",
+                value: stats.acceptees,
+                sub: stats.soumises > 0 ? `${Math.round((stats.acceptees / stats.soumises) * 100)}% de conversion` : "aucune soumise",
+                color: "text-emerald-600",
+                bg: "bg-emerald-50 dark:bg-emerald-950/30",
+              },
+              {
+                icon: Clock,
+                label: "Dernière activité",
+                value: stats.lastActivity
+                  ? new Date(stats.lastActivity).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
+                  : "—",
+                sub: stats.lastActivity
+                  ? new Date(stats.lastActivity).getFullYear().toString()
+                  : "aucune fiche",
+                color: "text-orange-600",
+                bg: "bg-orange-50 dark:bg-orange-950/30",
+              },
+            ].map(({ icon: Icon, label, value, sub, color, bg }) => (
+              <div key={label} className="bg-card border border-border rounded-2xl p-4 space-y-2" style={{ animation: "fadeSlideIn 0.25s ease both" }}>
+                <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center`}>
+                  <Icon className={`w-4 h-4 ${color}`} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold font-heading">{value}</p>
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                  <p className="text-[10px] text-muted-foreground/70 mt-0.5">{sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* ── Informations personnelles ──────────────────────────────────── */}
         <div className="bg-card border border-border rounded-2xl p-6 space-y-5">

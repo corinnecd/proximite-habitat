@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { FicheFormData } from "@/lib/validations/fiche";
 import { Camera, X, ImageIcon, CloudCheck } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 
 export interface UploadedPhoto {
@@ -33,6 +33,16 @@ export function Step6Photos({
   onAddValidFiles,
 }: Step6Props) {
   const { register } = useFormContext<FicheFormData>();
+
+  // Précalcule les blob URLs et les révoque quand les photos changent (évite le memory leak)
+  const prevUrlsRef = useRef<string[]>([]);
+  const localPhotoUrls = useMemo(() => {
+    prevUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
+    const urls = photos.map((p) => URL.createObjectURL(p));
+    prevUrlsRef.current = urls;
+    return urls;
+  }, [photos]);
+  useEffect(() => () => { prevUrlsRef.current.forEach((u) => URL.revokeObjectURL(u)); }, []);
 
   const handleFiles = useCallback(
     async (files: FileList | null) => {
@@ -126,7 +136,7 @@ export function Step6Photos({
               {photos.map((p, i) => (
                 <div key={i} className="relative group rounded-xl overflow-hidden ring-1 ring-orange-200">
                   {/* eslint-disable-next-line @next/next/no-img-element -- blob URL non optimisable par next/image */}
-                  <img src={URL.createObjectURL(p)} alt={p.name} className="w-full h-32 object-cover" />
+                  <img src={localPhotoUrls[i]} alt={p.name} className="w-full h-32 object-cover" />
                   <button
                     type="button"
                     aria-label={`Retirer la photo ${p.name}`}

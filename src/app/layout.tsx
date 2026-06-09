@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, DM_Serif_Display } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 
 const inter = Inter({
@@ -16,8 +17,12 @@ const dmSerif = DM_Serif_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Proximité Habitat Conseil",
+  title: {
+    default: "Proximité Habitat Conseil",
+    template: "%s · Proximité Habitat Conseil",
+  },
   description: "Gestion des pré-visites de rénovation énergétique",
+  icons: { icon: "/icon.svg" },
 };
 
 export default function RootLayout({
@@ -33,6 +38,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+          <NextTopLoader color="#F97316" height={3} showSpinner={false} shadow="0 0 10px #F97316,0 0 5px #F97316" />
           {children}
           <Toaster richColors position="top-right" />
         </ThemeProvider>

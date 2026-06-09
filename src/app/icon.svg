@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Fond navy -->
+  <rect width="32" height="32" rx="8" fill="#1E3A5F"/>
+  <!-- Maison stylisée -->
+  <path d="M16 7 L26 14 L26 26 L6 26 L6 14 Z" fill="none" stroke="#F97316" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Toit accent -->
+  <path d="M13 26 L13 20 Q13 18 16 18 Q19 18 19 20 L19 26" fill="#10B981"/>
+  <!-- Cheminée -->
+  <rect x="20" y="11" width="2.5" height="4" rx="0.5" fill="#F97316"/>
+  <!-- Lettre P -->
+  <text x="8.5" y="23" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="9" fill="white" letter-spacing="-0.5">PHC</text>
+</svg>

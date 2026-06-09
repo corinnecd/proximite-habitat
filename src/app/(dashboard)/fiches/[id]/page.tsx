@@ -25,14 +25,17 @@ import { useProfile } from "@/lib/hooks/use-profile";
 import {
   getAvailableTransitions, canAssignFiche, canEditFiche, STATUS_LABELS,
 } from "@/lib/permissions";
+import { sendEmailFicheAffectee } from "@/lib/email";
 import type { FicheStatus, Fiche } from "@/types/database";
 import Image from "next/image";
 import { toast } from "sonner";
 import {
   User, Home, Flame, Wind, Shield, Camera, FileText,
-  Clock, ArrowLeft, UserCheck, Loader2, Pencil, Printer, Trash2,
-  Phone, MapPin, Calendar, CheckCircle2, ShieldCheck,
+  Clock, ArrowLeft, UserCheck, Loader2, Pencil, Trash2,
+  Phone, MapPin, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, Copy,
 } from "lucide-react";
+import { DownloadFicheButton } from "@/components/pdf/DownloadFicheButton";
+import confetti from "canvas-confetti";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -60,6 +63,29 @@ const STATUS_HERO: Record<FicheStatus, { border: string; iconBg: string; icon: s
 };
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
+
+function PhotoThumb({ url, name }: { url: string; name: string }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <div className="relative h-32 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
+        <span className="text-xs text-muted-foreground text-center px-2">Image indisponible</span>
+      </div>
+    );
+  }
+  return (
+    <div className="relative h-32 rounded-xl overflow-hidden bg-muted group cursor-zoom-in">
+      <Image
+        src={url}
+        alt={name}
+        fill
+        sizes="(max-width: 640px) 50vw, 33vw"
+        className="object-cover transition-transform duration-300 group-hover:scale-105"
+        onError={() => setBroken(true)}
+      />
+    </div>
+  );
+}
 
 function SectionCard({
   icon, iconBg, iconColor, title, children,
@@ -107,32 +133,45 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<FicheStatus | null>(null);
   const [statusComment, setStatusComment] = useState("");
+  const [showValidateDialog, setShowValidateDialog] = useState(false);
+  const [selectedCommercial, setSelectedCommercial] = useState("");
 
   const { profile } = useProfile();
   const router = useRouter();
   const supabase = createClient();
 
   const fetchData = useCallback(async () => {
-    const [ficheData, historyData, photosData, commercialsData] = await Promise.all([
-      getFicheById(supabase, id),
-      getFicheHistory(supabase, id),
-      getFichePhotos(supabase, id),
-      getActiveCommercialsAndAdmins(supabase),
-    ]);
-    setFiche(ficheData);
-    setHistory(historyData);
-    setPhotos(photosData);
-    setCommercials(commercialsData);
-    if (ficheData?.created_by) {
-      const name = await getProfileFullName(supabase, ficheData.created_by);
-      if (name) setCreatorName(name);
+    try {
+      const [ficheData, historyData, photosData, commercialsData] = await Promise.all([
+        getFicheById(supabase, id),
+        getFicheHistory(supabase, id),
+        getFichePhotos(supabase, id),
+        getActiveCommercialsAndAdmins(supabase),
+      ]);
+      setFiche(ficheData);
+      if (ficheData?.reference) {
+        document.title = `${ficheData.reference} · Proximité Habitat Conseil`;
+      }
+      setHistory(historyData);
+      setPhotos(photosData);
+      setCommercials(commercialsData);
+      if (ficheData?.created_by) {
+        const name = await getProfileFullName(supabase, ficheData.created_by);
+        if (name) setCreatorName(name);
+      }
+    } catch (err) {
+      console.error("fetchData error", err);
+      toast.error("Erreur lors du chargement de la fiche");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [id, supabase]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
+    // Restore default title on unmount
+    return () => { document.title = "Proximité Habitat Conseil"; };
   }, [fetchData]);
 
   useEffect(() => {
@@ -161,6 +200,9 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     if (error) { toast.error("Transition refusée : " + error.message); setTransitioning(false); return; }
     setFiche({ ...fiche, status: newStatus });
     toast.success(`Statut changé : ${STATUS_LABELS[newStatus]}`);
+    if (newStatus === "ACCEPTEE") {
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#1E3A5F", "#F97316", "#10B981", "#F59E0B"] });
+    }
     setTransitioning(false);
   }
 
@@ -180,15 +222,36 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
   async function handleAssign(commercialId: string) {
     if (!fiche || !profile) return;
+    setTransitioning(true);
     const { error } = await supabase.rpc("transition_fiche", {
       p_fiche_id: fiche.id,
       p_new_status: "AFFECTEE",
       p_assigned_to: commercialId,
     });
-    if (error) { toast.error("Affectation refusée : " + error.message); return; }
-    toast.success("Fiche affectée avec succès");
-    router.refresh();
+    if (error) { toast.error("Affectation refusée : " + error.message); setTransitioning(false); return; }
+    toast.success("Fiche validée et affectée avec succès");
     setFiche({ ...fiche, assigned_to: commercialId, status: "AFFECTEE" });
+    setTransitioning(false);
+
+    // Email au commercial (non bloquant)
+    const commercial = commercials.find((c) => c.id === commercialId);
+    if (commercial) {
+      const { data: commProfile } = await supabase
+        .from("profiles")
+        .select("email, first_name")
+        .eq("id", commercialId)
+        .single();
+      if (commProfile) {
+        await sendEmailFicheAffectee({
+          ficheId: fiche.id,
+          reference: fiche.reference,
+          commercialPrenom: commProfile.first_name,
+          commercialEmail: commProfile.email,
+        });
+      }
+    }
+
+    router.refresh();
   }
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -215,6 +278,32 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       <Topbar title={fiche.reference} />
       <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
+        {/* ── Bannière "Fiche à valider" — visible direction uniquement ──── */}
+        {fiche.status === "SOUMISE" && profile?.role === "ADMIN" && (
+          <div className="flex items-center gap-3 px-5 py-4 bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-2xl">
+            <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-sm text-red-700 dark:text-red-400 uppercase tracking-wide">
+                Fiche à valider
+              </p>
+              <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-0.5">
+                Cette fiche a été soumise par{" "}
+                <span className="font-semibold">{creatorName || "un prospecteur"}</span>
+                {" "}et attend votre affectation à un commercial.
+              </p>
+            </div>
+            <Button
+              onClick={() => { setSelectedCommercial(""); setShowValidateDialog(true); }}
+              className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-semibold"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Valider la fiche
+            </Button>
+          </div>
+        )}
+
         {/* ── Hero card ──────────────────────────────────────────────────── */}
         <div className={`bg-card/80 backdrop-blur-sm border border-border border-l-4 ${hero.border} rounded-2xl p-6 shadow-sm`}>
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -232,7 +321,19 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   </h2>
                   <FicheStatusBadge status={fiche.status} />
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">{fiche.reference}</p>
+                <button
+                  type="button"
+                  title="Copier la référence"
+                  onClick={() => {
+                    navigator.clipboard.writeText(fiche.reference).then(() => {
+                      toast.success("Référence copiée !", { duration: 2000 });
+                    });
+                  }}
+                  className="group flex items-center gap-1.5 text-sm text-muted-foreground mt-1 hover:text-foreground transition-colors"
+                >
+                  {fiche.reference}
+                  <Copy className="w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition-opacity" />
+                </button>
                 {creatorName && (
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Saisi par <span className="font-medium text-foreground">{creatorName}</span>
@@ -243,11 +344,18 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* Right: actions */}
             <div className="flex items-center gap-2 flex-wrap">
-              <Button variant="outline" size="sm"
-                onClick={() => window.open(`/fiches/${fiche.id}/imprimer`, "_blank")}
-                className="rounded-xl gap-2" aria-label="Exporter en PDF">
-                <Printer className="w-4 h-4" />PDF
-              </Button>
+              <DownloadFicheButton
+                fiche={fiche}
+                prospecteurNom={creatorName || "Prospecteur"}
+                commercialNom={
+                  fiche.assigned_to
+                    ? commercials.find((c) => c.id === fiche.assigned_to)
+                        ? `${commercials.find((c) => c.id === fiche.assigned_to)!.first_name} ${commercials.find((c) => c.id === fiche.assigned_to)!.last_name}`
+                        : undefined
+                    : undefined
+                }
+                photoUrls={photos.map((p) => supabase.storage.from("photos").getPublicUrl(p.storage_path).data.publicUrl)}
+              />
 
               {fiche.status === "BROUILLON" && canEdit && (
                 <Button variant="outline" size="sm"
@@ -481,15 +589,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   {photos.map((photo) => {
                     const { data } = supabase.storage.from("photos").getPublicUrl(photo.storage_path);
                     return (
-                      <div key={photo.id} className="relative h-32 rounded-xl overflow-hidden bg-muted">
-                        <Image
-                          src={data.publicUrl}
-                          alt={photo.original_name ?? ""}
-                          fill
-                          sizes="(max-width: 640px) 50vw, 33vw"
-                          className="object-cover"
-                        />
-                      </div>
+                      <PhotoThumb key={photo.id} url={data.publicUrl} name={photo.original_name ?? ""} />
                     );
                   })}
                 </div>
@@ -521,47 +621,145 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   <Clock className="w-4 h-4 text-primary" />
                 </div>
                 <h3 className="font-semibold text-sm">Historique</h3>
+                {history.length > 0 && (
+                  <span className="ml-auto text-xs text-muted-foreground">{history.length} action{history.length > 1 ? "s" : ""}</span>
+                )}
               </div>
               {history.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucun historique</p>
+                <div className="flex flex-col items-center py-6 gap-2 text-muted-foreground">
+                  <Clock className="w-8 h-8 opacity-20" />
+                  <p className="text-sm">Aucun historique</p>
+                </div>
               ) : (
                 <div className="space-y-0">
-                  {history.map((entry, idx) => (
-                    <div key={entry.id} className="relative pl-6">
-                      {/* ligne verticale */}
-                      {idx < history.length - 1 && (
-                        <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
-                      )}
-                      {/* point — orange pour le plus récent, bleu sinon */}
-                      <div className={`absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center
-                        ${idx === 0
-                          ? "bg-[#F97316]/15 border-[#F97316]"
-                          : "bg-primary/10 border-primary/40"}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${idx === 0 ? "bg-[#F97316]" : "bg-primary"}`} />
-                      </div>
-                      <div className="pb-5">
-                        <p className="text-sm font-semibold leading-snug">{entry.action}</p>
-                        {entry.comment && (
-                          <p className="text-xs text-muted-foreground mt-1 italic bg-muted/50 px-2 py-1 rounded-lg">&quot;{entry.comment}&quot;</p>
+                  {history.map((entry, idx) => {
+                    // Couleur du point selon le nouveau statut
+                    const dotColors: Record<string, string> = {
+                      SOUMISE:  "border-blue-500 bg-blue-50",
+                      AFFECTEE: "border-orange-500 bg-orange-50",
+                      ACCEPTEE: "border-emerald-500 bg-emerald-50",
+                      REFUSEE:  "border-red-500 bg-red-50",
+                      ARCHIVEE: "border-slate-400 bg-slate-50",
+                      BROUILLON:"border-slate-400 bg-slate-50",
+                    };
+                    const innerColors: Record<string, string> = {
+                      SOUMISE:  "bg-blue-500",
+                      AFFECTEE: "bg-orange-500",
+                      ACCEPTEE: "bg-emerald-500",
+                      REFUSEE:  "bg-red-500",
+                      ARCHIVEE: "bg-slate-400",
+                      BROUILLON:"bg-slate-400",
+                    };
+                    const dotClass = entry.new_status
+                      ? (dotColors[entry.new_status] ?? "border-primary/40 bg-primary/10")
+                      : (idx === 0 ? "border-[#F97316] bg-[#F97316]/10" : "border-primary/40 bg-primary/10");
+                    const innerClass = entry.new_status
+                      ? (innerColors[entry.new_status] ?? "bg-primary")
+                      : (idx === 0 ? "bg-[#F97316]" : "bg-primary");
+                    const statusLabels: Record<string, string> = {
+                      BROUILLON: "Brouillon", SOUMISE: "À valider", AFFECTEE: "Affectée",
+                      ACCEPTEE: "Acceptée", REFUSEE: "Refusée", ARCHIVEE: "Archivée",
+                    };
+                    return (
+                      <div
+                        key={entry.id}
+                        className="relative pl-6"
+                        style={{ animation: "fadeSlideIn 0.2s ease both", animationDelay: `${idx * 50}ms` }}
+                      >
+                        {idx < history.length - 1 && (
+                          <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
                         )}
-                        <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                          <span className="font-medium text-foreground/70">
-                            {entry.profiles
-                              ? `${entry.profiles.first_name} ${entry.profiles.last_name}`
-                              : "Système"}
-                          </span>
-                          <span>·</span>
-                          {new Date(entry.created_at).toLocaleDateString("fr-FR", {
-                            day: "2-digit", month: "short", year: "numeric",
-                            hour: "2-digit", minute: "2-digit",
-                          })}
-                        </p>
+                        <div className={`absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${dotClass}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${innerClass}`} />
+                        </div>
+                        <div className="pb-5">
+                          {/* Transition statut ou action */}
+                          {entry.old_status && entry.new_status ? (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                                {statusLabels[entry.old_status] ?? entry.old_status}
+                              </span>
+                              <span className="text-xs text-muted-foreground">→</span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                                entry.new_status === "ACCEPTEE" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
+                                entry.new_status === "REFUSEE"  ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                                entry.new_status === "AFFECTEE" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
+                                entry.new_status === "SOUMISE"  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                                entry.new_status === "ARCHIVEE" ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400" :
+                                "bg-muted text-muted-foreground"
+                              }`}>
+                                {statusLabels[entry.new_status] ?? entry.new_status}
+                              </span>
+                            </div>
+                          ) : (
+                            <p className="text-sm font-semibold leading-snug">{entry.action}</p>
+                          )}
+                          {entry.comment && (
+                            <p className="text-xs text-muted-foreground mt-1.5 italic bg-muted/50 px-2.5 py-1.5 rounded-lg border-l-2 border-border">
+                              &quot;{entry.comment}&quot;
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                            <span className="font-medium text-foreground/70">
+                              {entry.profiles
+                                ? `${entry.profiles.first_name} ${entry.profiles.last_name}`
+                                : "Système"}
+                            </span>
+                            <span>·</span>
+                            <span>
+                              {new Date(entry.created_at).toLocaleDateString("fr-FR", {
+                                day: "2-digit", month: "short",
+                              })}
+                              {" "}
+                              {new Date(entry.created_at).toLocaleTimeString("fr-FR", {
+                                hour: "2-digit", minute: "2-digit",
+                              })}
+                            </span>
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
+
+            {/* Motif du refus */}
+            {fiche.status === "REFUSEE" && (() => {
+              const refusEntry = history.find((e) => e.new_status === "REFUSEE");
+              return (
+                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-2xl p-5 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
+                      <Ban className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    </div>
+                    <h3 className="font-semibold text-sm text-red-800 dark:text-red-300">Motif du refus</h3>
+                  </div>
+                  {refusEntry?.comment ? (
+                    <p className="text-sm text-red-700 dark:text-red-300 leading-relaxed italic bg-red-100/60 dark:bg-red-900/20 rounded-xl px-4 py-3">
+                      &quot;{refusEntry.comment}&quot;
+                    </p>
+                  ) : (
+                    <p className="text-sm text-red-500/70 italic">Aucun motif renseigné.</p>
+                  )}
+                  {refusEntry && (
+                    <p className="text-xs text-red-500/70 dark:text-red-400/60">
+                      Refusée par{" "}
+                      <span className="font-medium text-red-700 dark:text-red-300">
+                        {refusEntry.profiles
+                          ? `${refusEntry.profiles.first_name} ${refusEntry.profiles.last_name}`
+                          : "Système"}
+                      </span>
+                      {" · "}
+                      {new Date(refusEntry.created_at).toLocaleDateString("fr-FR", {
+                        day: "2-digit", month: "long", year: "numeric",
+                        hour: "2-digit", minute: "2-digit",
+                      })}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Infos */}
             <div className="bg-card border border-border rounded-2xl p-5 space-y-3 text-sm hover:shadow-md transition-all duration-200">
@@ -655,26 +853,128 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         </DialogContent>
       </Dialog>
 
-      {/* ── Dialog : commentaire changement de statut ─────────────────────── */}
-      <Dialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) setPendingStatus(null); }}>
+      {/* ── Dialog : valider la fiche (affecter depuis la bannière) ─────────── */}
+      <Dialog open={showValidateDialog} onOpenChange={(open) => { if (!open) { setShowValidateDialog(false); setSelectedCommercial(""); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              Passer en : <span className="text-primary">{pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</span>
+            <DialogTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+              <CheckCircle2 className="w-5 h-5" />
+              Valider et affecter la fiche
             </DialogTitle>
           </DialogHeader>
-          <div className="py-2 space-y-3">
+          <div className="py-3 space-y-4">
             <p className="text-sm text-muted-foreground">
-              Ajoutez un commentaire pour expliquer ce changement de statut (optionnel).
+              Sélectionnez le commercial à qui affecter la fiche{" "}
+              <span className="font-semibold text-foreground">{fiche?.reference}</span>.
+              Le prospecteur et le commercial recevront une notification.
             </p>
-            <Textarea
-              placeholder="Motif, observations, informations complémentaires…"
-              value={statusComment}
-              onChange={(e) => setStatusComment(e.target.value)}
-              rows={3}
-              className="bg-card resize-none"
-            />
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Commercial
+              </label>
+              <Select value={selectedCommercial} onValueChange={(v) => setSelectedCommercial(v ?? "")}>
+                <SelectTrigger className="rounded-xl bg-card">
+                  <SelectValue placeholder="Choisir un commercial…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {commercials
+                    .filter((c) => c.role === "COMMERCIAL")
+                    .map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.first_name} {c.last_name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+          <DialogFooter className="gap-2">
+            <DialogClose render={<Button type="button" variant="outline" className="rounded-xl">Annuler</Button>} />
+            <Button
+              disabled={!selectedCommercial || transitioning}
+              onClick={async () => {
+                if (!selectedCommercial) return;
+                await handleAssign(selectedCommercial);
+                setShowValidateDialog(false);
+                setSelectedCommercial("");
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2"
+            >
+              {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              Confirmer la validation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog : motif de refus / commentaire de statut ─────────────── */}
+      <Dialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) { setPendingStatus(null); setStatusComment(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className={`flex items-center gap-2 ${
+              pendingStatus === "REFUSEE"
+                ? "text-red-600 dark:text-red-400"
+                : pendingStatus === "ACCEPTEE"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-foreground"
+            }`}>
+              {pendingStatus === "REFUSEE"
+                ? <><Ban className="w-5 h-5" />Refuser la fiche</>
+                : pendingStatus === "ACCEPTEE"
+                  ? <><CheckCircle2 className="w-5 h-5" />Accepter la fiche</>
+                  : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
+              }
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-2 space-y-3">
+            {pendingStatus === "REFUSEE" ? (
+              <>
+                {/* Alerte motif obligatoire */}
+                <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
+                  <Ban className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-700 dark:text-red-300">
+                    Le motif du refus est <span className="font-bold">obligatoire</span>. Il sera transmis au prospecteur et conservé dans l&apos;historique de la fiche.
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Motif du refus <span className="text-red-500">*</span>
+                  </label>
+                  <Textarea
+                    placeholder="Ex : Le client n'est pas propriétaire, logement non éligible, déjà équipé…"
+                    value={statusComment}
+                    onChange={(e) => setStatusComment(e.target.value)}
+                    rows={4}
+                    className={`bg-card resize-none transition-colors ${
+                      statusComment.trim().length === 0
+                        ? "border-red-300 dark:border-red-700 focus-visible:ring-red-400/30"
+                        : "border-emerald-300 dark:border-emerald-700"
+                    }`}
+                  />
+                  {statusComment.trim().length === 0 && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />Veuillez saisir un motif de refus.
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Commentaire optionnel pour ce changement de statut.
+                </p>
+                <Textarea
+                  placeholder="Observations, informations complémentaires…"
+                  value={statusComment}
+                  onChange={(e) => setStatusComment(e.target.value)}
+                  rows={3}
+                  className="bg-card resize-none"
+                />
+              </>
+            )}
+          </div>
+
           <DialogFooter className="gap-2">
             <DialogClose>
               <Button type="button" variant="outline" className="rounded-xl">Annuler</Button>
@@ -682,15 +982,37 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             <Button
               onClick={async () => {
                 if (!pendingStatus) return;
+                // Motif obligatoire pour REFUSEE
+                if (pendingStatus === "REFUSEE" && !statusComment.trim()) {
+                  toast.error("Veuillez saisir un motif de refus avant de confirmer.");
+                  return;
+                }
                 await handleStatusChange(pendingStatus, statusComment.trim() || undefined);
                 setPendingStatus(null);
                 setStatusComment("");
               }}
-              disabled={transitioning}
-              className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2"
+              disabled={transitioning || (pendingStatus === "REFUSEE" && !statusComment.trim())}
+              className={`rounded-xl gap-2 text-white ${
+                pendingStatus === "REFUSEE"
+                  ? "bg-red-600 hover:bg-red-700"
+                  : pendingStatus === "ACCEPTEE"
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : "bg-[#F97316] hover:bg-[#EA580C]"
+              }`}
             >
-              {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Confirmer
+              {transitioning
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : pendingStatus === "REFUSEE"
+                  ? <Ban className="w-4 h-4" />
+                  : pendingStatus === "ACCEPTEE"
+                    ? <CheckCircle2 className="w-4 h-4" />
+                    : null
+              }
+              {pendingStatus === "REFUSEE"
+                ? "Confirmer le refus"
+                : pendingStatus === "ACCEPTEE"
+                  ? "Confirmer l'acceptation"
+                  : "Confirmer"}
             </Button>
           </DialogFooter>
         </DialogContent>

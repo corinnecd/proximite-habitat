@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard, FileText, FilePlus, Users, Bell,
-  Building2, LogOut, Menu, X, UserCircle, BarChart3,
+  Building2, LogOut, Menu, X, UserCircle, BarChart3, ClipboardCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 const mainNav = [
   { name: "Tableau de bord", href: "/",               icon: LayoutDashboard },
-  { name: "Fiches",          href: "/fiches",          icon: FileText,  badge: "fiches" },
+  { name: "Statut des Fiches", href: "/fiches",        icon: FileText },
   { name: "Nouvelle fiche",  href: "/fiches/nouvelle", icon: FilePlus },
 ];
 
@@ -32,14 +32,15 @@ const commercialNav = [
   { name: "Mon reporting", href: "/reporting", icon: BarChart3 },
 ];
 
-type BadgeKey = "fiches" | "notifs";
+type BadgeKey = "fiches" | "notifs" | "soumises";
 
 function NavItem({
-  item, isActive, badge, onClick,
+  item, isActive, badge, badgeRed, onClick,
 }: {
   item: { name: string; href: string; icon: React.ElementType };
   isActive: boolean;
   badge?: number;
+  badgeRed?: number;
   onClick?: () => void;
 }) {
   const Icon = item.icon;
@@ -64,6 +65,11 @@ function NavItem({
           {badge}
         </span>
       )}
+      {badgeRed !== undefined && badgeRed > 0 && (
+        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+          {badgeRed}
+        </span>
+      )}
     </Link>
   );
 }
@@ -79,33 +85,34 @@ function SectionLabel({ label }: { label: string }) {
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { profile } = useProfile();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [badges, setBadges] = useState<Record<BadgeKey, number>>({ fiches: 0, notifs: 0 });
+  const [badges, setBadges] = useState<Record<BadgeKey, number>>({ fiches: 0, notifs: 0, soumises: 0 });
   const supabase = createClient();
 
   useEffect(() => {
     if (!profile) return;
     async function fetchBadges() {
       // Badge fiches : filtré selon le rôle
-      // - ADMIN       : toutes les fiches (hors brouillons des autres)
-      // - COMMERCIAL  : seulement les fiches qui lui sont affectées
-      // - PROSPECTEUR : seulement ses propres fiches (created_by)
+      // - ADMIN/COMMERCIAL : toutes les fiches hors brouillons
+      // - PROSPECTEUR      : seulement ses propres fiches (created_by)
       let ficheQuery = supabase.from("fiches").select("id", { count: "exact", head: true });
-      if (profile?.role === "COMMERCIAL") {
-        ficheQuery = ficheQuery.eq("assigned_to", profile.id);
-      } else if (profile?.role === "PROSPECTEUR") {
+      if (profile?.role === "PROSPECTEUR") {
         ficheQuery = ficheQuery.eq("created_by", profile.id);
       } else {
-        // ADMIN : toutes les fiches hors brouillons
+        // ADMIN et COMMERCIAL : toutes les fiches hors brouillons
         ficheQuery = ficheQuery.neq("status", "BROUILLON");
       }
 
-      const [{ count: ficheCount }, { count: notifCount }] = await Promise.all([
+      const [{ count: ficheCount }, { count: notifCount }, { count: soumisesCount }] = await Promise.all([
         ficheQuery,
         supabase.from("notifications").select("id", { count: "exact", head: true }).eq("read", false),
+        profile?.role === "ADMIN"
+          ? supabase.from("fiches").select("id", { count: "exact", head: true }).eq("status", "SOUMISE")
+          : Promise.resolve({ count: 0 }),
       ]);
-      setBadges({ fiches: ficheCount ?? 0, notifs: notifCount ?? 0 });
+      setBadges({ fiches: ficheCount ?? 0, notifs: notifCount ?? 0, soumises: soumisesCount ?? 0 });
     }
     fetchBadges();
   }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -121,8 +128,8 @@ export function Sidebar() {
   }
 
   function badgeFor(key?: string) {
-    if (key === "fiches") return badges.fiches;
-    if (key === "notifs") return badges.notifs;
+    if (key === "fiches")   return badges.fiches;
+    if (key === "notifs")   return badges.notifs;
     return undefined;
   }
 
@@ -149,15 +156,33 @@ export function Sidebar() {
       {/* Navigation principale */}
       <nav className="flex-1 px-3 pt-3 pb-2 overflow-y-auto">
         <div className="space-y-0.5">
-          {mainNav.map((item) => (
+          {/* Tableau de bord */}
+          <NavItem
+            item={mainNav[0]}
+            isActive={isActive(mainNav[0].href)}
+            onClick={close}
+          />
+          {/* Fiches à valider (admin) — au-dessus de Statut des Fiches */}
+          {profile?.role === "ADMIN" && (
             <NavItem
-              key={item.href}
-              item={item}
-              isActive={isActive(item.href)}
-              badge={badgeFor((item as { badge?: string }).badge)}
+              item={{ name: "Fiches à valider", href: "/fiches?status=SOUMISE", icon: ClipboardCheck }}
+              isActive={pathname === "/fiches" && searchParams.get("status") === "SOUMISE"}
+              badgeRed={badges.soumises}
               onClick={close}
             />
-          ))}
+          )}
+          {/* Statut des Fiches */}
+          <NavItem
+            item={mainNav[1]}
+            isActive={isActive(mainNav[1].href) && searchParams.get("status") !== "SOUMISE"}
+            onClick={close}
+          />
+          {/* Nouvelle fiche */}
+          <NavItem
+            item={mainNav[2]}
+            isActive={isActive(mainNav[2].href)}
+            onClick={close}
+          />
         </div>
 
         <SectionLabel label="Suivi" />

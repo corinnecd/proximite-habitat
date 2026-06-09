@@ -11,7 +11,8 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from "@/lib/data/notifications";
-import { Bell, CheckCheck, FileText, Check, Loader2 } from "lucide-react";
+import { CheckCheck, FileText, Check, Loader2 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { Notification } from "@/types/database";
 
 const PAGE_SIZE = 20;
@@ -102,9 +103,12 @@ export default function NotificationsPage() {
           </div>
         ) : notifications.length === 0 ? (
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-12 text-center text-muted-foreground">
-              <Bell className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>Aucune notification pour le moment</p>
+            <CardContent className="p-4">
+              <EmptyState
+                illustration="notifications"
+                title="Aucune notification"
+                description="Vous serez notifié lors de nouvelles soumissions, affectations ou changements de statut."
+              />
             </CardContent>
           </Card>
         ) : (

@@ -1,15 +1,19 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getUnreadNotificationCount } from "@/lib/data/notifications";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { toast } from "sonner";
+import type { Notification } from "@/types/database";
+import { useSearch } from "@/components/layout/SearchProvider";
 
 export function Topbar({ title }: { title?: string }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const supabase = createClient();
+  const { open: openSearch } = useSearch();
 
   const fetchUnread = useCallback(async (uid: string) => {
     setUnreadCount(await getUnreadNotificationCount(supabase, uid));
@@ -38,7 +42,20 @@ export function Topbar({ title }: { title?: string }) {
             table: "notifications",
             filter: `user_id=eq.${user.id}`,
           },
-          () => fetchUnread(user.id)
+          (payload) => {
+            fetchUnread(user.id);
+            if (payload.eventType === "INSERT") {
+              const n = payload.new as Notification;
+              toast(n.title, {
+                description: n.message,
+                duration: 6000,
+                action: n.fiche_id
+                  ? { label: "Voir la fiche", onClick: () => { window.location.href = `/fiches/${n.fiche_id}`; } }
+                  : undefined,
+                icon: "🔔",
+              });
+            }
+          }
         )
         .subscribe();
 
@@ -52,11 +69,21 @@ export function Topbar({ title }: { title?: string }) {
 
   return (
     <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-md border-b border-border/50">
-      <div className="flex items-center justify-between h-16 px-6 lg:px-8">
-        <div className="lg:pl-0 pl-14">
-          {title && <h1 className="font-heading text-2xl text-foreground">{title}</h1>}
+      <div className="flex items-center justify-between h-16 px-4 lg:px-8 gap-2">
+        <div className="lg:pl-0 pl-14 min-w-0 flex-1">
+          {title && <h1 className="font-heading text-lg sm:text-2xl text-foreground truncate">{title}</h1>}
         </div>
         <div className="flex items-center gap-1">
+          <button
+              type="button"
+              onClick={openSearch}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-secondary hover:bg-secondary/80 rounded-xl transition-colors border border-border/50"
+              aria-label="Recherche globale"
+            >
+              <Search className="w-4 h-4" />
+              <span className="hidden sm:inline">Rechercher…</span>
+              <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono bg-background border border-border rounded px-1 py-0.5">⌘K</kbd>
+          </button>
           <ThemeToggle />
           <Link
             href="/notifications"

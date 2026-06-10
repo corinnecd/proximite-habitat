@@ -150,84 +150,76 @@ export async function POST(request: NextRequest) {
   }
 
   if (!process.env.RESEND_API_KEY) {
-    // Pas de clé configurée : on log mais on ne bloque pas le flux métier
     console.warn("[email] RESEND_API_KEY manquant — email non envoyé");
     return NextResponse.json({ skipped: true });
   }
 
-  // Instanciation lazy : uniquement quand la clé est disponible (runtime, pas build)
   const resend = new Resend(process.env.RESEND_API_KEY);
 
   const body = await request.json() as {
     type: "FICHE_SOUMISE" | "FICHE_AFFECTEE" | "FICHE_DECISION" | "FICHE_REJETEE";
     ficheId: string;
-    reference: string;
-    prospecteurNom?: string;
-    prospecteurPrenom?: string;
-    prospecteurEmail?: string;
-    commercialPrenom?: string;
-    commercialEmail?: string;
-    adminEmails?: string[];
     decision?: "ACCEPTEE" | "REFUSEE";
     motif?: string;
   };
 
-  const { type, ficheId, reference } = body;
+  const { type, ficheId, motif } = body;
+
+  // ── Résolution sécurisée : charger la fiche et vérifier l'organisation ──
+  const { data: fiche } = await supabase
+    .from("fiches")
+    .select("id, reference, organization_id, created_by, assigned_to")
+    .eq("id", ficheId)
+    .single();
+
+  if (!fiche) return NextResponse.json({ error: "Fiche introuvable" }, { status: 404 });
+  if (fiche.organization_id !== caller.organization_id) {
+    return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+  }
 
   try {
     if (type === "FICHE_SOUMISE") {
-      const { adminEmails = [], prospecteurNom = "un prospecteur" } = body;
+      // Résoudre les admins et le prospecteur depuis la DB
+      const [{ data: admins }, { data: prospecteur }] = await Promise.all([
+        supabase.from("profiles").select("email").eq("organization_id", fiche.organization_id).eq("role", "ADMIN").eq("is_active", true),
+        supabase.from("profiles").select("first_name, last_name").eq("id", fiche.created_by).single(),
+      ]);
+      const adminEmails = (admins ?? []).map((a) => a.email).filter(Boolean) as string[];
       if (adminEmails.length === 0) return NextResponse.json({ sent: 0 });
 
-      const tpl = templateFicheSoumise(reference, ficheId, prospecteurNom);
-      await resend.emails.send({
-        from: FROM_EMAIL,
-        to: adminEmails,
-        subject: tpl.subject,
-        html: tpl.html,
-      });
+      const prospecteurNom = prospecteur ? `${prospecteur.first_name} ${prospecteur.last_name}` : "un prospecteur";
+      const tpl = templateFicheSoumise(fiche.reference, ficheId, prospecteurNom);
+      await resend.emails.send({ from: FROM_EMAIL, to: adminEmails, subject: tpl.subject, html: tpl.html });
       return NextResponse.json({ sent: adminEmails.length });
     }
 
     if (type === "FICHE_AFFECTEE") {
-      const { commercialEmail, commercialPrenom = "Commercial" } = body;
-      if (!commercialEmail) return NextResponse.json({ sent: 0 });
+      if (!fiche.assigned_to) return NextResponse.json({ sent: 0 });
+      const { data: commercial } = await supabase.from("profiles").select("email, first_name").eq("id", fiche.assigned_to).single();
+      if (!commercial?.email) return NextResponse.json({ sent: 0 });
 
-      const tpl = templateFicheAffectee(reference, ficheId, commercialPrenom);
-      await resend.emails.send({
-        from: FROM_EMAIL,
-        to: commercialEmail,
-        subject: tpl.subject,
-        html: tpl.html,
-      });
+      const tpl = templateFicheAffectee(fiche.reference, ficheId, commercial.first_name ?? "Commercial");
+      await resend.emails.send({ from: FROM_EMAIL, to: commercial.email, subject: tpl.subject, html: tpl.html });
       return NextResponse.json({ sent: 1 });
     }
 
     if (type === "FICHE_DECISION") {
-      const { prospecteurEmail, prospecteurPrenom = "Prospecteur", decision, motif } = body;
-      if (!prospecteurEmail || !decision) return NextResponse.json({ sent: 0 });
+      const { decision } = body;
+      if (!decision) return NextResponse.json({ sent: 0 });
+      const { data: prospecteur } = await supabase.from("profiles").select("email, first_name").eq("id", fiche.created_by).single();
+      if (!prospecteur?.email) return NextResponse.json({ sent: 0 });
 
-      const tpl = templateFicheDecision(reference, ficheId, prospecteurPrenom, decision, motif);
-      await resend.emails.send({
-        from: FROM_EMAIL,
-        to: prospecteurEmail,
-        subject: tpl.subject,
-        html: tpl.html,
-      });
+      const tpl = templateFicheDecision(fiche.reference, ficheId, prospecteur.first_name ?? "Prospecteur", decision, motif);
+      await resend.emails.send({ from: FROM_EMAIL, to: prospecteur.email, subject: tpl.subject, html: tpl.html });
       return NextResponse.json({ sent: 1 });
     }
 
     if (type === "FICHE_REJETEE") {
-      const { prospecteurEmail, prospecteurPrenom = "Prospecteur", motif } = body;
-      if (!prospecteurEmail) return NextResponse.json({ sent: 0 });
+      const { data: prospecteur } = await supabase.from("profiles").select("email, first_name").eq("id", fiche.created_by).single();
+      if (!prospecteur?.email) return NextResponse.json({ sent: 0 });
 
-      const tpl = templateFicheRejetee(reference, ficheId, prospecteurPrenom, motif);
-      await resend.emails.send({
-        from: FROM_EMAIL,
-        to: prospecteurEmail,
-        subject: tpl.subject,
-        html: tpl.html,
-      });
+      const tpl = templateFicheRejetee(fiche.reference, ficheId, prospecteur.first_name ?? "Prospecteur", motif);
+      await resend.emails.send({ from: FROM_EMAIL, to: prospecteur.email, subject: tpl.subject, html: tpl.html });
       return NextResponse.json({ sent: 1 });
     }
 

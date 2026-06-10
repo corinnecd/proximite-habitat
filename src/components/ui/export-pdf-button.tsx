@@ -5,13 +5,9 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 interface ExportPdfButtonProps {
-  /** Titre affiché en en-tête du PDF */
   title: string;
-  /** Sous-titre optionnel (ex : période, filtres actifs) */
   subtitle?: string;
-  /** Sélecteur CSS de la zone à imprimer. Par défaut : `main` */
   contentSelector?: string;
-  /** Nom du fichier suggéré (sans extension) */
   filename?: string;
   className?: string;
   variant?: "default" | "outline" | "ghost";
@@ -21,7 +17,6 @@ interface ExportPdfButtonProps {
 export function ExportPdfButton({
   title,
   subtitle,
-  contentSelector = "main",
   filename,
   className,
   variant = "outline",
@@ -32,7 +27,6 @@ export function ExportPdfButton({
   function handlePrint() {
     setLoading(true);
 
-    // Injecte une feuille de style d'impression temporaire
     const styleId = "__pdf-print-style__";
     let style = document.getElementById(styleId) as HTMLStyleElement | null;
     if (!style) {
@@ -45,79 +39,120 @@ export function ExportPdfButton({
       day: "2-digit", month: "long", year: "numeric",
     });
 
+    const safeTitle = title.replace(/"/g, "'");
+    const safeSubtitle = subtitle ? " — " + subtitle.replace(/"/g, "'") : "";
+
     style.textContent = `
       @media print {
-        /* Masquer tout sauf le contenu principal */
+        /* ── Masquer tout sauf le contenu principal ── */
         body > * { display: none !important; }
         body > * > * > main,
         #__next main,
         [data-pdf-content] { display: block !important; }
 
-        /* En-tête PDF */
+        /* ── En-tête et pied de page PDF ── */
         body::before {
-          content: "${title.replace(/"/g, "'")}${subtitle ? " — " + subtitle.replace(/"/g, "'") : ""}";
+          content: "${safeTitle}${safeSubtitle}";
           display: block;
-          font-size: 18px;
+          font-size: 15px;
           font-weight: 700;
           color: #1E3A5F;
-          padding-bottom: 8px;
+          padding-bottom: 6px;
           border-bottom: 2px solid #F97316;
-          margin-bottom: 16px;
+          margin-bottom: 10px;
         }
         body::after {
           content: "Proximité Habitat Conseil · Exporté le ${dateStr}";
           display: block;
-          font-size: 10px;
+          font-size: 9px;
           color: #9ca3af;
           text-align: right;
-          margin-top: 24px;
-          padding-top: 8px;
+          margin-top: 12px;
+          padding-top: 6px;
           border-top: 1px solid #e5e7eb;
         }
 
-        /* Reset général */
-        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        body { background: white !important; font-family: sans-serif; font-size: 11px; }
+        /* ── Reset global ── */
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
+        html, body { background: white !important; font-family: sans-serif; }
 
-        /* Masquer les éléments non pertinents */
+        /* ── Éléments UI à masquer ── */
         header, nav, aside, footer,
         button:not([data-pdf-keep]),
         [role="navigation"],
         .no-print { display: none !important; }
 
-        /* Mise en page */
-        @page { margin: 15mm 12mm; size: A4 portrait; }
-        main { padding: 0 !important; }
+        /* ── Mise en page : 1 seule page A4 ── */
+        @page {
+          size: A4 portrait;
+          margin: 8mm 10mm 10mm 10mm;
+        }
+
+        /* Réduire l'échelle du contenu pour tenir sur 1 page */
+        main {
+          padding: 0 !important;
+          margin: 0 !important;
+          zoom: 0.62;
+          -webkit-print-color-adjust: exact !important;
+        }
+
+        /* Supprimer les espacements excessifs */
+        .space-y-6 > * + * { margin-top: 8px !important; }
+        .space-y-4 > * + * { margin-top: 6px !important; }
+        .space-y-3 > * + * { margin-top: 4px !important; }
+        .space-y-2 > * + * { margin-top: 3px !important; }
+        .gap-4 { gap: 6px !important; }
+        .gap-6 { gap: 8px !important; }
+        .p-6, .p-8 { padding: 8px !important; }
+        .p-4, .p-5 { padding: 6px !important; }
+        .py-6, .py-8 { padding-top: 6px !important; padding-bottom: 6px !important; }
+        .px-6, .px-8 { padding-left: 6px !important; padding-right: 6px !important; }
+
+        /* Textes plus compacts */
+        body { font-size: 9px; line-height: 1.3; }
+        h1 { font-size: 13px !important; }
+        h2 { font-size: 11px !important; }
+        h3 { font-size: 10px !important; }
+        p { font-size: 9px !important; margin: 2px 0 !important; }
+
+        /* Cards */
+        .rounded-2xl, .rounded-xl {
+          border-radius: 3px !important;
+          border: 1px solid #e5e7eb !important;
+          box-shadow: none !important;
+        }
+        .shadow-sm, .shadow, .shadow-md { box-shadow: none !important; }
 
         /* Tableaux */
-        table { border-collapse: collapse; width: 100%; font-size: 10px; }
-        th, td { border: 1px solid #e5e7eb; padding: 4px 6px; text-align: left; }
+        table { border-collapse: collapse; width: 100%; font-size: 8px; }
+        th, td { border: 1px solid #e5e7eb; padding: 3px 5px; text-align: left; }
         th { background: #f1f5f9 !important; font-weight: 600; }
         tr:nth-child(even) td { background: #f9fafb !important; }
 
-        /* Cards → tableau-like */
-        .rounded-2xl, .rounded-xl { border-radius: 4px !important; border: 1px solid #e5e7eb !important; box-shadow: none !important; }
-        .shadow-sm, .shadow { box-shadow: none !important; }
+        /* Badges */
+        .badge, [class*="badge"] { border: 1px solid currentColor !important; font-size: 8px !important; padding: 1px 4px !important; }
 
-        /* Couleurs de texte */
+        /* Couleurs */
         .text-muted-foreground { color: #6b7280 !important; }
         .text-foreground { color: #111827 !important; }
 
-        /* Badges */
-        .badge, [class*="badge"] { border: 1px solid currentColor !important; }
+        /* Graphiques recharts */
+        .recharts-wrapper { page-break-inside: avoid; max-height: 180px !important; }
 
-        /* Graphiques recharts : conserver */
-        .recharts-wrapper { page-break-inside: avoid; }
+        /* Éviter les coupures dans les blocs */
+        .rounded-xl, .rounded-2xl, .card { page-break-inside: avoid; }
+
+        /* Empêcher les débordements de page */
+        main > * { page-break-inside: avoid; }
+        .overflow-y-auto, .overflow-auto { overflow: visible !important; max-height: none !important; }
       }
     `;
 
-    // Optionnel : titre de page navigateur
     const prevTitle = document.title;
     if (filename) document.title = filename;
 
     setTimeout(() => {
       window.print();
-      // Nettoyage après fermeture du dialogue d'impression
       setTimeout(() => {
         if (filename) document.title = prevTitle;
         setLoading(false);

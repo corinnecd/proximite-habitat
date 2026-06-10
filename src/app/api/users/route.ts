@@ -35,8 +35,8 @@ export async function PATCH(request: NextRequest) {
   if (!id) return NextResponse.json({ error: "ID manquant" }, { status: 400 });
   if (id === user.id) return NextResponse.json({ error: "Vous ne pouvez pas modifier votre propre compte" }, { status: 403 });
 
-  // Vérifier que l'utilisateur cible appartient à la même organisation
-  const { data: target } = await supabase.from("profiles").select("organization_id").eq("id", id).single();
+  // Vérifier que l'utilisateur cible appartient à la même organisation (via service client pour éviter la dépendance à la RLS profiles)
+  const { data: target } = await svc.from("profiles").select("organization_id").eq("id", id).single();
   if (!target || target.organization_id !== caller.organization_id) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
 
   const { data: updated, error } = await svc.from("profiles")

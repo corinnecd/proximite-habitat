@@ -428,22 +428,8 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
 
       toast.success("Fiche soumise avec succès !");
 
-      // Email aux admins de l'organisation (non bloquant)
-      const ficheReference = (submittedFiche as { reference?: string } | null)?.reference ?? id;
-      const { data: admins } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("organization_id", profile.organization_id)
-        .eq("role", "ADMIN")
-        .eq("is_active", true);
-      if (admins && admins.length > 0) {
-        await sendEmailFicheSoumise({
-          ficheId: id,
-          reference: ficheReference,
-          prospecteurNom: `${profile.first_name} ${profile.last_name}`,
-          adminEmails: admins.map((a) => a.email),
-        });
-      }
+      // Email aux admins de l'organisation — résolu côté serveur (non bloquant)
+      await sendEmailFicheSoumise(id);
 
       router.push("/");
     } catch {

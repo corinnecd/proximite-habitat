@@ -1,6 +1,7 @@
 /**
  * Helpers côté client pour déclencher les emails transactionnels
  * via l'API route /api/email.
+ * Les emails et noms sont résolus côté serveur à partir du ficheId.
  * Les erreurs sont silencieuses (ne bloquent pas le flux métier).
  */
 
@@ -18,46 +19,22 @@ async function postEmail(body: Record<string, unknown>) {
   }
 }
 
-/** Envoi d'email aux admins quand une fiche est soumise pour validation. */
-export async function sendEmailFicheSoumise(opts: {
-  ficheId: string;
-  reference: string;
-  prospecteurNom: string;
-  adminEmails: string[];
-}) {
-  if (opts.adminEmails.length === 0) return;
-  await postEmail({ type: "FICHE_SOUMISE", ...opts });
+/** Notifie les admins qu'une fiche a été soumise pour validation. */
+export async function sendEmailFicheSoumise(ficheId: string) {
+  await postEmail({ type: "FICHE_SOUMISE", ficheId });
 }
 
-/** Envoi d'email au commercial quand une fiche lui est affectée. */
-export async function sendEmailFicheAffectee(opts: {
-  ficheId: string;
-  reference: string;
-  commercialPrenom: string;
-  commercialEmail: string;
-}) {
-  await postEmail({ type: "FICHE_AFFECTEE", ...opts });
+/** Notifie le commercial affecté qu'une fiche lui a été assignée. */
+export async function sendEmailFicheAffectee(ficheId: string) {
+  await postEmail({ type: "FICHE_AFFECTEE", ficheId });
 }
 
-/** Envoi d'email au prospecteur quand la direction renvoie sa fiche en brouillon. */
-export async function sendEmailFicheRejetee(opts: {
-  ficheId: string;
-  reference: string;
-  prospecteurPrenom: string;
-  prospecteurEmail: string;
-  motif?: string;
-}) {
-  await postEmail({ type: "FICHE_REJETEE", ...opts });
+/** Notifie le prospecteur que la direction a renvoyé sa fiche en brouillon. */
+export async function sendEmailFicheRejetee(ficheId: string, motif?: string) {
+  await postEmail({ type: "FICHE_REJETEE", ficheId, motif });
 }
 
-/** Envoi d'email au prospecteur quand sa fiche est acceptée ou refusée. */
-export async function sendEmailFicheDecision(opts: {
-  ficheId: string;
-  reference: string;
-  decision: "ACCEPTEE" | "REFUSEE";
-  prospecteurPrenom: string;
-  prospecteurEmail: string;
-  motif?: string;
-}) {
-  await postEmail({ type: "FICHE_DECISION", ...opts });
+/** Notifie le prospecteur que sa fiche a été acceptée ou refusée par le commercial. */
+export async function sendEmailFicheDecision(ficheId: string, decision: "ACCEPTEE" | "REFUSEE", motif?: string) {
+  await postEmail({ type: "FICHE_DECISION", ficheId, decision, motif });
 }

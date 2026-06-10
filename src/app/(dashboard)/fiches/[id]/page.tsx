@@ -229,13 +229,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               message: `Votre fiche ${ref} a été renvoyée en brouillon par la direction${comment ? ` : ${comment}` : ""}. Veuillez la corriger avant de la resoumettre.`,
               fiche_id: fiche.id,
             }]);
-            await sendEmailFicheRejetee({
-              ficheId: fiche.id,
-              reference: ref,
-              prospecteurPrenom: prospProfile.first_name,
-              prospecteurEmail: prospProfile.email,
-              motif: comment,
-            });
+            await sendEmailFicheRejetee(fiche.id, comment);
           }
         }
 
@@ -281,14 +275,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   : `La fiche ${ref} a été refusée par le client${comment ? ` : ${comment}` : ""}.`,
                 fiche_id: fiche.id,
               }]);
-              await sendEmailFicheDecision({
-                ficheId: fiche.id,
-                reference: ref,
-                decision: newStatus,
-                prospecteurPrenom: prospProfile.first_name,
-                prospecteurEmail: prospProfile.email,
-                motif: comment,
-              });
+              await sendEmailFicheDecision(fiche.id, newStatus, comment);
             }
           }
           // Direction : vente validée ou refusée par le commercial
@@ -360,12 +347,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             fiche_id: fiche.id,
           }]);
           // Email au commercial
-          await sendEmailFicheAffectee({
-            ficheId: fiche.id,
-            reference: ref,
-            commercialPrenom: commProfile.first_name,
-            commercialEmail: commProfile.email,
-          });
+          await sendEmailFicheAffectee(fiche.id);
         }
 
         // Notification → prospecteur : sa fiche a été validée et affectée

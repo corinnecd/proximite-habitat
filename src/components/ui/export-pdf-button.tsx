@@ -12,6 +12,7 @@ interface ExportPdfButtonProps {
   className?: string;
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "lg" | "icon";
+  printLayout?: "default" | "3col";
 }
 
 export function ExportPdfButton({
@@ -21,6 +22,7 @@ export function ExportPdfButton({
   className,
   variant = "outline",
   size = "sm",
+  printLayout = "default",
 }: ExportPdfButtonProps) {
   const [loading, setLoading] = useState(false);
 
@@ -145,6 +147,29 @@ export function ExportPdfButton({
         /* Empêcher les débordements de page */
         main > * { page-break-inside: avoid; }
         .overflow-y-auto, .overflow-auto { overflow: visible !important; max-height: none !important; }
+
+        ${printLayout === "3col" ? `
+        /* ── Layout 3 colonnes pour fiche détail ── */
+        .lg\\:grid-cols-3 {
+          display: block !important;
+          columns: 3 !important;
+          column-gap: 6px !important;
+        }
+        .lg\\:col-span-2 {
+          display: contents !important;
+        }
+        .lg\\:grid-cols-3 > div:last-child {
+          display: contents !important;
+        }
+        .lg\\:grid-cols-3 .rounded-2xl,
+        .lg\\:grid-cols-3 .rounded-xl,
+        .lg\\:grid-cols-3 > div > .space-y-4 > * {
+          break-inside: avoid !important;
+          display: block !important;
+          margin-bottom: 5px !important;
+        }
+        .space-y-4 { display: contents !important; }
+        ` : ""}
       }
     `;
 

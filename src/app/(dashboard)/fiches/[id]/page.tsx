@@ -389,7 +389,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <>
-      <Topbar title={fiche.reference} actions={<ExportPdfButton title={fiche.reference} subtitle={`Statut : ${STATUS_LABELS[fiche.status]}`} filename={`fiche-${fiche.reference}`} />} />
+      <Topbar title={fiche.reference} actions={<ExportPdfButton title={fiche.reference} subtitle={`Statut : ${STATUS_LABELS[fiche.status]}`} filename={`fiche-${fiche.reference}`} printLayout="3col" />} />
       <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* ── Bannière "Fiche à valider" — visible direction uniquement ──── */}

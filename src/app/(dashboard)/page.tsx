@@ -361,7 +361,8 @@ export default function DashboardPage() {
   const [fichesAffecteesAdmin,  setFichesAffecteesAdmin]  = useState<FicheAffectee[]>([]);
   const [fichesAcceptees,       setFichesAcceptees]       = useState<FicheAffectee[]>([]);
   const [fichesRefusees,        setFichesRefusees]        = useState<FicheAffectee[]>([]);
-  const [fichesArchivees,       setFichesArchivees]       = useState<FicheAffectee[]>([]);
+  const [fichesArchivees,         setFichesArchivees]         = useState<FicheAffectee[]>([]);
+  const [fichesRetractationComm,  setFichesRetractationComm]  = useState<FicheAffectee[]>([]);
   const [prospecteursStats, setProspecteursStats] = useState<ProspecteurStat[]>([]);
   const [commerciauxStats,  setCommerciauxStats]  = useState<CommercialStat[]>([]);
   const [totalVentes,       setTotalVentes]       = useState(0);
@@ -517,13 +518,15 @@ export default function DashboardPage() {
       const commCols =
         "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, updated_at, created_by, " +
         "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name)";
-      const [affecteesRes, accepteesRes, refuseesRes, archiveesRes] = await Promise.all([
+      const [affecteesRes, retractRes, accepteesRes, refuseesRes, archiveesRes] = await Promise.all([
         supabase.from("fiches").select(commCols).eq("status", "AFFECTEE").eq("assigned_to", profile.id).order("updated_at", { ascending: true }),
+        supabase.from("fiches").select(commCols).eq("status", "RETRACTATION").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
         supabase.from("fiches").select(commCols).eq("status", "ACCEPTEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
         supabase.from("fiches").select(commCols).eq("status", "REFUSEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
         supabase.from("fiches").select(commCols).eq("status", "ARCHIVEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
       ]);
       setFichesAffectees((affecteesRes.data as unknown as FicheAffectee[]) ?? []);
+      setFichesRetractationComm((retractRes.data as unknown as FicheAffectee[]) ?? []);
       setFichesAcceptees((accepteesRes.data as unknown as FicheAffectee[]) ?? []);
       setFichesRefusees((refuseesRes.data as unknown as FicheAffectee[]) ?? []);
       setFichesArchivees((archiveesRes.data as unknown as FicheAffectee[]) ?? []);
@@ -1380,9 +1383,48 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* ── Section COMMERCIAL : 3 blocs fiches traitées ───────────────────── */}
+        {/* ── Section COMMERCIAL : 4 blocs fiches traitées ───────────────────── */}
         {isCommercial && (
           <>
+            {/* Attente Validation Client (RETRACTATION) */}
+            {(() => {
+              const list = fichesRetractationComm;
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                        <AlertCircle className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <h3 className="font-semibold text-base">Attente Validation Client</h3>
+                      {list.length > 0 && <span className="bg-purple-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{list.length}</span>}
+                    </div>
+                    <Link href="/fiches?status=RETRACTATION"><Button variant="ghost" size="sm" className="text-muted-foreground gap-1">Voir toutes <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
+                  </div>
+                  {list.length === 0 ? (
+                    <p className="text-sm text-muted-foreground px-1">Aucune fiche en attente de validation.</p>
+                  ) : (
+                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                      {list.map((fiche, idx) => (
+                        <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
+                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors cursor-pointer ${idx < list.length - 1 ? "border-b border-border" : ""}`}>
+                            <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 flex items-center justify-center shrink-0">
+                              <AlertCircle className="w-4 h-4 text-purple-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                              <p className="text-xs text-muted-foreground">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville}` : ""}</p>
+                            </div>
+                            <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Validées par le client */}
             {(() => {
               const list = fichesAcceptees;

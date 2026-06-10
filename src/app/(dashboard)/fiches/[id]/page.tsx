@@ -1003,7 +1003,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               Le prospecteur et le commercial recevront une notification.
             </p>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <label htmlFor="select-commercial" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Commercial
               </label>
               <Select value={selectedCommercial} onValueChange={(v) => setSelectedCommercial(v ?? "")}>
@@ -1080,10 +1080,11 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   </p>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <label htmlFor="textarea-motif" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     {pendingStatus === "BROUILLON" ? "Motif du renvoi" : "Motif du refus"} <span className="text-red-500">*</span>
                   </label>
                   <Textarea
+                    id="textarea-motif"
                     placeholder={pendingStatus === "BROUILLON"
                       ? "Ex : Informations manquantes, photos insuffisantes, adresse incorrecte…"
                       : "Ex : Le client n'est pas propriétaire, logement non éligible, déjà équipé…"
@@ -1107,10 +1108,11 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               </>
             ) : (
               <>
-                <p className="text-sm text-muted-foreground">
+                <label htmlFor="textarea-comment" className="text-sm text-muted-foreground">
                   Commentaire optionnel pour ce changement de statut.
-                </p>
+                </label>
                 <Textarea
+                  id="textarea-comment"
                   placeholder="Observations, informations complémentaires…"
                   value={statusComment}
                   onChange={(e) => setStatusComment(e.target.value)}

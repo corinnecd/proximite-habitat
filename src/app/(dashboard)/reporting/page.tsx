@@ -353,6 +353,8 @@ export default function ReportingPage() {
             {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((p) => (
               <button
                 key={p}
+                type="button"
+                aria-pressed={periodFilter === p}
                 onClick={() => setPeriodFilter(p)}
                 className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
                   periodFilter === p ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-secondary border border-border"

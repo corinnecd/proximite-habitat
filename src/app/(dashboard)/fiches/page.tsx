@@ -106,7 +106,8 @@ export default function FichesPage() {
   const initialStatus = searchParams.get("status") as FicheStatus | null;
   const { profile } = useProfile();
   const isProspecteur = profile?.role === "PROSPECTEUR";
-  const isAdmin = profile?.role === "ADMIN";
+  const isAdmin       = profile?.role === "ADMIN";
+  const isCommercial  = profile?.role === "COMMERCIAL";
 
   const [fiches, setFiches] = useState<FicheRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,7 +132,15 @@ export default function FichesPage() {
 
   const visibleStatuses: FicheStatus[] = isProspecteur
     ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+    : isCommercial
+    ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
     : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+
+  // Labels adaptés selon le rôle
+  const statusLabel = (s: FicheStatus): string => {
+    if (isCommercial && s === "AFFECTEE") return "À traiter";
+    return STATUS_LABELS[s];
+  };
 
   // Chargement des listes de prospecteurs et commerciaux pour les filtres admin
   useEffect(() => {
@@ -451,7 +460,7 @@ export default function FichesPage() {
                 statusFilter === s ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-secondary border"
               }`}
             >
-              {STATUS_LABELS[s]}
+              {statusLabel(s)}
             </button>
           ))}
         </div>

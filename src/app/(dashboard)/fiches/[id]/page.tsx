@@ -136,8 +136,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<FicheStatus | null>(null);
   const [statusComment, setStatusComment] = useState("");
-  const [showValidateDialog, setShowValidateDialog] = useState(false);
   const [selectedCommercial, setSelectedCommercial] = useState("");
+  const [isValidated, setIsValidated] = useState(false);
 
   const { profile } = useProfile();
   const router = useRouter();
@@ -312,6 +312,22 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  function handleFinaliserAffectation() {
+    if (!isValidated && !selectedCommercial) {
+      toast.error("Veuillez valider la fiche et choisir un commercial avant de finaliser.");
+      return;
+    }
+    if (!isValidated) {
+      toast.error("Étape 1/2 manquante — veuillez d'abord valider la fiche.");
+      return;
+    }
+    if (!selectedCommercial) {
+      toast.error("Étape 2/2 manquante — veuillez choisir un commercial.");
+      return;
+    }
+    handleAssign(selectedCommercial);
+  }
+
   async function handleAssign(commercialId: string) {
     if (!fiche || !profile) return;
     setTransitioning(true);
@@ -394,27 +410,106 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* ── Bannière "Fiche à valider" — visible direction uniquement ──── */}
         {fiche.status === "SOUMISE" && profile?.role === "ADMIN" && (
-          <div className="flex items-center gap-3 px-5 py-4 bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-2xl">
-            <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+          <div className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-2xl p-5 space-y-4">
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <p className="font-bold text-sm text-red-700 dark:text-red-400 uppercase tracking-wide">
+                  Fiche à valider
+                </p>
+                <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-0.5">
+                  Soumise par <span className="font-semibold">{creatorName || "un prospecteur"}</span>
+                  {" "}— ces 2 étapes sont requises pour finaliser.
+                </p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="font-bold text-sm text-red-700 dark:text-red-400 uppercase tracking-wide">
-                Fiche à valider
-              </p>
-              <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-0.5">
-                Cette fiche a été soumise par{" "}
-                <span className="font-semibold">{creatorName || "un prospecteur"}</span>
-                {" "}et attend votre affectation à un commercial.
-              </p>
+
+            {/* 2 étapes côte à côte */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Étape 1 : Validation */}
+              <button
+                type="button"
+                onClick={() => setIsValidated((v) => !v)}
+                className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left ${
+                  isValidated
+                    ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30"
+                    : "border-dashed border-border bg-background hover:border-emerald-400"
+                }`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  isValidated ? "bg-emerald-100 dark:bg-emerald-900/40" : "bg-muted"
+                }`}>
+                  <CheckCircle2 className={`w-4 h-4 ${isValidated ? "text-emerald-600" : "text-muted-foreground"}`} />
+                </div>
+                <div>
+                  <p className={`text-xs font-bold uppercase tracking-wide ${isValidated ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                    Étape 1 / 2
+                  </p>
+                  <p className={`text-sm font-semibold ${isValidated ? "text-emerald-800 dark:text-emerald-300" : "text-foreground"}`}>
+                    {isValidated ? "✓ Fiche validée" : "Valider la fiche"}
+                  </p>
+                </div>
+              </button>
+
+              {/* Étape 2 : Affecter */}
+              <div className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all ${
+                selectedCommercial
+                  ? "border-orange-400 bg-orange-50 dark:bg-orange-950/20"
+                  : "border-dashed border-border bg-background"
+              }`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  selectedCommercial ? "bg-orange-100 dark:bg-orange-900/40" : "bg-muted"
+                }`}>
+                  <UserCheck className={`w-4 h-4 ${selectedCommercial ? "text-orange-500" : "text-muted-foreground"}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${selectedCommercial ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"}`}>
+                    Étape 2 / 2
+                  </p>
+                  <Select value={selectedCommercial} onValueChange={(v) => setSelectedCommercial(v ?? "")}>
+                    <SelectTrigger className="h-7 rounded-lg text-xs border-0 bg-transparent p-0 shadow-none focus:ring-0">
+                      <SelectValue placeholder="Choisir un commercial…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {commercials.filter((c) => c.role === "COMMERCIAL").map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.first_name} {c.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
-            <Button
-              onClick={() => { setSelectedCommercial(""); setShowValidateDialog(true); }}
-              className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-semibold"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              Valider la fiche
-            </Button>
+
+            {/* Alerte si une étape manque (affiché seulement quand l'une est faite) */}
+            {(isValidated || selectedCommercial) && (!isValidated || !selectedCommercial) && (
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  {!isValidated
+                    ? "L'étape 1 (validation) est requise avant de pouvoir finaliser."
+                    : "L'étape 2 (affectation à un commercial) est requise avant de pouvoir finaliser."}
+                </p>
+              </div>
+            )}
+
+            {/* CTA Finaliser */}
+            <div className="flex justify-end pt-1">
+              <Button
+                onClick={handleFinaliserAffectation}
+                disabled={transitioning}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-semibold"
+              >
+                {transitioning
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <CheckCircle2 className="w-4 h-4" />}
+                Affecter et finaliser
+              </Button>
+            </div>
           </div>
         )}
 
@@ -507,9 +602,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        {/* ── Assign card ────────────────────────────────────────────────── */}
-        {profile && canAssignFiche(profile.role) &&
-          (fiche.status === "SOUMISE" || fiche.status === "AFFECTEE") && (
+        {/* ── Assign card — réaffectation uniquement (AFFECTEE) ─────────── */}
+        {profile && canAssignFiche(profile.role) && fiche.status === "AFFECTEE" && (
             <div className="bg-card border border-border rounded-2xl px-6 py-4 flex items-center gap-4">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <UserCheck className="w-5 h-5 text-primary" />
@@ -943,6 +1037,38 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
         </div>
+
+        {/* ── Barre de validation bas de page — direction uniquement ───────── */}
+        {fiche.status === "SOUMISE" && profile?.role === "ADMIN" && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card border border-border rounded-2xl px-6 py-4">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <span className={`flex items-center gap-1.5 font-medium ${isValidated ? "text-emerald-600" : "text-muted-foreground"}`}>
+                <CheckCircle2 className="w-4 h-4" />
+                {isValidated ? "Fiche validée" : "Non validée"}
+              </span>
+              <span className="text-border">|</span>
+              <span className={`flex items-center gap-1.5 font-medium ${selectedCommercial ? "text-orange-600" : "text-muted-foreground"}`}>
+                <UserCheck className="w-4 h-4" />
+                {selectedCommercial
+                  ? (() => {
+                      const c = commercials.find((x) => x.id === selectedCommercial);
+                      return c ? `${c.first_name} ${c.last_name}` : "Commercial sélectionné";
+                    })()
+                  : "Aucun commercial"}
+              </span>
+            </div>
+            <Button
+              onClick={handleFinaliserAffectation}
+              disabled={transitioning}
+              className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-semibold"
+            >
+              {transitioning
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <CheckCircle2 className="w-4 h-4" />}
+              Valider la fiche
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ── Dialog : suppression ──────────────────────────────────────────── */}
@@ -965,60 +1091,6 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               className="bg-destructive hover:bg-destructive/90 text-white rounded-xl gap-2">
               {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               Supprimer définitivement
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Dialog : valider la fiche (affecter depuis la bannière) ─────────── */}
-      <Dialog open={showValidateDialog} onOpenChange={(open) => { if (!open) { setShowValidateDialog(false); setSelectedCommercial(""); } }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 className="w-5 h-5" />
-              Valider et affecter la fiche
-            </DialogTitle>
-            <DialogDescription>
-              Sélectionnez le commercial à qui affecter la fiche{" "}
-              <span className="font-semibold">{fiche?.reference}</span>.
-              Le prospecteur et le commercial recevront une notification.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-3 space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="select-commercial" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Commercial
-              </label>
-              <Select value={selectedCommercial} onValueChange={(v) => setSelectedCommercial(v ?? "")}>
-                <SelectTrigger className="rounded-xl bg-card">
-                  <SelectValue placeholder="Choisir un commercial…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {commercials
-                    .filter((c) => c.role === "COMMERCIAL")
-                    .map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.first_name} {c.last_name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <DialogClose render={<Button type="button" variant="outline" className="rounded-xl">Annuler</Button>} />
-            <Button
-              disabled={!selectedCommercial || transitioning}
-              onClick={async () => {
-                if (!selectedCommercial) return;
-                await handleAssign(selectedCommercial);
-                setShowValidateDialog(false);
-                setSelectedCommercial("");
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2"
-            >
-              {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-              Confirmer la validation
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -160,8 +160,9 @@ export function ExportPdfButton({
         /* Masquer : bannière validation, barre bas de page, boutons d'action */
         [data-no-print] { display: none !important; }
 
-        /* Masquer les photos (trop volumineuses) */
-        [data-pdf-photos] { display: none !important; }
+        /* Photos : taille réduite pour tenir dans une colonne */
+        [data-pdf-photos] img { max-height: 60px !important; object-fit: cover; }
+        [data-pdf-photos] .grid { grid-template-columns: repeat(4, 1fr) !important; gap: 3px !important; }
 
         /* ── Transformer le grid 2-col en CSS columns 3 ── */
         .lg\\:grid-cols-3 {

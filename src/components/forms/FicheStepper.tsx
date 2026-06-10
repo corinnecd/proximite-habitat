@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
@@ -17,7 +18,7 @@ import { Step6Photos } from "./steps/Step6Photos";
 import type { UploadedPhoto } from "./steps/Step6Photos";
 import { Step7Signature } from "./steps/Step7Signature";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Save, Send, Loader2, Edit } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Send, Loader2, Edit, X } from "lucide-react";
 import { sendEmailFicheSoumise } from "@/lib/email";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
   const [photos, setPhotos] = useState<File[]>([]);
   const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([]);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const router = useRouter();
   const { profile } = useProfile();
@@ -119,16 +121,20 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Initialise les photos déjà persistées au montage (mode édition)
+  // Initialise les photos déjà persistées au montage (mode édition) — signed URLs (bucket privé)
   useEffect(() => {
-    if (initialPhotos && initialPhotos.length > 0) {
-      const withUrls: UploadedPhoto[] = initialPhotos.map((p) => ({
-        ...p,
-        url: supabase.storage.from("photos").getPublicUrl(p.storage_path).data.publicUrl,
-      }));
+    if (!initialPhotos || initialPhotos.length === 0) return;
+    async function loadSignedUrls() {
+      const withUrls: UploadedPhoto[] = await Promise.all(
+        (initialPhotos ?? []).map(async (p) => {
+          const { data } = await supabase.storage.from("photos").createSignedUrl(p.storage_path, 7200);
+          return { ...p, url: data?.signedUrl ?? "" };
+        })
+      );
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setUploadedPhotos(withUrls);
     }
+    loadSignedUrls();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -158,10 +164,10 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
         .from("fiche_photos")
         .insert({ fiche_id: ficheId, organization_id: profile.organization_id, storage_path: path, original_name: file.name, size: file.size })
         .select("id").single();
-      const { data: urlData } = supabase.storage.from("photos").getPublicUrl(path);
+      const { data: signedData } = await supabase.storage.from("photos").createSignedUrl(path, 7200);
       result.push({
         id: ins?.id ?? crypto.randomUUID(),
-        url: urlData.publicUrl,
+        url: signedData?.signedUrl ?? "",
         original_name: file.name,
         storage_path: path,
       });
@@ -546,15 +552,25 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
         )}
 
         <div className="flex items-center justify-between mt-8 pt-6 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => { setStepDirection("prev"); setCurrentStep((s) => Math.max(0, s - 1)); }}
-            disabled={currentStep === 0}
-            className="rounded-xl gap-2"
-          >
-            <ChevronLeft className="w-4 h-4" />Précédent
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setStepDirection("prev"); setCurrentStep((s) => Math.max(0, s - 1)); }}
+              disabled={currentStep === 0}
+              className="rounded-xl gap-2"
+            >
+              <ChevronLeft className="w-4 h-4" />Précédent
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowCancelConfirm(true)}
+              className="rounded-xl gap-2 text-muted-foreground hover:text-destructive hover:bg-red-50 dark:hover:bg-red-950/30"
+            >
+              <X className="w-4 h-4" />Annuler
+            </Button>
+          </div>
           <div className="flex gap-3">
             <Button
               type="button"
@@ -589,6 +605,40 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
           </div>
         </div>
       </div>
+
+      {/* ── Dialog : confirmation d'annulation ─────────────────────────── */}
+      <Dialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <X className="w-5 h-5" />Annuler les modifications ?
+            </DialogTitle>
+            <DialogDescription>
+              {mode === "create"
+                ? "La fiche sera sauvegardée en brouillon. Vous pourrez la reprendre depuis la liste des fiches."
+                : "Les modifications non sauvegardées seront perdues. La fiche restera dans son état actuel."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <DialogClose>
+              <Button type="button" variant="outline" className="rounded-xl">Continuer la saisie</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={() => {
+                setShowCancelConfirm(false);
+                const id = ficheIdRef.current;
+                if (id) router.push(`/fiches/${id}`);
+                else router.push("/fiches");
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-white rounded-xl gap-2"
+            >
+              <X className="w-4 h-4" />
+              {mode === "create" ? "Quitter (garder le brouillon)" : "Annuler les modifications"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </FormProvider>
   );
 }

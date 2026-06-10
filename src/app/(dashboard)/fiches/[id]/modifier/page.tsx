@@ -92,17 +92,13 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
 
       setInitialPhotos(photos.map((p) => ({ ...p, original_name: p.original_name ?? "" })));
 
-      // Charger l'URL de la signature existante (si elle existe)
-      const { data: signData } = supabase.storage
-        .from("signatures")
-        .getPublicUrl(`${fiche.organization_id}/${id}/signature.png`);
-      if (signData?.publicUrl) {
-        // Vérifier que le fichier existe vraiment avec un HEAD request silencieux
-        try {
-          const res = await fetch(signData.publicUrl, { method: "HEAD" });
-          if (res.ok) setExistingSignatureUrl(signData.publicUrl);
-        } catch { /* pas de signature */ }
-      }
+      // Charger la signature existante via signed URL (bucket privé)
+      try {
+        const { data: signData } = await supabase.storage
+          .from("signatures")
+          .createSignedUrl(`${fiche.organization_id}/${id}/signature.png`, 7200);
+        if (signData?.signedUrl) setExistingSignatureUrl(signData.signedUrl);
+      } catch { /* pas de signature */ }
 
       setLoading(false);
     }

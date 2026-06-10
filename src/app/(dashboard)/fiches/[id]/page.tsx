@@ -50,7 +50,7 @@ interface HistoryEntry {
   created_at: string;
   profiles: { first_name: string; last_name: string } | null;
 }
-interface PhotoEntry { id: string; storage_path: string; original_name: string | null; }
+interface PhotoEntry { id: string; storage_path: string; original_name: string | null; signedUrl: string; }
 interface ProfileEntry { id: string; first_name: string; last_name: string; role: string; }
 
 // ── Status accent colors (same palette as fiches list) ────────────────────────
@@ -159,7 +159,14 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         document.title = `${ficheData.reference} · Proximité Habitat Conseil`;
       }
       setHistory(historyData);
-      setPhotos(photosData);
+      // Signed URLs pour bucket privé (expiry 2h)
+      const photosWithUrls = await Promise.all(
+        (photosData ?? []).map(async (p) => {
+          const { data } = await supabase.storage.from("photos").createSignedUrl(p.storage_path, 7200);
+          return { ...p, signedUrl: data?.signedUrl ?? "" };
+        })
+      );
+      setPhotos(photosWithUrls);
       setCommercials(commercialsData);
       if (ficheData?.created_by) {
         const name = await getProfileFullName(supabase, ficheData.created_by);
@@ -613,7 +620,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                         : undefined
                     : undefined
                 }
-                photoUrls={photos.map((p) => supabase.storage.from("photos").getPublicUrl(p.storage_path).data.publicUrl)}
+                photoUrls={photos.map((p) => p.signedUrl).filter(Boolean)}
               />
 
               {fiche.status === "BROUILLON" && canEdit && (
@@ -845,12 +852,9 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 title={`Photos (${photos.length})`}
               >
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {photos.map((photo) => {
-                    const { data } = supabase.storage.from("photos").getPublicUrl(photo.storage_path);
-                    return (
-                      <PhotoThumb key={photo.id} url={data.publicUrl} name={photo.original_name ?? ""} />
-                    );
-                  })}
+                  {photos.map((photo) => (
+                    <PhotoThumb key={photo.id} url={photo.signedUrl} name={photo.original_name ?? ""} />
+                  ))}
                 </div>
               </SectionCard>
               </div>

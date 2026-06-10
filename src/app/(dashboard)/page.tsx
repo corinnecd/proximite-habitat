@@ -512,18 +512,21 @@ export default function DashboardPage() {
       }
     }
 
-    // ── Fiches AFFECTÉE du commercial connecté ───────────────────────────────
+    // ── Fiches du commercial connecté ───────────────────────────────────────
     if (isCommercial) {
-      const { data: affectees } = await supabase
-        .from("fiches")
-        .select(
-          "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, updated_at, created_by, " +
-          "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name)"
-        )
-        .eq("status", "AFFECTEE")
-        .eq("assigned_to", profile.id)
-        .order("updated_at", { ascending: true }); // plus anciennes en premier
-      setFichesAffectees((affectees as unknown as FicheAffectee[]) ?? []);
+      const commCols =
+        "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, updated_at, created_by, " +
+        "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name)";
+      const [affecteesRes, accepteesRes, refuseesRes, archiveesRes] = await Promise.all([
+        supabase.from("fiches").select(commCols).eq("status", "AFFECTEE").eq("assigned_to", profile.id).order("updated_at", { ascending: true }),
+        supabase.from("fiches").select(commCols).eq("status", "ACCEPTEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
+        supabase.from("fiches").select(commCols).eq("status", "REFUSEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
+        supabase.from("fiches").select(commCols).eq("status", "ARCHIVEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
+      ]);
+      setFichesAffectees((affecteesRes.data as unknown as FicheAffectee[]) ?? []);
+      setFichesAcceptees((accepteesRes.data as unknown as FicheAffectee[]) ?? []);
+      setFichesRefusees((refuseesRes.data as unknown as FicheAffectee[]) ?? []);
+      setFichesArchivees((archiveesRes.data as unknown as FicheAffectee[]) ?? []);
     }
 
     // ── Fiches récentes ──────────────────────────────────────────────────────
@@ -1324,13 +1327,11 @@ export default function DashboardPage() {
         )}
 
 
-        {/* Brouillons en cours (prospecteur) / Fiches traitées (commercial) */}
-        {(isProspecteur || isCommercial) && (
+        {/* Brouillons en cours (prospecteur uniquement) */}
+        {isProspecteur && (
           <Card className="border-0 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-heading text-xl">
-                {isProspecteur ? "Mes brouillons en cours" : "Mes fiches traitées"}
-              </CardTitle>
+              <CardTitle className="font-heading text-xl">Mes brouillons en cours</CardTitle>
               <Link href="/fiches">
                 <Button variant="ghost" size="sm" className="text-muted-foreground">Voir tout →</Button>
               </Link>
@@ -1339,7 +1340,7 @@ export default function DashboardPage() {
               {recentFiches.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>{isProspecteur ? "Aucun brouillon en cours" : "Aucune fiche traitée pour le moment"}</p>
+                  <p>Aucun brouillon en cours</p>
                   <Link href="/fiches/nouvelle">
                     <Button variant="outline" className="mt-4 rounded-xl">Créer une fiche</Button>
                   </Link>
@@ -1362,19 +1363,14 @@ export default function DashboardPage() {
                         <span className="text-xs text-muted-foreground hidden sm:block">
                           {new Date(fiche.created_at).toLocaleDateString("fr-FR")}
                         </span>
-                        {fiche.status === "BROUILLON" && (
-                          <button
-                            type="button"
-                            aria-label={`Supprimer le brouillon ${fiche.reference}`}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setFicheToDelete({ id: fiche.id, reference: fiche.reference });
-                            }}
-                            className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 transition-all"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          aria-label={`Supprimer le brouillon ${fiche.reference}`}
+                          onClick={(e) => { e.preventDefault(); setFicheToDelete({ id: fiche.id, reference: fiche.reference }); }}
+                          className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1382,6 +1378,128 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* ── Section COMMERCIAL : 3 blocs fiches traitées ───────────────────── */}
+        {isCommercial && (
+          <>
+            {/* Validées par le client */}
+            {(() => {
+              const list = fichesAcceptees;
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <h3 className="font-semibold text-base">Validées par le client</h3>
+                      {list.length > 0 && <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{list.length}</span>}
+                    </div>
+                    <Link href="/fiches?status=ACCEPTEE"><Button variant="ghost" size="sm" className="text-muted-foreground gap-1">Voir toutes <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
+                  </div>
+                  {list.length === 0 ? (
+                    <p className="text-sm text-muted-foreground px-1">Aucune fiche validée pour le moment.</p>
+                  ) : (
+                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                      {list.map((fiche, idx) => (
+                        <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
+                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer ${idx < list.length - 1 ? "border-b border-border" : ""}`}>
+                            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center shrink-0">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                              <p className="text-xs text-muted-foreground">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville}` : ""}</p>
+                            </div>
+                            <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Refusées par le client */}
+            {(() => {
+              const list = fichesRefusees;
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                        <XCircle className="w-4 h-4 text-red-500" />
+                      </div>
+                      <h3 className="font-semibold text-base">Refusées par le client</h3>
+                      {list.length > 0 && <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{list.length}</span>}
+                    </div>
+                    <Link href="/fiches?status=REFUSEE"><Button variant="ghost" size="sm" className="text-muted-foreground gap-1">Voir toutes <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
+                  </div>
+                  {list.length === 0 ? (
+                    <p className="text-sm text-muted-foreground px-1">Aucune fiche refusée.</p>
+                  ) : (
+                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                      {list.map((fiche, idx) => (
+                        <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
+                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-red-50/40 dark:hover:bg-red-950/20 transition-colors cursor-pointer ${idx < list.length - 1 ? "border-b border-border" : ""}`}>
+                            <div className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center shrink-0">
+                              <XCircle className="w-4 h-4 text-red-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                              <p className="text-xs text-muted-foreground">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville}` : ""}</p>
+                            </div>
+                            <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Archivées */}
+            {(() => {
+              const list = fichesArchivees;
+              return (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800/40 flex items-center justify-center">
+                        <Archive className="w-4 h-4 text-slate-500" />
+                      </div>
+                      <h3 className="font-semibold text-base">Archivées</h3>
+                      {list.length > 0 && <span className="bg-slate-400 text-white text-xs font-bold px-2 py-0.5 rounded-full">{list.length}</span>}
+                    </div>
+                    <Link href="/fiches?status=ARCHIVEE"><Button variant="ghost" size="sm" className="text-muted-foreground gap-1">Voir toutes <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
+                  </div>
+                  {list.length === 0 ? (
+                    <p className="text-sm text-muted-foreground px-1">Aucune fiche archivée.</p>
+                  ) : (
+                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                      {list.map((fiche, idx) => (
+                        <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
+                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/20 transition-colors cursor-pointer ${idx < list.length - 1 ? "border-b border-border" : ""}`}>
+                            <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800/40 flex items-center justify-center shrink-0">
+                              <Archive className="w-4 h-4 text-slate-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                              <p className="text-xs text-muted-foreground">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville}` : ""}</p>
+                            </div>
+                            <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </>
         )}
 
         {/* Historique prospecteur */}

@@ -689,7 +689,9 @@ export default function DashboardPage() {
 
   const visibleStatuses: FicheStatus[] = isProspecteur
     ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
-    : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+    : isCommercial
+    ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
+    : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
   // ── Skeleton ─────────────────────────────────────────────────────────────
   if (profileLoading || loading) {
@@ -954,7 +956,11 @@ export default function DashboardPage() {
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex items-center justify-between mb-3">{STATUS_ICONS[status]}</div>
                   <AnimatedCounter value={counts[status]} className="text-2xl sm:text-3xl font-bold" />
-                  <div className="text-xs mt-2 opacity-70 overflow-hidden"><FicheStatusBadge status={status} short /></div>
+                  <div className="text-xs mt-2 opacity-70 overflow-hidden">
+                    {isCommercial && status === "AFFECTEE"
+                      ? <span className="inline-flex items-center rounded-full px-2 py-0.5 font-medium bg-orange-100 text-orange-700">À traiter</span>
+                      : <FicheStatusBadge status={status} short />}
+                  </div>
                 </CardContent>
               </Card>
             </Link>

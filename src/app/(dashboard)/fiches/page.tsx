@@ -180,6 +180,11 @@ export default function FichesPage() {
       query = query.eq("created_by", profile.id);
     }
 
+    // Commercial : ne voit que les fiches qui lui sont affectées
+    if (role === "COMMERCIAL" && profile?.id) {
+      query = query.eq("assigned_to", profile.id);
+    }
+
     // Filtres direction
     if (_isAdmin) {
       const dates = getPeriodDates(periodFilter);

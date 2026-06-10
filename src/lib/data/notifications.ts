@@ -18,14 +18,55 @@ export async function getNotifications(
   db: Db,
   userId: string,
   range: { from: number; to: number },
+  search?: string,
+  dateFrom?: string,
+  dateTo?: string,
+  types?: string[],
 ): Promise<Notification[]> {
-  const { data } = await db
+  let query = db
     .from("notifications")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .range(range.from, range.to);
+
+  if (search?.trim()) {
+    const term = `%${search.trim()}%`;
+    query = query.or(`title.ilike.${term},message.ilike.${term}`);
+  }
+  if (dateFrom) query = query.gte("created_at", dateFrom);
+  if (dateTo)   query = query.lte("created_at", dateTo);
+  if (types && types.length > 0) query = query.in("type", types);
+
+  const { data } = await query;
   return (data as Notification[]) ?? [];
+}
+
+/** Insère une notification pour un ou plusieurs utilisateurs (silencieux en cas d'erreur). */
+export async function createNotifications(
+  db: Db,
+  rows: Array<{
+    user_id: string;
+    organization_id: string;
+    type: string;
+    title: string;
+    message: string;
+    fiche_id?: string | null;
+  }>
+) {
+  if (!rows.length) return;
+  await db.from("notifications").insert(rows);
+}
+
+/** Récupère les ids de tous les admins d'une organisation. */
+export async function getAdminIds(db: Db, organizationId: string): Promise<string[]> {
+  const { data } = await db
+    .from("profiles")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("role", "ADMIN")
+    .eq("is_active", true);
+  return (data ?? []).map((r) => r.id);
 }
 
 /** Marque une notification comme lue. */

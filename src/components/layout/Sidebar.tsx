@@ -107,7 +107,7 @@ export function Sidebar() {
 
       const [{ count: ficheCount }, { count: notifCount }, { count: soumisesCount }] = await Promise.all([
         ficheQuery,
-        supabase.from("notifications").select("id", { count: "exact", head: true }).eq("read", false),
+        supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", profile!.id).eq("read", false),
         profile?.role === "ADMIN"
           ? supabase.from("fiches").select("id", { count: "exact", head: true }).eq("status", "SOUMISE")
           : Promise.resolve({ count: 0 }),

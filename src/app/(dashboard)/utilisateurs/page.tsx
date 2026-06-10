@@ -217,7 +217,7 @@ export default function UtilisateursPage() {
             </div>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger>
+            <DialogTrigger asChild>
               <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2 shrink-0">
                 <UserPlus className="w-4 h-4" />Nouvel utilisateur
               </Button>

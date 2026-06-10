@@ -158,7 +158,7 @@ export default function ProfilPage() {
 
   return (
     <>
-      <Topbar title="Mon profil" />
+      <Topbar title="Mon profil" actions={<ExportPdfButton title="Mon profil" filename="profil" />} />
       <div className="p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
 
         {/* ── Hero card ─────────────────────────────────────────────────── */}

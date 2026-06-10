@@ -79,11 +79,11 @@ const STATUS_BY_ROLE: Record<string, NotifType[]> = {
 
 // Badge couleur par type sur la carte notification
 const TYPE_BADGE: Record<string, { label: string; cls: string }> = {
-  FICHE_SOUMISE:  { label: "Soumise",            cls: "bg-blue-100 text-blue-700"     },
-  FICHE_AFFECTEE: { label: "Affectée",           cls: "bg-purple-100 text-purple-700" },
-  FICHE_ACCEPTEE: { label: "Acceptée",           cls: "bg-emerald-100 text-emerald-700"},
-  FICHE_REFUSEE:  { label: "Refusée",            cls: "bg-red-100 text-red-700"       },
-  FICHE_REJETEE:  { label: "Brouillon",          cls: "bg-orange-100 text-orange-700" },
+  FICHE_SOUMISE:  { label: "Soumise",   cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"         },
+  FICHE_AFFECTEE: { label: "Affectée",  cls: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
+  FICHE_ACCEPTEE: { label: "Acceptée",  cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+  FICHE_REFUSEE:  { label: "Refusée",   cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"             },
+  FICHE_REJETEE:  { label: "Brouillon", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" },
 };
 
 export default function NotificationsPage() {
@@ -256,7 +256,7 @@ export default function NotificationsPage() {
           <div className="flex flex-wrap gap-2">
             {(["all", "today", "week", "month", "custom"] as PeriodFilter[]).map((p) => (
               <button key={p} type="button" onClick={() => handlePeriodChange(p)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border
                   ${period === p
                     ? "bg-primary text-primary-foreground border-primary shadow-sm"
                     : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
@@ -309,7 +309,7 @@ export default function NotificationsPage() {
                   const active = selectedTypes.includes(value);
                   return (
                     <button key={value} type="button" onClick={() => toggleType(value)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border
                         ${active
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
                           : "bg-background border-border hover:border-primary/40 hover:text-foreground text-muted-foreground"

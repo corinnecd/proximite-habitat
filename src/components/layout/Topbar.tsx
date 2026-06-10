@@ -157,6 +157,7 @@ export function Topbar({ title, actions }: { title?: string; actions?: React.Rea
                     )}
                     <button
                       type="button"
+                      aria-label="Fermer les notifications"
                       onClick={() => setDropdownOpen(false)}
                       className="p-1 rounded-lg hover:bg-secondary transition-colors text-muted-foreground"
                     >

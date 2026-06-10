@@ -766,13 +766,13 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   {history.map((entry, idx) => {
                     // Couleur du point selon le nouveau statut
                     const dotColors: Record<string, string> = {
-                      SOUMISE:      "border-blue-500 bg-blue-50",
-                      AFFECTEE:     "border-orange-500 bg-orange-50",
-                      ACCEPTEE:     "border-emerald-500 bg-emerald-50",
-                      RETRACTATION: "border-purple-500 bg-purple-50",
-                      REFUSEE:      "border-red-500 bg-red-50",
-                      ARCHIVEE:     "border-slate-400 bg-slate-50",
-                      BROUILLON:    "border-slate-400 bg-slate-50",
+                      SOUMISE:      "border-blue-500 bg-blue-50 dark:bg-blue-950/40",
+                      AFFECTEE:     "border-orange-500 bg-orange-50 dark:bg-orange-950/40",
+                      ACCEPTEE:     "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40",
+                      RETRACTATION: "border-purple-500 bg-purple-50 dark:bg-purple-950/40",
+                      REFUSEE:      "border-red-500 bg-red-50 dark:bg-red-950/40",
+                      ARCHIVEE:     "border-slate-400 bg-slate-50 dark:bg-slate-800/40",
+                      BROUILLON:    "border-slate-400 bg-slate-50 dark:bg-slate-800/40",
                     };
                     const innerColors: Record<string, string> = {
                       SOUMISE:      "bg-blue-500",

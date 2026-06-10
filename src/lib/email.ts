@@ -6,11 +6,13 @@
 
 async function postEmail(body: Record<string, unknown>) {
   try {
-    await fetch("/api/email", {
+    const res = await fetch("/api/email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    const data = await res.json().catch(() => ({}));
+    if (data?.skipped) console.warn("[email] Email non envoyé — RESEND_API_KEY manquant en production");
   } catch (err) {
     console.warn("[email] Échec non bloquant :", err);
   }

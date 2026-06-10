@@ -32,6 +32,31 @@ import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { sendEmailFicheAffectee, sendEmailFicheDecision } from "@/lib/email";
 import { toast } from "sonner";
 
+// ── Filtre période dashboard ──────────────────────────────────────────────────
+type DashPeriod = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER";
+const DASH_PERIOD_LABELS: Record<DashPeriod, string> = {
+  ALL: "Toutes les dates", TODAY: "Aujourd'hui",
+  WEEK: "Cette semaine", MONTH: "Ce mois", QUARTER: "Ce trimestre",
+};
+function getDashPeriodDates(period: DashPeriod): { from: string; to: string } | null {
+  if (period === "ALL") return null;
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  if (period === "TODAY") { const t = fmt(now); return { from: t, to: t }; }
+  if (period === "WEEK") {
+    const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const mon = new Date(now); mon.setDate(now.getDate() - day);
+    return { from: fmt(mon), to: fmt(now) };
+  }
+  if (period === "MONTH") return { from: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, to: fmt(now) };
+  if (period === "QUARTER") {
+    const q = Math.floor(now.getMonth() / 3);
+    return { from: `${now.getFullYear()}-${pad(q * 3 + 1)}-01`, to: fmt(now) };
+  }
+  return null;
+}
+
 // ── Styles compteurs ──────────────────────────────────────────────────────────
 
 const STATUS_ICONS: Record<FicheStatus, React.ReactNode> = {
@@ -353,9 +378,10 @@ export default function DashboardPage() {
   const [traiterDecision, setTraiterDecision] = useState<"RETRACTATION" | "REFUSEE">("RETRACTATION");
   const [traiterComment, setTraiterComment] = useState("");
   const [traiting, setTraiting] = useState(false);
+  const [dashPeriod, setDashPeriod] = useState<DashPeriod>("ALL");
   const supabase = createClient();
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (period: DashPeriod = "ALL") => {
     if (!profile) return;
     const isProspecteur = profile.role === "PROSPECTEUR";
     try {
@@ -367,12 +393,21 @@ export default function DashboardPage() {
       ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
       : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
+    const dates = getDashPeriodDates(period);
     const results = await Promise.all(
       statusesToCount.map(async (s) => {
-        const count = await countFichesByStatus(
-          supabase, s, isProspecteur ? { createdBy: profile.id } : undefined
-        );
-        return [s, count] as const;
+        if (isProspecteur) {
+          const count = await countFichesByStatus(supabase, s, { createdBy: profile.id });
+          return [s, count] as const;
+        }
+        let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
+        // Commercial : uniquement ses fiches affectées
+        if (isCommercial) q = q.eq("assigned_to", profile.id);
+        if (dates) {
+          q = q.gte("created_at", `${dates.from}T00:00:00Z`).lte("created_at", `${dates.to}T23:59:59Z`);
+        }
+        const { count } = await q;
+        return [s, count ?? 0] as const;
       })
     );
     const allCounts: Record<FicheStatus, number> = {
@@ -550,17 +585,17 @@ export default function DashboardPage() {
   useEffect(() => {
     if (profileLoading || !profile) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchData();
+    fetchData(dashPeriod);
 
     const channel = supabase
       .channel("fiches-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "fiches" }, () => {
-        fetchData();
+        fetchData(dashPeriod);
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [profile, profileLoading, supabase, fetchData]);
+  }, [profile, profileLoading, supabase, fetchData, dashPeriod]);
 
   // ── Affectation rapide ───────────────────────────────────────────────────────
   async function handleQuickAssign() {
@@ -888,6 +923,28 @@ export default function DashboardPage() {
             </Button>
           </Link>
         </div>
+
+        {/* Filtre période — direction uniquement */}
+        {!isProspecteur && (
+          <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              <CalendarDays className="w-3.5 h-3.5" />Période de soumission
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(DASH_PERIOD_LABELS) as DashPeriod[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setDashPeriod(p)}
+                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
+                    dashPeriod === p ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-secondary border border-border"
+                  }`}
+                >
+                  {DASH_PERIOD_LABELS[p]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Compteurs par statut */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">

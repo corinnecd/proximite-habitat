@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Topbar } from "@/components/layout/Topbar";
+import { ExportPdfButton } from "@/components/ui/export-pdf-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import { getFichesForStats } from "@/lib/data/fiches";
@@ -314,7 +315,10 @@ export default function ReportingPage() {
 
   return (
     <>
-      <Topbar title={isCommercial ? "Mon reporting" : "Reporting direction"} />
+      <Topbar
+        title={isCommercial ? "Mon reporting" : "Reporting direction"}
+        actions={<ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${PERIOD_LABELS[periodFilter]}`} filename="reporting" />}
+      />
       <div className="p-6 lg:p-8 space-y-6">
 
         {/* Sous-titre contextuel + bouton refresh */}

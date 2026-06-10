@@ -25,7 +25,8 @@ import { useProfile } from "@/lib/hooks/use-profile";
 import {
   getAvailableTransitions, canAssignFiche, canEditFiche, STATUS_LABELS,
 } from "@/lib/permissions";
-import { sendEmailFicheAffectee, sendEmailFicheDecision } from "@/lib/email";
+import { sendEmailFicheAffectee, sendEmailFicheDecision, sendEmailFicheRejetee } from "@/lib/email";
+import { createNotifications, getAdminIds } from "@/lib/data/notifications";
 import type { FicheStatus, Fiche } from "@/types/database";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -205,28 +206,106 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#1E3A5F", "#F97316", "#10B981", "#F59E0B"] });
     }
 
-    // Email au prospecteur pour ACCEPTEE (Validée) ou REFUSEE (non bloquant)
-    if ((newStatus === "ACCEPTEE" || newStatus === "REFUSEE") && fiche.created_by) {
-      void (async () => {
-        try {
+    // Notifications + email (non bloquant)
+    void (async () => {
+      try {
+        const orgId = profile.organization_id;
+        const ref = fiche.reference;
+
+        if (newStatus === "BROUILLON" && fiche.created_by) {
+          // Direction a rejeté la fiche vers BROUILLON — notif + email au prospecteur
           const { data: prospProfile } = await supabase
             .from("profiles")
             .select("email, first_name")
             .eq("id", fiche.created_by)
             .single();
           if (prospProfile) {
-            await sendEmailFicheDecision({
+            await createNotifications(supabase, [{
+              user_id: fiche.created_by,
+              organization_id: orgId,
+              type: "FICHE_REJETEE",
+              title: "Fiche renvoyée en brouillon",
+              message: `Votre fiche ${ref} a été renvoyée en brouillon par la direction${comment ? ` : ${comment}` : ""}. Veuillez la corriger avant de la resoumettre.`,
+              fiche_id: fiche.id,
+            }]);
+            await sendEmailFicheRejetee({
               ficheId: fiche.id,
-              reference: fiche.reference,
-              decision: newStatus,
+              reference: ref,
               prospecteurPrenom: prospProfile.first_name,
               prospecteurEmail: prospProfile.email,
               motif: comment,
             });
           }
-        } catch { /* silencieux */ }
-      })();
-    }
+        }
+
+        if (newStatus === "SOUMISE") {
+          const adminIds = await getAdminIds(supabase, orgId);
+          const prospName = `${profile.first_name} ${profile.last_name}`;
+          // Direction : nouvelle fiche soumise
+          await createNotifications(supabase, adminIds.map((uid) => ({
+            user_id: uid,
+            organization_id: orgId,
+            type: "FICHE_SOUMISE",
+            title: "Nouvelle fiche à valider",
+            message: `${prospName} a soumis la fiche ${ref} — en attente de validation.`,
+            fiche_id: fiche.id,
+          })));
+          // Prospecteur : confirmation de soumission
+          await createNotifications(supabase, [{
+            user_id: profile.id,
+            organization_id: orgId,
+            type: "FICHE_SOUMISE",
+            title: "Fiche soumise à la direction",
+            message: `Votre fiche ${ref} a bien été soumise et est en attente de validation par la direction.`,
+            fiche_id: fiche.id,
+          }]);
+        }
+
+        if (newStatus === "ACCEPTEE" || newStatus === "REFUSEE") {
+          // Prospecteur : vente validée ou refusée
+          if (fiche.created_by) {
+            const { data: prospProfile } = await supabase
+              .from("profiles")
+              .select("email, first_name")
+              .eq("id", fiche.created_by)
+              .single();
+            if (prospProfile) {
+              await createNotifications(supabase, [{
+                user_id: fiche.created_by,
+                organization_id: orgId,
+                type: newStatus === "ACCEPTEE" ? "FICHE_ACCEPTEE" : "FICHE_REFUSEE",
+                title: newStatus === "ACCEPTEE" ? "Vente validée 🎉" : "Vente refusée",
+                message: newStatus === "ACCEPTEE"
+                  ? `Félicitations ! La fiche ${ref} a été validée par le client.`
+                  : `La fiche ${ref} a été refusée par le client${comment ? ` : ${comment}` : ""}.`,
+                fiche_id: fiche.id,
+              }]);
+              await sendEmailFicheDecision({
+                ficheId: fiche.id,
+                reference: ref,
+                decision: newStatus,
+                prospecteurPrenom: prospProfile.first_name,
+                prospecteurEmail: prospProfile.email,
+                motif: comment,
+              });
+            }
+          }
+          // Direction : vente validée ou refusée par le commercial
+          const commercialName = `${profile.first_name} ${profile.last_name}`;
+          const adminIds = await getAdminIds(supabase, orgId);
+          await createNotifications(supabase, adminIds.map((uid) => ({
+            user_id: uid,
+            organization_id: orgId,
+            type: newStatus === "ACCEPTEE" ? "FICHE_ACCEPTEE" : "FICHE_REFUSEE",
+            title: newStatus === "ACCEPTEE" ? "Vente validée par le client" : "Vente refusée par le client",
+            message: newStatus === "ACCEPTEE"
+              ? `${commercialName} a obtenu la validation du client sur la fiche ${ref}.`
+              : `${commercialName} a indiqué un refus du client sur la fiche ${ref}${comment ? ` : ${comment}` : ""}.`,
+            fiche_id: fiche.id,
+          })));
+        }
+      } catch { /* silencieux */ }
+    })();
 
     setTransitioning(false);
   }
@@ -258,23 +337,50 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     setFiche({ ...fiche, assigned_to: commercialId, status: "AFFECTEE" });
     setTransitioning(false);
 
-    // Email au commercial (non bloquant)
-    const commercial = commercials.find((c) => c.id === commercialId);
-    if (commercial) {
-      const { data: commProfile } = await supabase
-        .from("profiles")
-        .select("email, first_name")
-        .eq("id", commercialId)
-        .single();
-      if (commProfile) {
-        await sendEmailFicheAffectee({
-          ficheId: fiche.id,
-          reference: fiche.reference,
-          commercialPrenom: commProfile.first_name,
-          commercialEmail: commProfile.email,
-        });
-      }
-    }
+    // Email + notifications (non bloquant)
+    void (async () => {
+      try {
+        const orgId = profile.organization_id;
+        const ref = fiche.reference;
+        const { data: commProfile } = await supabase
+          .from("profiles")
+          .select("email, first_name, last_name")
+          .eq("id", commercialId)
+          .single();
+
+        if (commProfile) {
+          // Notification → commercial : fiche affectée
+          await createNotifications(supabase, [{
+            user_id: commercialId,
+            organization_id: orgId,
+            type: "FICHE_AFFECTEE",
+            title: "Nouvelle fiche affectée",
+            message: `La fiche ${ref} vous a été affectée par la direction.`,
+            fiche_id: fiche.id,
+          }]);
+          // Email au commercial
+          await sendEmailFicheAffectee({
+            ficheId: fiche.id,
+            reference: ref,
+            commercialPrenom: commProfile.first_name,
+            commercialEmail: commProfile.email,
+          });
+        }
+
+        // Notification → prospecteur : sa fiche a été validée et affectée
+        if (fiche.created_by) {
+          const commName = commProfile ? `${commProfile.first_name} ${commProfile.last_name}` : "un commercial";
+          await createNotifications(supabase, [{
+            user_id: fiche.created_by,
+            organization_id: orgId,
+            type: "FICHE_AFFECTEE",
+            title: "Fiche validée et affectée",
+            message: `Votre fiche ${ref} a été validée par la direction et affectée à ${commName}.`,
+            fiche_id: fiche.id,
+          }]);
+        }
+      } catch { /* silencieux */ }
+    })();
 
     router.refresh();
   }
@@ -940,7 +1046,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className={`flex items-center gap-2 ${
-              pendingStatus === "REFUSEE"
+              pendingStatus === "REFUSEE" || pendingStatus === "BROUILLON"
                 ? "text-red-600 dark:text-red-400"
                 : pendingStatus === "RETRACTATION"
                   ? "text-purple-600 dark:text-purple-400"
@@ -950,31 +1056,38 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             }`}>
               {pendingStatus === "REFUSEE"
                 ? <><Ban className="w-5 h-5" />Refuser la fiche</>
-                : pendingStatus === "RETRACTATION"
-                  ? <><CheckCircle2 className="w-5 h-5" />Attente Validation Client</>
-                  : pendingStatus === "ACCEPTEE"
-                    ? <><CheckCircle2 className="w-5 h-5" />Valider la fiche</>
-                    : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
+                : pendingStatus === "BROUILLON"
+                  ? <><Ban className="w-5 h-5" />Renvoyer en brouillon</>
+                  : pendingStatus === "RETRACTATION"
+                    ? <><CheckCircle2 className="w-5 h-5" />Attente Validation Client</>
+                    : pendingStatus === "ACCEPTEE"
+                      ? <><CheckCircle2 className="w-5 h-5" />Valider la fiche</>
+                      : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
               }
             </DialogTitle>
           </DialogHeader>
 
           <div className="py-2 space-y-3">
-            {pendingStatus === "REFUSEE" ? (
+            {(pendingStatus === "REFUSEE" || pendingStatus === "BROUILLON") ? (
               <>
-                {/* Alerte motif obligatoire */}
                 <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
                   <Ban className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                   <p className="text-xs text-red-700 dark:text-red-300">
-                    Le motif du refus est <span className="font-bold">obligatoire</span>. Il sera transmis au prospecteur et conservé dans l&apos;historique de la fiche.
+                    {pendingStatus === "BROUILLON"
+                      ? <>Le motif du renvoi est <span className="font-bold">obligatoire</span>. Il sera transmis au prospecteur par email et conservé dans l&apos;historique.</>
+                      : <>Le motif du refus est <span className="font-bold">obligatoire</span>. Il sera transmis au prospecteur et conservé dans l&apos;historique de la fiche.</>
+                    }
                   </p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Motif du refus <span className="text-red-500">*</span>
+                    {pendingStatus === "BROUILLON" ? "Motif du renvoi" : "Motif du refus"} <span className="text-red-500">*</span>
                   </label>
                   <Textarea
-                    placeholder="Ex : Le client n'est pas propriétaire, logement non éligible, déjà équipé…"
+                    placeholder={pendingStatus === "BROUILLON"
+                      ? "Ex : Informations manquantes, photos insuffisantes, adresse incorrecte…"
+                      : "Ex : Le client n'est pas propriétaire, logement non éligible, déjà équipé…"
+                    }
                     value={statusComment}
                     onChange={(e) => setStatusComment(e.target.value)}
                     rows={4}
@@ -986,7 +1099,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   />
                   {statusComment.trim().length === 0 && (
                     <p className="text-xs text-red-500 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3" />Veuillez saisir un motif de refus.
+                      <AlertTriangle className="w-3 h-3" />
+                      {pendingStatus === "BROUILLON" ? "Veuillez saisir un motif de renvoi." : "Veuillez saisir un motif de refus."}
                     </p>
                   )}
                 </div>
@@ -1015,15 +1129,15 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               onClick={async () => {
                 if (!pendingStatus) return;
                 // Motif obligatoire pour REFUSEE
-                if (pendingStatus === "REFUSEE" && !statusComment.trim()) {
-                  toast.error("Veuillez saisir un motif de refus avant de confirmer.");
+                if ((pendingStatus === "REFUSEE" || pendingStatus === "BROUILLON") && !statusComment.trim()) {
+                  toast.error(pendingStatus === "BROUILLON" ? "Veuillez saisir un motif de renvoi avant de confirmer." : "Veuillez saisir un motif de refus avant de confirmer.");
                   return;
                 }
                 await handleStatusChange(pendingStatus, statusComment.trim() || undefined);
                 setPendingStatus(null);
                 setStatusComment("");
               }}
-              disabled={transitioning || (pendingStatus === "REFUSEE" && !statusComment.trim())}
+              disabled={transitioning || ((pendingStatus === "REFUSEE" || pendingStatus === "BROUILLON") && !statusComment.trim())}
               className={`rounded-xl gap-2 text-white ${
                 pendingStatus === "REFUSEE"
                   ? "bg-red-600 hover:bg-red-700"

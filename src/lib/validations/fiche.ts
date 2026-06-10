@@ -7,8 +7,8 @@ export const step1Schema = z.object({
   prospect_cp: z.string().regex(/^\d{5}$/, "Code postal invalide (5 chiffres)"),
   prospect_ville: z.string().min(1, "La ville est requise"),
   prospect_telephone: z.string().regex(/^(?:(?:\+33|0)\s?[1-9])(?:[\s.-]?\d{2}){4}$/, "Numéro de téléphone invalide"),
-  disponibilites: z.array(z.string()),
-  date_visite: z.string().nullable().optional(),
+  disponibilites: z.array(z.string()).min(1, "Sélectionnez au moins une disponibilité"),
+  date_visite: z.string().min(1, "La date de visite est requise"),
   heure_visite: z.string().nullable().optional(),
 });
 

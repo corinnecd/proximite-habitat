@@ -115,6 +115,19 @@ export function Sidebar() {
       setBadges({ fiches: ficheCount ?? 0, notifs: notifCount ?? 0, soumises: soumisesCount ?? 0 });
     }
     fetchBadges();
+
+    // Realtime : met à jour le badge "fiches à valider" dès qu'une fiche change de statut
+    const channel = supabase
+      .channel(`sidebar-badges-${profile.id}-${crypto.randomUUID()}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "fiches" }, () => {
+        fetchBadges();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${profile.id}` }, () => {
+        fetchBadges();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleLogout() {

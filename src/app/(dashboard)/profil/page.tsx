@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Topbar } from "@/components/layout/Topbar";
+import { ExportPdfButton } from "@/components/ui/export-pdf-button";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { ROLE_LABELS } from "@/lib/permissions";
@@ -139,7 +140,7 @@ export default function ProfilPage() {
   if (loading || !profile) {
     return (
       <>
-        <Topbar title="Mon profil" />
+        <Topbar title="Mon profil" actions={<ExportPdfButton title="Mon profil" filename="profil" />} />
         <div className="p-6 lg:p-8 max-w-2xl mx-auto animate-pulse space-y-4">
           <div className="h-36 bg-card rounded-2xl border border-border" />
           <div className="h-64 bg-card rounded-2xl border border-border" />

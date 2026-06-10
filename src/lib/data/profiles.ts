@@ -32,3 +32,12 @@ export async function getAllProfiles(db: Db): Promise<Profile[]> {
 export async function setProfileActive(db: Db, id: string, isActive: boolean) {
   return db.from("profiles").update({ is_active: isActive }).eq("id", id);
 }
+
+/** Met à jour les données modifiables d'un profil (prénom, nom, téléphone, rôle). */
+export async function updateProfile(
+  db: Db,
+  id: string,
+  data: { first_name: string; last_name: string; phone: string | null; role: import("@/types/database").UserRole }
+) {
+  return db.from("profiles").update(data).eq("id", id).select().single();
+}

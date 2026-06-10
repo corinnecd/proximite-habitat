@@ -37,6 +37,17 @@ export async function sendEmailFicheAffectee(opts: {
   await postEmail({ type: "FICHE_AFFECTEE", ...opts });
 }
 
+/** Envoi d'email au prospecteur quand la direction renvoie sa fiche en brouillon. */
+export async function sendEmailFicheRejetee(opts: {
+  ficheId: string;
+  reference: string;
+  prospecteurPrenom: string;
+  prospecteurEmail: string;
+  motif?: string;
+}) {
+  await postEmail({ type: "FICHE_REJETEE", ...opts });
+}
+
 /** Envoi d'email au prospecteur quand sa fiche est acceptée ou refusée. */
 export async function sendEmailFicheDecision(opts: {
   ficheId: string;

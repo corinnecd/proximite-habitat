@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { Topbar } from "@/components/layout/Topbar";
+import { ExportPdfButton } from "@/components/ui/export-pdf-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import { getFichesForExport } from "@/lib/data/fiches";
@@ -273,7 +274,7 @@ export default function FichesPage() {
         reference: f.reference, statut: STATUS_LABELS[f.status],
         nom: f.prospect_nom, prenom: f.prospect_prenom,
         adresse: f.prospect_adresse ?? "", code_postal: f.prospect_cp ?? "",
-        ville: f.prospect_ville ?? "", telephone: f.prospect_telephone ?? "",
+        ville: f.prospect_ville ?? "", telephone: isAdmin ? (f.prospect_telephone ?? "") : "—",
         date_visite: f.date_visite ? new Date(f.date_visite).toLocaleDateString("fr-FR") : "",
         heure_visite: f.heure_visite ?? "",
         commercial: f.assigned_to_profile
@@ -326,7 +327,7 @@ export default function FichesPage() {
 
   return (
     <>
-      <Topbar title="Fiches de pré-visite" />
+      <Topbar title="Fiches de pré-visite" actions={<ExportPdfButton title="Fiches de pré-visite" filename="fiches-preview" />} />
       <div className="p-6 lg:p-8 space-y-4">
 
         {/* Barre principale : recherche + export + nouvelle fiche */}

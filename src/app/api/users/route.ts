@@ -21,3 +21,30 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json(profile);
 }
+
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+
+  const { data: caller } = await supabase.from("profiles").select("role, organization_id").eq("id", user.id).single();
+  if (!caller || caller.role !== "ADMIN") return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+
+  const svc = await createServiceClient();
+  const { id, first_name, last_name, phone, role } = await request.json();
+  if (!id) return NextResponse.json({ error: "ID manquant" }, { status: 400 });
+  if (id === user.id) return NextResponse.json({ error: "Vous ne pouvez pas modifier votre propre compte" }, { status: 403 });
+
+  // Vérifier que l'utilisateur cible appartient à la même organisation
+  const { data: target } = await supabase.from("profiles").select("organization_id").eq("id", id).single();
+  if (!target || target.organization_id !== caller.organization_id) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+
+  const { data: updated, error } = await svc.from("profiles")
+    .update({ first_name, last_name, phone: phone || null, role })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(updated);
+}

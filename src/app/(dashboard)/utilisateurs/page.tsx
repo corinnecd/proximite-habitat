@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Topbar } from "@/components/layout/Topbar";
+import { ExportPdfButton } from "@/components/ui/export-pdf-button";
 import { createClient } from "@/lib/supabase/client";
 import { getAllProfiles, setProfileActive } from "@/lib/data/profiles";
 import { useProfile } from "@/lib/hooks/use-profile";
@@ -19,7 +20,7 @@ import type { UserRole, Profile } from "@/types/database";
 import { toast } from "sonner";
 import {
   UserPlus, Loader2, Shield, Mail, Phone, Search,
-  Users, CheckCircle2, XCircle, UserCheck,
+  Users, CheckCircle2, XCircle, UserCheck, Pencil,
 } from "lucide-react";
 
 // ── Palette rôle ──────────────────────────────────────────────────────────────
@@ -46,6 +47,9 @@ export default function UtilisateursPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmUser, setConfirmUser] = useState<Profile | null>(null);
   const [toggling, setToggling] = useState(false);
+  const [editUser, setEditUser] = useState<Profile | null>(null);
+  const [editForm, setEditForm] = useState({ first_name: "", last_name: "", phone: "", role: "PROSPECTEUR" as UserRole });
+  const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "ALL">("ALL");
   const [newUser, setNewUser] = useState({
@@ -116,6 +120,31 @@ export default function UtilisateursPage() {
     }
   }
 
+  function openEditDialog(user: Profile) {
+    setEditUser(user);
+    setEditForm({ first_name: user.first_name, last_name: user.last_name, phone: user.phone ?? "", role: user.role });
+  }
+
+  async function handleEditUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editUser) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editUser.id, ...editForm }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      const updated = await res.json();
+      setUsers(users.map((u) => u.id === updated.id ? updated : u));
+      setEditUser(null);
+      toast.success(`${updated.first_name} ${updated.last_name} mis à jour`);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de la mise à jour");
+    } finally { setSaving(false); }
+  }
+
   // Accès refusé
   if (profile?.role !== "ADMIN") {
     return (
@@ -136,7 +165,7 @@ export default function UtilisateursPage() {
 
   return (
     <>
-      <Topbar title="Gestion des utilisateurs" />
+      <Topbar title="Gestion des utilisateurs" actions={<ExportPdfButton title="Utilisateurs" filename="utilisateurs" />} />
       <div className="p-6 lg:p-8 space-y-6">
 
         {/* ── KPIs ────────────────────────────────────────────────────────── */}
@@ -316,6 +345,17 @@ export default function UtilisateursPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => openEditDialog(user)}
+                        className="rounded-xl text-xs h-8 gap-1"
+                        aria-label={`Modifier ${user.first_name}`}
+                      >
+                        <Pencil className="w-3 h-3" />Modifier
+                      </Button>
+                    )}
+                    {!isMe && (
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setConfirmUser(user)}
                         className={`rounded-xl text-xs h-8 ${user.is_active ? "hover:border-red-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30" : "hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"}`}
                         aria-label={user.is_active ? `Désactiver ${user.first_name}` : `Activer ${user.first_name}`}
@@ -337,6 +377,53 @@ export default function UtilisateursPage() {
           </p>
         )}
       </div>
+
+      {/* ── Dialog édition utilisateur ───────────────────────────────────── */}
+      <Dialog open={editUser !== null} onOpenChange={(open) => { if (!open) setEditUser(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-primary" />Modifier l&apos;utilisateur
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditUser} className="space-y-4 mt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Prénom *</Label>
+                <Input value={editForm.first_name} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} required className="bg-card" />
+              </div>
+              <div className="space-y-2">
+                <Label>Nom *</Label>
+                <Input value={editForm.last_name} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} required className="bg-card" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Téléphone</Label>
+              <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="bg-card" placeholder="06 12 34 56 78" />
+            </div>
+            <div className="space-y-2">
+              <Label>Rôle *</Label>
+              <Select value={editForm.role} onValueChange={(v) => v && setEditForm({ ...editForm, role: v as UserRole })}>
+                <SelectTrigger className="bg-card rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADMIN">Direction (Admin)</SelectItem>
+                  <SelectItem value="COMMERCIAL">Commercial</SelectItem>
+                  <SelectItem value="PROSPECTEUR">Prospecteur</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter className="gap-2 pt-2">
+              <DialogClose>
+                <Button type="button" variant="outline" className="rounded-xl">Annuler</Button>
+              </DialogClose>
+              <Button type="submit" disabled={saving} className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+                Enregistrer
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Dialog confirmation activation/désactivation ──────────────────── */}
       <Dialog open={confirmUser !== null} onOpenChange={(open) => { if (!open) setConfirmUser(null); }}>

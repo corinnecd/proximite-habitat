@@ -5,7 +5,7 @@ type Db = SupabaseClient<Database>;
 
 /** Colonnes communes pour l'affichage en liste (dashboard, /fiches, reporting). */
 export const FICHE_LIST_COLUMNS =
-  "id, reference, status, prospect_nom, prospect_prenom, prospect_ville, created_at, created_by";
+  "id, reference, status, prospect_nom, prospect_prenom, prospect_ville, created_at, created_by, updated_at";
 
 export type FicheListItem = Pick<
   Fiche,
@@ -17,6 +17,7 @@ export type FicheListItem = Pick<
   | "prospect_ville"
   | "created_at"
   | "created_by"
+  | "updated_at"
 >;
 
 /** Entrée d'historique enrichie du profil de l'auteur (jointure `profiles`). */

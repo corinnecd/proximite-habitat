@@ -636,15 +636,7 @@ export default function DashboardPage() {
       setCounts((prev) => ({ ...prev, SOUMISE: Math.max(0, prev.SOUMISE - 1), AFFECTEE: prev.AFFECTEE + 1 }));
       toast.success(`Fiche ${ficheToAssign.reference} affectée`);
       // Email au commercial (non bloquant)
-      const commercial = commercials.find((c) => c.id === assignCommercialId);
-      if (commercial) {
-        await sendEmailFicheAffectee({
-          ficheId: ficheToAssign.id,
-          reference: ficheToAssign.reference,
-          commercialPrenom: commercial.first_name,
-          commercialEmail: (commercial as { email?: string }).email ?? "",
-        }).catch(() => {});
-      }
+      await sendEmailFicheAffectee(ficheToAssign.id).catch(() => {});
       setFicheToAssign(null);
       setAssignCommercialId("");
     } catch {
@@ -682,16 +674,7 @@ export default function DashboardPage() {
               .select("email, first_name")
               .eq("id", ficheToTraiter.created_by)
               .single();
-            if (prospProfile) {
-              await sendEmailFicheDecision({
-                ficheId: ficheToTraiter.id,
-                reference: ficheToTraiter.reference,
-                decision: "REFUSEE",
-                prospecteurPrenom: prospProfile.first_name,
-                prospecteurEmail: prospProfile.email,
-                motif: traiterComment.trim() || undefined,
-              });
-            }
+            await sendEmailFicheDecision(ficheToTraiter.id, "REFUSEE", traiterComment.trim() || undefined);
           } catch { /* silencieux */ }
         })();
       }

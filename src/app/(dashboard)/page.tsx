@@ -368,6 +368,7 @@ export default function DashboardPage() {
   const [prospSoumises,     setProspSoumises]     = useState<FicheListItem[]>([]);
   const [prospAffectees,    setProspAffectees]    = useState<FicheListItem[]>([]);
   const [prospAcceptees,    setProspAcceptees]    = useState<FicheListItem[]>([]);
+  const [prospRetractees,   setProspRetractees]   = useState<FicheListItem[]>([]);
   const [prospRefusees,     setProspRefusees]     = useState<FicheListItem[]>([]);
   const [prospArchivees,    setProspArchivees]    = useState<FicheListItem[]>([]);
   const [prospecteursStats, setProspecteursStats] = useState<ProspecteurStat[]>([]);
@@ -563,10 +564,11 @@ export default function DashboardPage() {
 
     // ── Fiches prospecteur par statut ────────────────────────────────────────
     if (isProspecteur) {
-      const [bRes, sRes, affRes, accRes, refRes, arcRes] = await Promise.all([
+      const [bRes, sRes, affRes, retRes, accRes, refRes, arcRes] = await Promise.all([
         supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "BROUILLON").order("created_at", { ascending: false }),
         supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "SOUMISE").order("created_at", { ascending: false }),
         supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "AFFECTEE").order("created_at", { ascending: false }),
+        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "RETRACTATION").order("created_at", { ascending: false }),
         supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "ACCEPTEE").order("created_at", { ascending: false }),
         supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "REFUSEE").order("created_at", { ascending: false }),
         supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "ARCHIVEE").order("created_at", { ascending: false }),
@@ -574,6 +576,7 @@ export default function DashboardPage() {
       setProspBrouillons((bRes.data as FicheListItem[]) ?? []);
       setProspSoumises((sRes.data as FicheListItem[]) ?? []);
       setProspAffectees((affRes.data as FicheListItem[]) ?? []);
+      setProspRetractees((retRes.data as FicheListItem[]) ?? []);
       setProspAcceptees((accRes.data as FicheListItem[]) ?? []);
       setProspRefusees((refRes.data as FicheListItem[]) ?? []);
       setProspArchivees((arcRes.data as FicheListItem[]) ?? []);
@@ -1347,9 +1350,10 @@ export default function DashboardPage() {
         {isProspecteur && (() => {
           const blocs: { status: FicheStatus; label: string; fiches: FicheListItem[]; color: string; badgeBg: string; iconBg: string; iconColor: string; hoverBg: string; emptyMsg: string }[] = [
             { status: "BROUILLON",    label: "Mes brouillons",           fiches: prospBrouillons, color: "border-l-slate-400",   badgeBg: "bg-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800/40",    iconColor: "text-slate-500",   hoverBg: "hover:bg-slate-50/60",   emptyMsg: "Aucun brouillon en cours." },
-            { status: "SOUMISE",      label: "En attente de validation",  fiches: prospSoumises,   color: "border-l-blue-500",    badgeBg: "bg-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",       iconColor: "text-blue-500",    hoverBg: "hover:bg-blue-50/40",    emptyMsg: "Aucune fiche en attente." },
-            { status: "AFFECTEE",     label: "Fiches affectées",          fiches: prospAffectees,  color: "border-l-orange-500",  badgeBg: "bg-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",   iconColor: "text-orange-500",  hoverBg: "hover:bg-orange-50/40",  emptyMsg: "Aucune fiche affectée." },
-            { status: "ACCEPTEE",     label: "Validées par le client",    fiches: prospAcceptees,  color: "border-l-emerald-500", badgeBg: "bg-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", iconColor: "text-emerald-500", hoverBg: "hover:bg-emerald-50/40", emptyMsg: "Aucune fiche validée." },
+            { status: "SOUMISE",      label: "En attente de validation par la direction", fiches: prospSoumises,   color: "border-l-blue-500",    badgeBg: "bg-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",       iconColor: "text-blue-500",    hoverBg: "hover:bg-blue-50/40",    emptyMsg: "Aucune fiche en attente." },
+            { status: "AFFECTEE",     label: "Fiches affectées",                           fiches: prospAffectees,  color: "border-l-orange-500",  badgeBg: "bg-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",   iconColor: "text-orange-500",  hoverBg: "hover:bg-orange-50/40",  emptyMsg: "Aucune fiche affectée." },
+            { status: "RETRACTATION", label: "En attente de validation par le client",    fiches: prospRetractees, color: "border-l-purple-500",  badgeBg: "bg-purple-500",  iconBg: "bg-purple-50 dark:bg-purple-950/40",   iconColor: "text-purple-500",  hoverBg: "hover:bg-purple-50/40",  emptyMsg: "Aucune fiche en attente de validation client." },
+            { status: "ACCEPTEE",     label: "Validées par le client",                    fiches: prospAcceptees,  color: "border-l-emerald-500", badgeBg: "bg-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", iconColor: "text-emerald-500", hoverBg: "hover:bg-emerald-50/40", emptyMsg: "Aucune fiche validée." },
             { status: "REFUSEE",      label: "Refusées par le client",    fiches: prospRefusees,   color: "border-l-red-500",     badgeBg: "bg-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",         iconColor: "text-red-500",     hoverBg: "hover:bg-red-50/40",     emptyMsg: "Aucune fiche refusée." },
             { status: "ARCHIVEE",     label: "Archivées",                 fiches: prospArchivees,  color: "border-l-slate-300",   badgeBg: "bg-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800/40",    iconColor: "text-slate-400",   hoverBg: "hover:bg-slate-50/60",   emptyMsg: "Aucune fiche archivée." },
           ];

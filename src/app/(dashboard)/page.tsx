@@ -363,6 +363,13 @@ export default function DashboardPage() {
   const [fichesRefusees,        setFichesRefusees]        = useState<FicheAffectee[]>([]);
   const [fichesArchivees,         setFichesArchivees]         = useState<FicheAffectee[]>([]);
   const [fichesRetractationComm,  setFichesRetractationComm]  = useState<FicheAffectee[]>([]);
+  // Prospecteur : fiches par statut
+  const [prospBrouillons,   setProspBrouillons]   = useState<FicheListItem[]>([]);
+  const [prospSoumises,     setProspSoumises]     = useState<FicheListItem[]>([]);
+  const [prospAffectees,    setProspAffectees]    = useState<FicheListItem[]>([]);
+  const [prospAcceptees,    setProspAcceptees]    = useState<FicheListItem[]>([]);
+  const [prospRefusees,     setProspRefusees]     = useState<FicheListItem[]>([]);
+  const [prospArchivees,    setProspArchivees]    = useState<FicheListItem[]>([]);
   const [prospecteursStats, setProspecteursStats] = useState<ProspecteurStat[]>([]);
   const [commerciauxStats,  setCommerciauxStats]  = useState<CommercialStat[]>([]);
   const [totalVentes,       setTotalVentes]       = useState(0);
@@ -554,16 +561,22 @@ export default function DashboardPage() {
     const { data } = await recentQuery;
     setRecentFiches((data as FicheListItem[]) || []);
 
-    // ── Historique prospecteur ───────────────────────────────────────────────
+    // ── Fiches prospecteur par statut ────────────────────────────────────────
     if (isProspecteur) {
-      const { data: history } = await supabase
-        .from("fiches")
-        .select(FICHE_LIST_COLUMNS)
-        .eq("created_by", profile.id)
-        .neq("status", "BROUILLON")
-        .order("created_at", { ascending: false })
-        .limit(20);
-      setHistoryFiches((history as FicheListItem[]) || []);
+      const [bRes, sRes, affRes, accRes, refRes, arcRes] = await Promise.all([
+        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "BROUILLON").order("created_at", { ascending: false }),
+        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "SOUMISE").order("created_at", { ascending: false }),
+        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "AFFECTEE").order("created_at", { ascending: false }),
+        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "ACCEPTEE").order("created_at", { ascending: false }),
+        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "REFUSEE").order("created_at", { ascending: false }),
+        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "ARCHIVEE").order("created_at", { ascending: false }),
+      ]);
+      setProspBrouillons((bRes.data as FicheListItem[]) ?? []);
+      setProspSoumises((sRes.data as FicheListItem[]) ?? []);
+      setProspAffectees((affRes.data as FicheListItem[]) ?? []);
+      setProspAcceptees((accRes.data as FicheListItem[]) ?? []);
+      setProspRefusees((refRes.data as FicheListItem[]) ?? []);
+      setProspArchivees((arcRes.data as FicheListItem[]) ?? []);
     }
 
     // ── Journal d'activité global (ADMIN uniquement) ─────────────────────────
@@ -1330,58 +1343,71 @@ export default function DashboardPage() {
         )}
 
 
-        {/* Brouillons en cours (prospecteur uniquement) */}
-        {isProspecteur && (
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-heading text-xl">Mes brouillons en cours</CardTitle>
-              <Link href="/fiches">
-                <Button variant="ghost" size="sm" className="text-muted-foreground">Voir tout →</Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {recentFiches.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>Aucun brouillon en cours</p>
-                  <Link href="/fiches/nouvelle">
-                    <Button variant="outline" className="mt-4 rounded-xl">Créer une fiche</Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {recentFiches.map((fiche) => (
-                    <div key={fiche.id} className="flex items-center justify-between p-4 rounded-xl hover:bg-secondary/50 transition-colors group">
-                      <Link href={`/fiches/${fiche.id}`} className="flex items-center gap-4 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center shrink-0">
-                          <FileText className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
-                          <p className="text-xs text-muted-foreground">{fiche.reference} · {fiche.prospect_ville}</p>
-                        </div>
-                      </Link>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <FicheStatusBadge status={fiche.status} />
-                        <span className="text-xs text-muted-foreground hidden sm:block">
-                          {new Date(fiche.created_at).toLocaleDateString("fr-FR")}
-                        </span>
-                        <button
-                          type="button"
-                          aria-label={`Supprimer le brouillon ${fiche.reference}`}
-                          onClick={(e) => { e.preventDefault(); setFicheToDelete({ id: fiche.id, reference: fiche.reference }); }}
-                          className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+        {/* ── Section PROSPECTEUR : 6 blocs fiches ───────────────────────────── */}
+        {isProspecteur && (() => {
+          const blocs: { status: FicheStatus; label: string; fiches: FicheListItem[]; color: string; badgeBg: string; iconBg: string; iconColor: string; hoverBg: string; emptyMsg: string }[] = [
+            { status: "BROUILLON",    label: "Mes brouillons",           fiches: prospBrouillons, color: "border-l-slate-400",   badgeBg: "bg-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800/40",    iconColor: "text-slate-500",   hoverBg: "hover:bg-slate-50/60",   emptyMsg: "Aucun brouillon en cours." },
+            { status: "SOUMISE",      label: "En attente de validation",  fiches: prospSoumises,   color: "border-l-blue-500",    badgeBg: "bg-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",       iconColor: "text-blue-500",    hoverBg: "hover:bg-blue-50/40",    emptyMsg: "Aucune fiche en attente." },
+            { status: "AFFECTEE",     label: "Fiches affectées",          fiches: prospAffectees,  color: "border-l-orange-500",  badgeBg: "bg-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",   iconColor: "text-orange-500",  hoverBg: "hover:bg-orange-50/40",  emptyMsg: "Aucune fiche affectée." },
+            { status: "ACCEPTEE",     label: "Validées par le client",    fiches: prospAcceptees,  color: "border-l-emerald-500", badgeBg: "bg-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", iconColor: "text-emerald-500", hoverBg: "hover:bg-emerald-50/40", emptyMsg: "Aucune fiche validée." },
+            { status: "REFUSEE",      label: "Refusées par le client",    fiches: prospRefusees,   color: "border-l-red-500",     badgeBg: "bg-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",         iconColor: "text-red-500",     hoverBg: "hover:bg-red-50/40",     emptyMsg: "Aucune fiche refusée." },
+            { status: "ARCHIVEE",     label: "Archivées",                 fiches: prospArchivees,  color: "border-l-slate-300",   badgeBg: "bg-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800/40",    iconColor: "text-slate-400",   hoverBg: "hover:bg-slate-50/60",   emptyMsg: "Aucune fiche archivée." },
+          ];
+          return (
+            <>
+              {blocs.map(({ status, label, fiches, badgeBg, iconBg, iconColor, hoverBg, emptyMsg }) => (
+                <div key={status} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-xl ${iconBg} flex items-center justify-center`}>
+                        {STATUS_ICONS[status]}
                       </div>
+                      <h3 className="font-semibold text-base">{label}</h3>
+                      {fiches.length > 0 && (
+                        <span className={`${badgeBg} text-white text-xs font-bold px-2 py-0.5 rounded-full`}>{fiches.length}</span>
+                      )}
                     </div>
-                  ))}
+                    <Link href={`/fiches?status=${status}`}>
+                      <Button variant="ghost" size="sm" className="text-muted-foreground gap-1">Voir toutes <ArrowRight className="w-3.5 h-3.5" /></Button>
+                    </Link>
+                  </div>
+                  {fiches.length === 0 ? (
+                    <p className="text-sm text-muted-foreground px-1">{emptyMsg}</p>
+                  ) : (
+                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                      {fiches.map((fiche, idx) => (
+                        <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
+                          <div className={`flex items-center gap-4 px-5 py-4 ${hoverBg} dark:hover:bg-white/5 transition-colors cursor-pointer ${idx < fiches.length - 1 ? "border-b border-border" : ""}`}>
+                            <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
+                              <span className={iconColor}>{STATUS_ICONS[status]}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                              <p className="text-xs text-muted-foreground">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville}` : ""}</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-xs text-muted-foreground hidden sm:block">{new Date(fiche.created_at).toLocaleDateString("fr-FR")}</span>
+                              {status === "BROUILLON" && (
+                                <button
+                                  type="button"
+                                  aria-label={`Supprimer ${fiche.reference}`}
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFicheToDelete({ id: fiche.id, reference: fiche.reference }); }}
+                                  className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 transition-all"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+              ))}
+            </>
+          );
+        })()}
 
         {/* ── Section COMMERCIAL : 4 blocs fiches traitées ───────────────────── */}
         {isCommercial && (
@@ -1544,47 +1570,6 @@ export default function DashboardPage() {
           </>
         )}
 
-        {/* Historique prospecteur */}
-        {isProspecteur && (
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="font-heading text-xl flex items-center gap-2">
-                <History className="w-5 h-5" /> Historique de mes fiches
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {historyFiches.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Aucune fiche soumise pour le moment</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {historyFiches.map((fiche) => (
-                    <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
-                      <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-sm">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
-                            <p className="text-xs text-muted-foreground">{fiche.reference} · {fiche.prospect_ville}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <FicheStatusBadge status={fiche.status} />
-                          <span className="text-xs text-muted-foreground hidden sm:block">
-                            {new Date(fiche.created_at).toLocaleDateString("fr-FR")}
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
       </div>
     </>
   );

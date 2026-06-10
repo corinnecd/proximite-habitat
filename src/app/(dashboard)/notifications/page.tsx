@@ -107,9 +107,9 @@ export default function NotificationsPage() {
   const router = useRouter();
   const { profile } = useProfile();
 
-  const statusOptions = ALL_STATUS_OPTIONS.filter((o) =>
-    !profile?.role || (STATUS_BY_ROLE[profile.role] ?? []).includes(o.value)
-  );
+  const statusOptions = profile?.role
+    ? ALL_STATUS_OPTIONS.filter((o) => (STATUS_BY_ROLE[profile.role] ?? []).includes(o.value))
+    : [];
 
   const fetchNotifications = useCallback(async (
     uid: string,

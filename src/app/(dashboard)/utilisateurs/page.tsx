@@ -12,6 +12,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { createClient } from "@/lib/supabase/client";
 import { getAllProfiles, setProfileActive } from "@/lib/data/profiles";
 import { useProfile } from "@/lib/hooks/use-profile";
@@ -281,21 +282,21 @@ export default function UtilisateursPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 bg-card rounded-2xl border border-border text-muted-foreground space-y-3">
-            <Users className="w-12 h-12 mx-auto opacity-30" />
-            <div>
-              <p className="font-medium text-foreground">Aucun utilisateur trouvé</p>
-              <p className="text-sm mt-1">{search || roleFilter !== "ALL" ? "Essayez de modifier votre recherche ou vos filtres." : "Commencez par créer un premier utilisateur."}</p>
-            </div>
-            {!search && roleFilter === "ALL" && (
-              <button
-                type="button"
-                onClick={() => setDialogOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-medium transition-colors"
-              >
-                <UserPlus className="w-4 h-4" />Créer un utilisateur
-              </button>
-            )}
+          <div className="bg-card rounded-2xl border border-border">
+            <EmptyState
+              illustration="fiches"
+              title="Aucun utilisateur trouvé"
+              description={search || roleFilter !== "ALL" ? "Essayez de modifier votre recherche ou vos filtres." : "Commencez par créer un premier utilisateur."}
+              action={!search && roleFilter === "ALL" ? (
+                <button
+                  type="button"
+                  onClick={() => setDialogOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-medium transition-colors"
+                >
+                  <UserPlus className="w-4 h-4" />Créer un utilisateur
+                </button>
+              ) : undefined}
+            />
           </div>
         ) : (
           <div className="space-y-2">

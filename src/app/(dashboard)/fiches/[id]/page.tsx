@@ -7,13 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
   DialogFooter, DialogClose,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Topbar } from "@/components/layout/Topbar";
+import { ExportPdfButton } from "@/components/ui/export-pdf-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -406,7 +407,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <>
-      <Topbar title={fiche.reference} />
+      <Topbar title={fiche.reference} actions={<ExportPdfButton title={fiche.reference} subtitle={`Statut : ${STATUS_LABELS[fiche.status]}`} filename={`fiche-${fiche.reference}`} />} />
       <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* ── Bannière "Fiche à valider" — visible direction uniquement ──── */}
@@ -995,13 +996,13 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               <CheckCircle2 className="w-5 h-5" />
               Valider et affecter la fiche
             </DialogTitle>
+            <DialogDescription>
+              Sélectionnez le commercial à qui affecter la fiche{" "}
+              <span className="font-semibold">{fiche?.reference}</span>.
+              Le prospecteur et le commercial recevront une notification.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-3 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Sélectionnez le commercial à qui affecter la fiche{" "}
-              <span className="font-semibold text-foreground">{fiche?.reference}</span>.
-              Le prospecteur et le commercial recevront une notification.
-            </p>
             <div className="space-y-2">
               <label htmlFor="select-commercial" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Commercial
@@ -1065,6 +1066,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                       : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
               }
             </DialogTitle>
+            <DialogDescription>
+              {pendingStatus === "REFUSEE" || pendingStatus === "BROUILLON"
+                ? "Un motif obligatoire sera transmis au prospecteur."
+                : "Vous pouvez ajouter un commentaire optionnel pour ce changement de statut."
+              }
+            </DialogDescription>
           </DialogHeader>
 
           <div className="py-2 space-y-3">

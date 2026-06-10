@@ -451,7 +451,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* ── Bannière "Fiche à valider" — visible direction uniquement ──── */}
         {fiche.status === "SOUMISE" && profile?.role === "ADMIN" && (
-          <div className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-2xl p-5 space-y-4">
+          <div data-no-print className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-2xl p-5 space-y-4">
             {/* Header */}
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
@@ -654,7 +654,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* ── Assign card — réaffectation uniquement (AFFECTEE) ─────────── */}
         {profile && canAssignFiche(profile.role) && fiche.status === "AFFECTEE" && (
-            <div className="bg-card border border-border rounded-2xl px-6 py-4 flex items-center gap-4">
+            <div data-no-print className="bg-card border border-border rounded-2xl px-6 py-4 flex items-center gap-4">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <UserCheck className="w-5 h-5 text-primary" />
               </div>
@@ -837,6 +837,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* Photos */}
             {photos.length > 0 && (
+              <div data-pdf-photos>
               <SectionCard
                 icon={<Camera className="w-4 h-4" />}
                 iconBg="bg-slate-100 dark:bg-slate-800"
@@ -852,6 +853,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   })}
                 </div>
               </SectionCard>
+              </div>
             )}
 
             {/* Observations */}
@@ -1090,7 +1092,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* ── Barre de validation bas de page — direction uniquement ───────── */}
         {fiche.status === "SOUMISE" && profile?.role === "ADMIN" && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card border border-border rounded-2xl px-6 py-4">
+          <div data-no-print className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card border border-border rounded-2xl px-6 py-4">
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <span className={`flex items-center gap-1.5 font-medium ${isValidated ? "text-emerald-600" : "text-muted-foreground"}`}>
                 <CheckCircle2 className="w-4 h-4" />

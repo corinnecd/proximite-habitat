@@ -149,26 +149,56 @@ export function ExportPdfButton({
         .overflow-y-auto, .overflow-auto { overflow: visible !important; max-height: none !important; }
 
         ${printLayout === "3col" ? `
-        /* ── Layout 3 colonnes pour fiche détail ── */
+        /* ── Mode 3 colonnes (fiche détail) — A4 paysage ── */
+
+        /* Paysage pour disposer 3 colonnes */
+        @page { size: A4 landscape !important; margin: 6mm 8mm !important; }
+
+        /* Annuler le zoom portrait et réajuster pour paysage */
+        main { zoom: 0.78 !important; }
+
+        /* Masquer : bannière validation, barre bas de page, boutons d'action */
+        [data-no-print] { display: none !important; }
+
+        /* Masquer les photos (trop volumineuses) */
+        [data-pdf-photos] { display: none !important; }
+
+        /* ── Transformer le grid 2-col en CSS columns 3 ── */
         .lg\\:grid-cols-3 {
           display: block !important;
-          columns: 3 !important;
-          column-gap: 6px !important;
+          column-count: 3 !important;
+          column-gap: 8px !important;
+          column-fill: balance !important;
         }
-        .lg\\:col-span-2 {
-          display: contents !important;
-        }
+
+        /* Les 2 wrappers (main + sidebar) deviennent transparents
+           → leurs enfants directs flottent dans les 3 colonnes */
+        .lg\\:col-span-2,
         .lg\\:grid-cols-3 > div:last-child {
           display: contents !important;
         }
-        .lg\\:grid-cols-3 .rounded-2xl,
-        .lg\\:grid-cols-3 .rounded-xl,
-        .lg\\:grid-cols-3 > div > .space-y-4 > * {
+
+        /* Le wrapper Ventilation+Isolation (grid 2-col interne) → transparent aussi */
+        .sm\\:grid-cols-2 {
+          display: contents !important;
+        }
+
+        /* Chaque SectionCard = 1 item de colonne, sans coupure */
+        .lg\\:grid-cols-3 > .lg\\:col-span-2 ~ *,
+        .lg\\:grid-cols-3 .bg-card {
           break-inside: avoid !important;
+          page-break-inside: avoid !important;
           display: block !important;
           margin-bottom: 5px !important;
         }
-        .space-y-4 { display: contents !important; }
+
+        /* Espacements internes des cards réduits */
+        .lg\\:grid-cols-3 .space-y-4 > * + * { margin-top: 4px !important; }
+        .lg\\:grid-cols-3 .space-y-3 > * + * { margin-top: 3px !important; }
+        .lg\\:grid-cols-3 .space-y-2 > * + * { margin-top: 2px !important; }
+
+        /* Historique : limiter à 5 entrées visibles */
+        .lg\\:grid-cols-3 [class*="relative pl-6"]:nth-child(n+6) { display: none !important; }
         ` : ""}
       }
     `;

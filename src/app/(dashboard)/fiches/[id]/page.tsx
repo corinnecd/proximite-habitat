@@ -138,6 +138,9 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [statusComment, setStatusComment] = useState("");
   const [selectedCommercial, setSelectedCommercial] = useState("");
   const [isValidated, setIsValidated] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showRejetDialog, setShowRejetDialog] = useState(false);
+  const [rejetMotif, setRejetMotif] = useState("");
 
   const { profile } = useProfile();
   const router = useRouter();
@@ -325,7 +328,41 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       toast.error("Étape 2/2 manquante — veuillez choisir un commercial.");
       return;
     }
-    handleAssign(selectedCommercial);
+    // Ouvre le modal de confirmation avant d'envoyer
+    setShowConfirmModal(true);
+  }
+
+  async function handleRejetFiche() {
+    if (!fiche || !profile) return;
+    if (!rejetMotif.trim()) { toast.error("Le motif de rejet est obligatoire."); return; }
+    setTransitioning(true);
+    const { error } = await supabase.rpc("transition_fiche", {
+      p_fiche_id: fiche.id,
+      p_new_status: "BROUILLON",
+      p_comment: rejetMotif.trim(),
+    });
+    if (error) { toast.error("Rejet refusé : " + error.message); setTransitioning(false); return; }
+    setFiche({ ...fiche, status: "BROUILLON" });
+    toast.success("Fiche rejetée — le prospecteur a été notifié.");
+    setShowRejetDialog(false);
+    setRejetMotif("");
+    setTransitioning(false);
+    // Notification + email au prospecteur (non bloquant)
+    void (async () => {
+      try {
+        if (fiche.created_by) {
+          await createNotifications(supabase, [{
+            user_id: fiche.created_by,
+            organization_id: profile.organization_id,
+            type: "FICHE_REJETEE",
+            title: "Validation rejetée",
+            message: `Votre fiche ${fiche.reference} a été rejetée par la direction${rejetMotif.trim() ? ` : ${rejetMotif.trim()}` : ""}. Veuillez la corriger et la resoumettre.`,
+            fiche_id: fiche.id,
+          }]);
+          await sendEmailFicheRejetee(fiche.id, rejetMotif.trim());
+        }
+      } catch { /* silencieux */ }
+    })();
   }
 
   async function handleAssign(commercialId: string) {
@@ -399,7 +436,11 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const availableTransitions = profile ? getAvailableTransitions(profile.role, fiche.status) : [];
+  const rawTransitions = profile ? getAvailableTransitions(profile.role, fiche.status) : [];
+  // Pour ADMIN sur fiche SOUMISE : la bannière gère validation/rejet — on masque ces boutons du hero
+  const availableTransitions = (profile?.role === "ADMIN" && fiche.status === "SOUMISE")
+    ? rawTransitions.filter((s) => s !== "AFFECTEE" && s !== "BROUILLON")
+    : rawTransitions;
   const hero = STATUS_HERO[fiche.status];
   const canEdit = profile && canEditFiche(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status);
 
@@ -497,8 +538,17 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
-            {/* CTA Finaliser */}
-            <div className="flex justify-end pt-1">
+            {/* CTAs */}
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setRejetMotif(""); setShowRejetDialog(true); }}
+                className="gap-2 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30 rounded-xl"
+              >
+                <Ban className="w-4 h-4" />
+                Validation rejetée
+              </Button>
               <Button
                 onClick={handleFinaliserAffectation}
                 disabled={transitioning}
@@ -1228,6 +1278,144 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Dialog : rejet de validation (direction) ──────────────────────── */}
+      <Dialog open={showRejetDialog} onOpenChange={(open) => { if (!open) { setShowRejetDialog(false); setRejetMotif(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <Ban className="w-5 h-5" />Rejeter la validation
+            </DialogTitle>
+            <DialogDescription>
+              La fiche <span className="font-semibold">{fiche?.reference}</span> sera renvoyée en brouillon.
+              Le prospecteur recevra une notification avec votre motif.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 space-y-3">
+            <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
+              <Ban className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-red-700 dark:text-red-300">
+                Le motif est <span className="font-bold">obligatoire</span>. Il sera transmis au prospecteur par notification et email.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="textarea-rejet" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Motif du rejet <span className="text-red-500">*</span>
+              </label>
+              <Textarea
+                id="textarea-rejet"
+                placeholder="Ex : Informations manquantes, photos insuffisantes, données incorrectes…"
+                value={rejetMotif}
+                onChange={(e) => setRejetMotif(e.target.value)}
+                rows={4}
+                className={`bg-card resize-none transition-colors ${
+                  rejetMotif.trim().length === 0
+                    ? "border-red-300 dark:border-red-700 focus-visible:ring-red-400/30"
+                    : "border-emerald-300 dark:border-emerald-700"
+                }`}
+              />
+              {rejetMotif.trim().length === 0 && (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />Veuillez saisir un motif.
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <DialogClose>
+              <Button type="button" variant="outline" className="rounded-xl">Annuler</Button>
+            </DialogClose>
+            <Button
+              onClick={handleRejetFiche}
+              disabled={transitioning || !rejetMotif.trim()}
+              className="bg-red-600 hover:bg-red-700 text-white rounded-xl gap-2"
+            >
+              {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Ban className="w-4 h-4" />}
+              Confirmer le rejet
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal : confirmation d'affectation ───────────────────────────── */}
+      {(() => {
+        const commercial = commercials.find((c) => c.id === selectedCommercial);
+        const now = new Date();
+        const dateStr = now.toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+        const timeStr = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        return (
+          <Dialog open={showConfirmModal} onOpenChange={(open) => { if (!open) setShowConfirmModal(false); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="w-5 h-5" />Confirmer l&apos;affectation
+                </DialogTitle>
+                <DialogDescription>
+                  Vérifiez les informations avant de finaliser.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="py-2 space-y-3">
+                {/* Récapitulatif */}
+                <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-emerald-600/70 dark:text-emerald-400/70">Prospecteur</p>
+                      <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">{creatorName || "—"}</p>
+                    </div>
+                  </div>
+                  <div className="h-px bg-emerald-200 dark:bg-emerald-800" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center shrink-0">
+                      <UserCheck className="w-4 h-4 text-orange-500" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-orange-600/70 dark:text-orange-400/70">Commercial affecté</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {commercial ? `${commercial.first_name} ${commercial.last_name}` : "—"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-px bg-emerald-200 dark:bg-emerald-800" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center shrink-0">
+                      <Calendar className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-blue-600/70 dark:text-blue-400/70">Date d&apos;affectation</p>
+                      <p className="text-sm font-semibold text-foreground capitalize">{dateStr} à {timeStr}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground text-center">
+                  Le prospecteur et le commercial recevront chacun une notification.
+                </p>
+              </div>
+
+              <DialogFooter className="gap-2">
+                <DialogClose>
+                  <Button type="button" variant="outline" className="rounded-xl">Annuler</Button>
+                </DialogClose>
+                <Button
+                  disabled={transitioning}
+                  onClick={async () => {
+                    setShowConfirmModal(false);
+                    await handleAssign(selectedCommercial);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-semibold"
+                >
+                  {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Confirmer l&apos;affectation
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </>
   );
 }

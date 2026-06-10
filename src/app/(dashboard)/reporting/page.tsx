@@ -24,7 +24,6 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
   Area, AreaChart,
-  type PieLabelRenderProps,
 } from "recharts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -124,24 +123,6 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   );
 }
 
-function CustomPieLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }: PieLabelRenderProps) {
-  const pct = percent ?? 0;
-  if (pct < 0.05) return null;
-  const RADIAN = Math.PI / 180;
-  const ir = typeof innerRadius === "number" ? innerRadius : 0;
-  const or = typeof outerRadius === "number" ? outerRadius : 0;
-  const ma = typeof midAngle === "number" ? midAngle : 0;
-  const cxn = typeof cx === "number" ? cx : 0;
-  const cyn = typeof cy === "number" ? cy : 0;
-  const radius = ir + (or - ir) * 0.5;
-  const x = cxn + radius * Math.cos(-ma * RADIAN);
-  const y = cyn + radius * Math.sin(-ma * RADIAN);
-  return (
-    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">
-      {`${Math.round(pct * 100)}%`}
-    </text>
-  );
-}
 
 // ── Filtre période de soumission ──────────────────────────────────────────────
 type PeriodFilter = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER";
@@ -188,6 +169,7 @@ export default function ReportingPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("ALL");
+  const [pieTooltipPos, setPieTooltipPos] = useState<{ x: number; y: number } | undefined>(undefined);
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
@@ -195,7 +177,7 @@ export default function ReportingPage() {
     const isComm = role === "COMMERCIAL";
     const statuses: FicheStatus[] = isComm
       ? ["AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
-      : ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+      : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
     // Construire les bornes de la période si filtre actif
     const dates = getPeriodDates(period);
@@ -278,7 +260,7 @@ export default function ReportingPage() {
 
   const accepted   = statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0;
   const refused    = statusCounts.find((s) => s.status === "REFUSEE")?.count ?? 0;
-  const submitted  = statusCounts.filter((s) => s.status !== "BROUILLON").reduce((a, b) => a + b.count, 0);
+  const submitted  = statusCounts.reduce((a, b) => a + b.count, 0);
   const inProgress = (statusCounts.find((s) => s.status === "SOUMISE")?.count ?? 0) +
                      (statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0);
   const conversionRate = submitted > 0 ? Math.round((accepted / submitted) * 100) : 0;
@@ -422,8 +404,19 @@ export default function ReportingPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
+                <style>{`
+                  .pie-hover .recharts-pie-sector path {
+                    transition: transform 0.2s ease;
+                    transform-box: fill-box;
+                    transform-origin: center;
+                  }
+                  .pie-hover .recharts-pie-sector:hover path {
+                    transform: scale(1.07);
+                  }
+                `}</style>
+                <div className="pie-hover">
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                     <Pie
                       data={pieData}
                       cx="50%"
@@ -432,27 +425,73 @@ export default function ReportingPage() {
                       outerRadius={95}
                       paddingAngle={2}
                       dataKey="value"
+                      label={({ cx, cy, midAngle, innerRadius, outerRadius, value, percent }: import("recharts").PieLabelRenderProps) => {
+                        const pct = typeof percent === "number" ? percent : 0;
+                        if (pct < 0.04) return null;
+                        const RADIAN = Math.PI / 180;
+                        const ir = typeof innerRadius === "number" ? innerRadius : 0;
+                        const or = typeof outerRadius === "number" ? outerRadius : 0;
+                        const ma = typeof midAngle === "number" ? midAngle : 0;
+                        const cxn = typeof cx === "number" ? cx : 0;
+                        const cyn = typeof cy === "number" ? cy : 0;
+                        const r = ir + (or - ir) * 0.5;
+                        return (
+                          <text
+                            x={cxn + r * Math.cos(-ma * RADIAN)}
+                            y={cyn + r * Math.sin(-ma * RADIAN)}
+                            fill="white" textAnchor="middle" dominantBaseline="central"
+                            fontSize={18} fontWeight="800"
+                            style={{ pointerEvents: "none" }}
+                          >
+                            {typeof value === "number" ? value : ""}
+                          </text>
+                        );
+                      }}
                       labelLine={false}
-                      label={CustomPieLabel}
-                      animationBegin={0}
-                      animationDuration={700}
+                      isAnimationActive={false}
+                      onMouseEnter={(data: { cx?: number; cy?: number; midAngle?: number; outerRadius?: number }) => {
+                        const RADIAN = Math.PI / 180;
+                        const cx = data.cx ?? 0;
+                        const cy = data.cy ?? 0;
+                        const ma = data.midAngle ?? 0;
+                        const or = data.outerRadius ?? 0;
+                        setPieTooltipPos({
+                          x: cx + (or + 18) * Math.cos(-ma * RADIAN),
+                          y: cy + (or + 18) * Math.sin(-ma * RADIAN),
+                        });
+                      }}
+                      onMouseLeave={() => setPieTooltipPos(undefined)}
                     >
                       {pieData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip
+                      position={pieTooltipPos}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0];
+                        const pct = Math.round(((d.value as number) / pieData.reduce((s, p) => s + p.value, 0)) * 100);
+                        return (
+                          <div className="bg-popover border border-border rounded-xl px-3 py-2 shadow-lg text-xs flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.payload.color }} />
+                            <span className="text-muted-foreground">{d.name}</span>
+                            <span className="font-bold ml-1">{d.value}</span>
+                            <span className="text-muted-foreground">— {pct}%</span>
+                          </div>
+                        );
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
+                </div>
                 {/* Légende */}
                 <div className="grid grid-cols-2 gap-2">
                   {statusCounts.filter((s) => s.count > 0).map(({ status, count }) => (
                     <div key={status} className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: STATUS_COLORS_HEX[status] }} />
-                      <div className="flex items-center justify-between flex-1 min-w-0">
-                        <FicheStatusBadge status={status} />
-                        <span className="text-xs font-semibold tabular-nums ml-1">{count}</span>
-                      </div>
+                      <FicheStatusBadge status={status} />
+                      <span className="text-xs font-semibold tabular-nums">{count}</span>
                     </div>
                   ))}
                 </div>
@@ -496,7 +535,7 @@ export default function ReportingPage() {
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "hsl(var(--muted))", radius: 6 }} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f1f5f9", radius: 6 }} />
                     <Bar dataKey="Fiches" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={32} animationDuration={700} />
                     <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={32} animationDuration={700} />
                   </BarChart>

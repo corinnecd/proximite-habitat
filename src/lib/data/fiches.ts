@@ -193,7 +193,7 @@ export async function findDuplicateFiches(
 export async function getFichesForStats(
   db: Db,
   opts?: { from?: string; assignedTo?: string },
-): Promise<{ created_at: string; status: FicheStatus }[]> {
+): Promise<{ id: string; created_at: string; status: FicheStatus }[]> {
   let fichesQuery = db.from("fiches").select("id, created_at, status");
   if (opts?.from) fichesQuery = fichesQuery.gte("created_at", opts.from);
   if (opts?.assignedTo) fichesQuery = fichesQuery.eq("assigned_to", opts.assignedTo);
@@ -214,6 +214,7 @@ export async function getFichesForStats(
   }
 
   return (fiches as { id: string; created_at: string; status: FicheStatus }[]).map((f) => ({
+    id: f.id,
     created_at: submissionDates.get(f.id) ?? f.created_at,
     status: f.status,
   }));

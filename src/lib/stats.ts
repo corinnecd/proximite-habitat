@@ -33,7 +33,7 @@ export const DEFAULT_BUCKET_COUNT: Record<Granularity, number> = {
   year: 5,
 };
 
-export type StatPoint = { created_at: string; status: FicheStatus };
+export type StatPoint = { id?: string; created_at: string; status: FicheStatus };
 
 export type PeriodBucket = {
   key: string;
@@ -41,6 +41,7 @@ export type PeriodBucket = {
   label: string;
   total: number;
   submitted: number; // hors BROUILLON
+  assigned: number;  // fiches passées par un commercial (AFFECTEE + RETRACTATION + ACCEPTEE + REFUSEE + ARCHIVEE)
   accepted: number;
   refused: number;
 };
@@ -110,12 +111,15 @@ function bucketKey(start: Date): string {
 }
 
 function emptyBucket(start: Date, g: Granularity): PeriodBucket {
-  return { key: bucketKey(start), start, label: bucketLabel(start, g), total: 0, submitted: 0, accepted: 0, refused: 0 };
+  return { key: bucketKey(start), start, label: bucketLabel(start, g), total: 0, submitted: 0, assigned: 0, accepted: 0, refused: 0 };
 }
+
+const ASSIGNED_STATUSES: FicheStatus[] = ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
 
 function accumulate(bucket: PeriodBucket, status: FicheStatus): void {
   bucket.total += 1;
   if (status !== "BROUILLON") bucket.submitted += 1;
+  if (ASSIGNED_STATUSES.includes(status)) bucket.assigned += 1;
   if (status === "ACCEPTEE") bucket.accepted += 1;
   if (status === "REFUSEE") bucket.refused += 1;
 }
@@ -152,9 +156,9 @@ export function buildBuckets(
   return starts.map((s) => byKey.get(bucketKey(s))!);
 }
 
-/** Taux de conversion (acceptées / soumises), en %, arrondi. */
-export function conversionRate(bucket: { submitted: number; accepted: number }): number {
-  return bucket.submitted > 0 ? Math.round((bucket.accepted / bucket.submitted) * 100) : 0;
+/** Taux de conversion (acceptées / affectées à un commercial), en %, arrondi. */
+export function conversionRate(bucket: { assigned: number; accepted: number }): number {
+  return bucket.assigned > 0 ? Math.round((bucket.accepted / bucket.assigned) * 100) : 0;
 }
 
 /** Stats de la période courante et de la précédente (pour afficher une évolution). */

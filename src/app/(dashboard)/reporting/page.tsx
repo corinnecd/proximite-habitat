@@ -1,25 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
-import { getFichesForStats } from "@/lib/data/fiches";
-import {
-  type Granularity, type StatPoint,
-  GRANULARITIES, GRANULARITY_LABELS, CURRENT_PERIOD_LABELS,
-  buildBuckets, currentAndPreviousPeriod, conversionRate as periodConversion,
-} from "@/lib/stats";
 import { useProfile } from "@/lib/hooks/use-profile";
 import type { FicheStatus } from "@/types/database";
 import { STATUS_LABELS } from "@/lib/permissions";
 import {
-  BarChart3, TrendingUp, Users, FileText,
+  BarChart3, TrendingUp, Users, FileText, Search, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, Clock, ArrowUp, ArrowDown, Minus,
-  Medal, Trophy, RefreshCw, CalendarDays,
+  Medal, Trophy, RefreshCw, CalendarDays, MapPin, Target,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -30,6 +23,10 @@ import {
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface StatusCount { status: FicheStatus; count: number; }
 interface ProspecteurRow { name: string; total: number; submitted: number; accepted: number; }
+interface CommercialRow { name: string; assigned: number; accepted: number; refused: number; rate: number; }
+interface VilleRow { ville: string; accepted: number; refused: number; total: number; rate: number; }
+interface WeeklyPoint { label: string; soumises: number; acceptées: number; }
+interface DelaiInfo { avg: number; min: number; max: number; count: number; }
 
 // ── Palette statuts ───────────────────────────────────────────────────────────
 const STATUS_COLORS_HEX: Record<FicheStatus, string> = {
@@ -85,25 +82,6 @@ function KpiCard({
       <p className="text-3xl font-bold tabular-nums">{value}</p>
       <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{label}</p>
       {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-    </div>
-  );
-}
-
-function PeriodKpi({ label, value, delta, accent, accent_color, sub }: { label: string; value: number | string; delta?: number; accent?: "green"; accent_color?: "red"; sub?: string }) {
-  const borderClass = accent === "green" ? "border-l-emerald-500" : accent_color === "red" ? "border-l-red-500" : "border-l-primary/40";
-  const textClass = accent === "green" ? "text-emerald-600" : accent_color === "red" ? "text-red-500" : "";
-  return (
-    <div className={`rounded-xl bg-card border border-border border-l-4 p-4 transition-all duration-200 hover:shadow-md ${borderClass}`}>
-      <p className="text-[11px] text-muted-foreground uppercase tracking-wide truncate">{label}</p>
-      <div className="flex items-baseline gap-2 mt-1.5">
-        <p className={`text-2xl font-bold tabular-nums ${textClass}`}>{value}</p>
-        {delta !== undefined && delta !== 0 && (
-          <span className={`flex items-center text-xs font-semibold ${delta > 0 ? "text-emerald-600" : "text-red-500"}`}>
-            {delta > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}{Math.abs(delta)}
-          </span>
-        )}
-      </div>
-      {sub && <p className="text-[10px] text-muted-foreground mt-1 truncate">{sub}</p>}
     </div>
   );
 }
@@ -165,13 +143,19 @@ export default function ReportingPage() {
 
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
   const [prospecteurs, setProspecteurs] = useState<ProspecteurRow[]>([]);
-  const [statPoints, setStatPoints] = useState<StatPoint[]>([]);
-  const [granularity, setGranularity] = useState<Granularity>("month");
+  const [commerciaux, setCommerciaux] = useState<CommercialRow[]>([]);
+  const [villes, setVilles] = useState<VilleRow[]>([]);
+  const [weeklyData, setWeeklyData] = useState<WeeklyPoint[]>([]);
+  const [delai, setDelai] = useState<DelaiInfo>({ avg: 0, min: 0, max: 0, count: 0 });
   const [totalFiches, setTotalFiches] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("ALL");
   const [pieTooltipPos, setPieTooltipPos] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [showAllProspecteurs, setShowAllProspecteurs] = useState(false);
+  const [showAllCommerciaux, setShowAllCommerciaux] = useState(false);
+  const [commSearch, setCommSearch] = useState("");
+  const [prospSearch, setProspSearch] = useState("");
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
@@ -181,18 +165,15 @@ export default function ReportingPage() {
       ? ["AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
       : ["SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
-    // Construire les bornes de la période si filtre actif
     const dates = getPeriodDates(period);
     let ficheIdsForPeriod: string[] | null = null;
     if (dates) {
       const from = `${dates.from}T00:00:00Z`;
       const to   = `${dates.to}T23:59:59Z`;
-      // IDs via historique (passage à SOUMISE)
       const { data: histRows } = await supabase
         .from("fiche_history").select("fiche_id")
         .eq("new_status", "SOUMISE").gte("created_at", from).lte("created_at", to);
       const idSet = new Set((histRows ?? []).map((h: { fiche_id: string }) => h.fiche_id));
-      // Fallback sur created_at pour fiches sans historique
       const { data: legacyRows } = await supabase
         .from("fiches").select("id").neq("status", "BROUILLON")
         .gte("created_at", from).lte("created_at", to);
@@ -202,12 +183,16 @@ export default function ReportingPage() {
         setStatusCounts(statuses.map((s) => ({ status: s, count: 0 })));
         setTotalFiches(0);
         setProspecteurs([]);
-        setStatPoints([]);
+        setCommerciaux([]);
+        setVilles([]);
+        setWeeklyData([]);
+        setDelai({ avg: 0, min: 0, max: 0, count: 0 });
         setLoading(false);
         return;
       }
     }
 
+    // ── Compteurs par statut ──
     const countResults = await Promise.all(
       statuses.map(async (s) => {
         let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
@@ -220,35 +205,147 @@ export default function ReportingPage() {
     setStatusCounts(countResults);
     setTotalFiches(countResults.reduce((a, b) => a + b.count, 0));
 
-    if (!isComm) {
-      let fichesQuery = supabase
-        .from("fiches")
-        .select("created_by, status, profiles!created_by(first_name, last_name)")
-        .neq("status", "BROUILLON");
-      if (ficheIdsForPeriod) fichesQuery = fichesQuery.in("id", ficheIdsForPeriod);
-      const { data: fichesRaw } = await fichesQuery;
+    // ── Données détaillées des fiches ──
+    let fichesQuery = supabase
+      .from("fiches")
+      .select("id, created_by, assigned_to, status, prospect_ville, created_at, profiles!created_by(first_name, last_name), assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)")
+      .neq("status", "BROUILLON");
+    if (isComm) fichesQuery = fichesQuery.eq("assigned_to", profileId);
+    if (ficheIdsForPeriod) fichesQuery = fichesQuery.in("id", ficheIdsForPeriod);
+    const { data: fichesRaw } = await fichesQuery;
 
-      if (fichesRaw) {
-        const map: Record<string, ProspecteurRow> = {};
-        for (const f of fichesRaw as unknown as Array<{
-          created_by: string; status: string;
-          profiles: { first_name: string; last_name: string } | null;
-        }>) {
-          const key = f.created_by;
-          if (!map[key]) {
-            const name = f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Inconnu";
-            map[key] = { name, total: 0, submitted: 0, accepted: 0 };
-          }
-          map[key].total++;
-          map[key].submitted++;
-          if (f.status === "ACCEPTEE") map[key].accepted++;
+    type FicheRow = {
+      id: string; created_by: string; assigned_to: string | null; status: string;
+      prospect_ville: string | null; created_at: string;
+      profiles: { first_name: string; last_name: string } | null;
+      assigned_to_profile: { first_name: string; last_name: string } | null;
+    };
+    const fiches = (fichesRaw ?? []) as unknown as FicheRow[];
+
+    // ── 1. Productivité prospecteurs ──
+    if (!isComm) {
+      const prospMap: Record<string, ProspecteurRow> = {};
+      for (const f of fiches) {
+        const key = f.created_by;
+        if (!prospMap[key]) {
+          const name = f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Inconnu";
+          prospMap[key] = { name, total: 0, submitted: 0, accepted: 0 };
         }
-        setProspecteurs(Object.values(map).sort((a, b) => b.total - a.total).slice(0, 10));
+        prospMap[key].total++;
+        prospMap[key].submitted++;
+        if (f.status === "ACCEPTEE") prospMap[key].accepted++;
+      }
+      setProspecteurs(Object.values(prospMap).sort((a, b) => b.total - a.total));
+    }
+
+    // ── 2. Taux de conversion par commercial ──
+    const commMap: Record<string, CommercialRow> = {};
+    const COMM_STATUSES = ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+    for (const f of fiches) {
+      if (!f.assigned_to || !COMM_STATUSES.includes(f.status)) continue;
+      const key = f.assigned_to;
+      if (!commMap[key]) {
+        const name = f.assigned_to_profile ? `${f.assigned_to_profile.first_name} ${f.assigned_to_profile.last_name}` : "Inconnu";
+        commMap[key] = { name, assigned: 0, accepted: 0, refused: 0, rate: 0 };
+      }
+      commMap[key].assigned++;
+      if (f.status === "ACCEPTEE") commMap[key].accepted++;
+      if (f.status === "REFUSEE") commMap[key].refused++;
+    }
+    const commRows = Object.values(commMap).map((c) => ({
+      ...c,
+      rate: c.assigned > 0 ? Math.round((c.accepted / c.assigned) * 100) : 0,
+    })).sort((a, b) => b.assigned - a.assigned);
+    setCommerciaux(commRows);
+
+    // ── 3. Répartition géographique (basée sur les villes planifiées) ──
+    const { data: planifRows } = await supabase
+      .from("planification_hebdo")
+      .select("ville_id, zones_villes!inner(nom)");
+    type PlanifRow = { ville_id: string; zones_villes: { nom: string } };
+    const plannedVilleNames = new Set<string>();
+    for (const pr of (planifRows ?? []) as unknown as PlanifRow[]) {
+      plannedVilleNames.add(pr.zones_villes.nom.trim().toUpperCase());
+    }
+    const villeMap: Record<string, VilleRow> = {};
+    for (const f of fiches) {
+      if (!f.prospect_ville) continue;
+      const vKey = f.prospect_ville.trim().toUpperCase();
+      if (!plannedVilleNames.has(vKey)) continue;
+      if (!villeMap[vKey]) villeMap[vKey] = { ville: f.prospect_ville.trim(), accepted: 0, refused: 0, total: 0, rate: 0 };
+      villeMap[vKey].total++;
+      if (f.status === "ACCEPTEE") villeMap[vKey].accepted++;
+      if (f.status === "REFUSEE") villeMap[vKey].refused++;
+    }
+    const villeRows = Object.values(villeMap)
+      .map((v) => ({ ...v, rate: v.total > 0 ? Math.round((v.accepted / v.total) * 100) : 0 }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 15);
+    setVilles(villeRows);
+
+    // ── 4. Évolution semaine par semaine (8-12 dernières semaines) ──
+    const WEEK_COUNT = 12;
+    const now = new Date();
+    const weekStarts: Date[] = [];
+    for (let i = WEEK_COUNT - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1) - i * 7);
+      weekStarts.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+    }
+    const weekBuckets: WeeklyPoint[] = weekStarts.map((ws) => {
+      const end = new Date(ws);
+      end.setDate(end.getDate() + 7);
+      const sun = new Date(ws);
+      sun.setDate(sun.getDate() + 6);
+      const fmtD = (d: Date) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+      const label = `${fmtD(ws)} - ${fmtD(sun)}`;
+      let soumises = 0, acceptées = 0;
+      for (const f of fiches) {
+        const d = new Date(f.created_at);
+        if (d >= ws && d < end) {
+          soumises++;
+          if (f.status === "ACCEPTEE") acceptées++;
+        }
+      }
+      return { label, soumises, acceptées };
+    });
+    setWeeklyData(weekBuckets);
+
+    // ── 5. Délai moyen soumission → validation ──
+    const ficheIds = fiches.map((f) => f.id);
+    if (ficheIds.length > 0) {
+      const { data: histAll } = await supabase
+        .from("fiche_history")
+        .select("fiche_id, new_status, created_at")
+        .in("fiche_id", ficheIds)
+        .in("new_status", ["SOUMISE", "VALIDEE"])
+        .order("created_at", { ascending: true });
+
+      type HistEntry = { fiche_id: string; new_status: string; created_at: string };
+      const firstSoumise = new Map<string, string>();
+      const firstValidee = new Map<string, string>();
+      for (const h of (histAll ?? []) as HistEntry[]) {
+        if (h.new_status === "SOUMISE" && !firstSoumise.has(h.fiche_id)) firstSoumise.set(h.fiche_id, h.created_at);
+        if (h.new_status === "VALIDEE" && !firstValidee.has(h.fiche_id)) firstValidee.set(h.fiche_id, h.created_at);
+      }
+
+      const delais: number[] = [];
+      for (const [ficheId, soumiseDate] of firstSoumise) {
+        const valideeDate = firstValidee.get(ficheId);
+        if (valideeDate) {
+          const diffH = (new Date(valideeDate).getTime() - new Date(soumiseDate).getTime()) / (1000 * 60 * 60);
+          if (diffH >= 0) delais.push(diffH);
+        }
+      }
+
+      if (delais.length > 0) {
+        const avg = delais.reduce((a, b) => a + b, 0) / delais.length;
+        setDelai({ avg: Math.round(avg * 10) / 10, min: Math.round(Math.min(...delais) * 10) / 10, max: Math.round(Math.max(...delais) * 10) / 10, count: delais.length });
+      } else {
+        setDelai({ avg: 0, min: 0, max: 0, count: 0 });
       }
     }
 
-    const allPoints = await getFichesForStats(supabase, isComm ? { assignedTo: profileId } : undefined);
-    setStatPoints(allPoints.filter((p) => p.status !== "BROUILLON"));
     setLoading(false);
   }
 
@@ -263,59 +360,50 @@ export default function ReportingPage() {
 
   const accepted      = statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0;
   const refused       = statusCounts.find((s) => s.status === "REFUSEE")?.count ?? 0;
-  const submitted     = statusCounts.reduce((a, b) => a + b.count, 0);
-  const inProgress    = (statusCounts.find((s) => s.status === "SOUMISE")?.count ?? 0) +
-                        (statusCounts.find((s) => s.status === "VALIDEE")?.count ?? 0) +
-                        (statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0);
-  // Taux de conversion basé uniquement sur les fiches affectées à un commercial
-  // (exclut les fiches rejetées par la direction avant affectation)
-  const assignedBase  = (statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0) +
-                        (statusCounts.find((s) => s.status === "RETRACTATION")?.count ?? 0) +
-                        accepted + refused +
-                        (statusCounts.find((s) => s.status === "ARCHIVEE")?.count ?? 0);
-  const conversionRate = assignedBase > 0 ? Math.round((accepted / assignedBase) * 100) : 0;
+  const archived      = statusCounts.find((s) => s.status === "ARCHIVEE")?.count ?? 0;
+  const soumises      = statusCounts.find((s) => s.status === "SOUMISE")?.count ?? 0;
+  const validees      = statusCounts.find((s) => s.status === "VALIDEE")?.count ?? 0;
+  const affectees     = statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0;
+  const retractation  = statusCounts.find((s) => s.status === "RETRACTATION")?.count ?? 0;
+  // En cours = tout sauf acceptées, refusées, archivées
+  const inProgress    = soumises + validees + affectees + retractation;
+  const assignedBase  = affectees + retractation + accepted + refused + archived;
+  const acceptanceRate = assignedBase > 0 ? Math.round((accepted / assignedBase) * 100) : 0;
+  const refusalRate = assignedBase > 0 ? Math.round((refused / assignedBase) * 100) : 0;
+  const inProgressRate = totalFiches > 0 ? Math.round((inProgress / totalFiches) * 100) : 0;
+  // Taux de transformation = fiches soumises non encore validées et affectées
+  const pendingValidation = soumises + validees;
+  const pendingRate = totalFiches > 0 ? Math.round((pendingValidation / totalFiches) * 100) : 0;
   const maxProspecteur = Math.max(...prospecteurs.map((p) => p.total), 1);
+  const filteredCommerciaux = commSearch
+    ? commerciaux.filter((c) => c.name.toLowerCase().includes(commSearch.toLowerCase()))
+    : commerciaux;
+  const filteredProspecteurs = prospSearch
+    ? prospecteurs.filter((p) => p.name.toLowerCase().includes(prospSearch.toLowerCase()))
+    : (showAllProspecteurs ? prospecteurs : prospecteurs.slice(0, 5));
 
-  const buckets = useMemo(() => buildBuckets(statPoints, granularity), [statPoints, granularity]);
-  const { current, previous } = useMemo(() => currentAndPreviousPeriod(statPoints, granularity), [statPoints, granularity]);
-  const totalDelta = current.total - previous.total;
-
-  const periodRangeLabel = useMemo(() => {
-    const fmt = (d: Date) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
-    const s = current.start;
-    let end: Date;
-    switch (granularity) {
-      case "week": end = new Date(s.getFullYear(), s.getMonth(), s.getDate() + 6); break;
-      case "month": end = new Date(s.getFullYear(), s.getMonth() + 1, 0); break;
-      case "quarter": end = new Date(s.getFullYear(), s.getMonth() + 3, 0); break;
-      case "semester": end = new Date(s.getFullYear(), s.getMonth() + 6, 0); break;
-      case "year": end = new Date(s.getFullYear(), 11, 31); break;
-    }
-    return `du ${fmt(s)} au ${fmt(end)}`;
-  }, [current.start, granularity]);
-
-  // Données pour le pie chart (filtrer les 0)
   const pieData = statusCounts.filter((s) => s.count > 0).map((s) => ({
     name: STATUS_LABELS[s.status],
     value: s.count,
     color: STATUS_COLORS_HEX[s.status],
   }));
 
-  // Données pour le bar/area chart d'évolution
-  const chartData = buckets.map((b) => ({
-    name: b.label,
-    Affectées: b.assigned,
-    Acceptées: b.accepted,
-    Refusées: b.refused,
-  }));
-
-  // Données pour le bar chart des prospecteurs
   const prospecteurChartData = prospecteurs.slice(0, 6).map((p) => ({
-    name: p.name.split(" ")[0], // Prénom uniquement pour économiser l'espace
+    name: p.name.split(" ")[0],
     fullName: p.name,
-    Fiches: p.total,
+    Soumises: p.total,
     Acceptées: p.accepted,
   }));
+
+  const commChartData = commerciaux.slice(0, 8).map((c) => ({
+    name: c.name.split(" ")[0],
+    fullName: c.name,
+    Affectées: c.assigned,
+    Acceptées: c.accepted,
+    Refusées: c.refused,
+  }));
+
+
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (profileLoading || loading) {
@@ -389,30 +477,36 @@ export default function ReportingPage() {
           </div>
         </div>
 
-        {/* ── KPIs ─────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* ── KPIs (5 indicateurs clés) ────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           <KpiCard
             label={isCommercial ? "Mes fiches" : "Total fiches"} value={totalFiches}
             Icon={FileText} iconBg="bg-primary/10" iconColor="text-primary"
             border="border-l-primary"
           />
           <KpiCard
-            label="Taux de conversion" value={`${conversionRate}%`}
+            label="Taux d'acceptation" value={`${acceptanceRate}%`}
             sub={`${accepted} acceptée${accepted > 1 ? "s" : ""} / ${assignedBase} affectée${assignedBase > 1 ? "s" : ""}`}
             Icon={CheckCircle2} iconBg="bg-emerald-100 dark:bg-emerald-900/30" iconColor="text-emerald-600"
             border="border-l-emerald-500"
-            trend={{ delta: totalDelta }}
           />
           <KpiCard
-            label="En cours" value={inProgress}
-            sub="Soumises + affectées"
+            label="Taux de refus" value={`${refusalRate}%`}
+            sub={`${refused} refusée${refused > 1 ? "s" : ""} / ${assignedBase} affectée${assignedBase > 1 ? "s" : ""}`}
+            Icon={XCircle} iconBg="bg-red-100 dark:bg-red-900/30" iconColor="text-red-500"
+            border="border-l-red-500"
+          />
+          <KpiCard
+            label="Taux en cours" value={`${inProgressRate}%`}
+            sub={`${inProgress} fiche${inProgress > 1 ? "s" : ""} · à valider, validées, affectées, attente client`}
             Icon={Clock} iconBg="bg-orange-100 dark:bg-orange-900/30" iconColor="text-orange-600"
             border="border-l-orange-500"
           />
           <KpiCard
-            label="Refusées" value={refused}
-            Icon={XCircle} iconBg="bg-red-100 dark:bg-red-900/30" iconColor="text-red-500"
-            border="border-l-red-500"
+            label="Taux de transformation" value={`${pendingRate}%`}
+            sub={`${pendingValidation} en attente sur ${totalFiches} fiche${totalFiches > 1 ? "s" : ""}`}
+            Icon={Target} iconBg="bg-primary/10" iconColor="text-primary"
+            border="border-l-primary"
           />
         </div>
 
@@ -537,11 +631,18 @@ export default function ReportingPage() {
 
           {/* Top prospecteurs (direction) ou performance (commercial) */}
           <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                <Trophy className="w-4 h-4 text-amber-600" />
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                  <Trophy className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">{isCommercial ? "Ma performance" : "Productivité prospecteurs"}</h3>
+                  {!isCommercial && prospecteurs.length > 0 && (
+                    <p className="text-[11px] text-muted-foreground">{prospecteurs.length} prospecteur{prospecteurs.length > 1 ? "s" : ""}</p>
+                  )}
+                </div>
               </div>
-              <h3 className="font-semibold text-sm">{isCommercial ? "Ma performance" : "Top prospecteurs"}</h3>
             </div>
             {isCommercial ? (
               <div className="space-y-3">
@@ -565,28 +666,29 @@ export default function ReportingPage() {
               </div>
             ) : (
               <>
-                {/* Bar chart prospecteurs */}
-                <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={prospecteurChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f1f5f9", radius: 6 }} />
-                    <Bar dataKey="Fiches" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={32} animationDuration={700} />
-                    <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={32} animationDuration={700} />
-                  </BarChart>
-                </ResponsiveContainer>
-                {/* Classement détaillé */}
-                <div className="mt-4 space-y-3">
-                  {prospecteurs.slice(0, 5).map((p, i) => {
-                    const medalColor = i === 0 ? "text-amber-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-700" : "text-muted-foreground";
+                {prospecteurs.length > 5 && (
+                  <div className="relative mb-4">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Rechercher un prospecteur…"
+                      value={prospSearch}
+                      onChange={(e) => setProspSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                  </div>
+                )}
+                <div className={`space-y-3 overflow-y-auto ${showAllProspecteurs || prospSearch ? "max-h-[400px]" : "max-h-[280px]"}`}>
+                  {filteredProspecteurs.map((p, i) => {
+                    const origIndex = prospecteurs.indexOf(p);
+                    const medalColor = origIndex === 0 ? "text-amber-500" : origIndex === 1 ? "text-slate-400" : origIndex === 2 ? "text-amber-700" : "text-muted-foreground";
                     const convRate = p.total > 0 ? Math.round((p.accepted / p.total) * 100) : 0;
                     return (
                       <div key={p.name} className="flex items-center gap-3">
                         <div className="w-7 flex items-center justify-center shrink-0">
-                          {i < 3
+                          {origIndex < 3
                             ? <Medal className={`w-5 h-5 ${medalColor}`} />
-                            : <span className="text-sm font-bold text-muted-foreground tabular-nums">{i + 1}</span>}
+                            : <span className="text-sm font-bold text-muted-foreground tabular-nums">{origIndex + 1}</span>}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
@@ -604,107 +706,175 @@ export default function ReportingPage() {
                       </div>
                     );
                   })}
+                  {prospSearch && filteredProspecteurs.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-3">Aucun prospecteur trouvé</p>
+                  )}
                 </div>
+                {!prospSearch && prospecteurs.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllProspecteurs(!showAllProspecteurs)}
+                    className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 py-2 rounded-lg hover:bg-primary/5 transition-colors"
+                  >
+                    {showAllProspecteurs ? <><ChevronUp className="w-3.5 h-3.5" />Réduire</> : <><ChevronDown className="w-3.5 h-3.5" />Voir les {prospecteurs.length} prospecteurs</>}
+                  </button>
+                )}
               </>
             )}
           </div>
         </div>
 
-        {/* ── Évolution par période (Area chart) ───────────────────────────── */}
+
+        {/* ── Évolution semaine par semaine (courbe 12 semaines) ──────────── */}
         <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-4 h-4 text-blue-600" />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+              <TrendingUp className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm">Tendance hebdomadaire</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Volume soumis et accepté sur les 12 dernières semaines</p>
+            </div>
+          </div>
+          {weeklyData.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée disponible</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={weeklyData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradSoumises" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gradAcceptees" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="soumises" name="Soumises" stroke="#3b82f6" strokeWidth={2} fill="url(#gradSoumises)" animationDuration={700} />
+                <Area type="monotone" dataKey="acceptées" name="Acceptées" stroke="#10b981" strokeWidth={2} fill="url(#gradAcceptees)" animationDuration={700} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+          <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-500 inline-block" />Soumises</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
+          </div>
+        </div>
+
+        {/* ── Taux de conversion par commercial ──────────────────────────── */}
+        {!isCommercial && commerciaux.length > 0 && (
+          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Taux de conversion par commercial</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{commerciaux.length} commercial{commerciaux.length > 1 ? "aux" : ""} · Affectées vs Acceptées vs Refusées</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-sm">Évolution des fiches soumises</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Basée sur la date de soumission à la direction</p>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Rechercher un commercial…"
+                  value={commSearch}
+                  onChange={(e) => setCommSearch(e.target.value)}
+                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 w-52"
+                />
               </div>
             </div>
-            <Tabs value={granularity} onValueChange={(v) => setGranularity(v as Granularity)}>
-              <TabsList variant="line" className="h-auto flex-wrap">
-                {GRANULARITIES.map((g) => (
-                  <TabsTrigger key={g} value={g}>{GRANULARITY_LABELS[g]}</TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={commChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f1f5f9", radius: 6 }} />
+                <Bar dataKey="Affectées" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+                <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+                <Bar dataKey="Refusées" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-500 inline-block" />Affectées</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" />Refusées</span>
+            </div>
+            {/* Détail par commercial */}
+            <div className={`mt-5 space-y-2 overflow-y-auto ${showAllCommerciaux || commSearch ? "max-h-[400px]" : "max-h-[200px]"}`}>
+              {(commSearch ? filteredCommerciaux : (showAllCommerciaux ? commerciaux : commerciaux.slice(0, 5))).map((c) => (
+                <div key={c.name} className="flex items-center gap-3 text-sm">
+                  <span className="w-32 truncate font-medium">{c.name}</span>
+                  <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden flex">
+                    {c.assigned > 0 && (
+                      <>
+                        <div className="h-full bg-emerald-500 rounded-l-full" style={{ width: `${(c.accepted / c.assigned) * 100}%` }} />
+                        <div className="h-full bg-red-500" style={{ width: `${(c.refused / c.assigned) * 100}%` }} />
+                      </>
+                    )}
+                  </div>
+                  <span className={`w-12 text-right font-bold tabular-nums ${c.rate >= 50 ? "text-emerald-600" : c.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{c.rate}%</span>
+                  <span className="text-xs text-muted-foreground w-20 text-right">{c.assigned} fiche{c.assigned > 1 ? "s" : ""}</span>
+                </div>
+              ))}
+              {commSearch && filteredCommerciaux.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-3">Aucun commercial trouvé</p>
+              )}
+            </div>
+            {!commSearch && commerciaux.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setShowAllCommerciaux(!showAllCommerciaux)}
+                className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 py-2 rounded-lg hover:bg-primary/5 transition-colors"
+              >
+                {showAllCommerciaux ? <><ChevronUp className="w-3.5 h-3.5" />Réduire</> : <><ChevronDown className="w-3.5 h-3.5" />Voir les {commerciaux.length} commerciaux</>}
+              </button>
+            )}
           </div>
+        )}
 
-          {/* KPIs période courante */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-            <PeriodKpi label={`Total ${CURRENT_PERIOD_LABELS[granularity]}`} value={current.total} delta={totalDelta} sub={`Fiches soumises ${periodRangeLabel}`} />
-            <PeriodKpi label="Affectées" value={current.assigned} sub="Affectées à un commercial" />
-            <PeriodKpi label="Acceptées" value={current.accepted} accent="green" sub="Acceptées par le client" />
-            <PeriodKpi label="Refusées" value={current.refused} sub="Refusées par le client" accent_color="red" />
-            <PeriodKpi label="Conversion" value={`${periodConversion(current)}%`} accent="green" sub="Acceptées / Affectées" />
-          </div>
-
-          {/* Area chart */}
-          {chartData.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">Pas de données pour cette période</p>
-          ) : (
-            <>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorAffectees" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorAcceptees" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorRefusees" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(v: string) => v.length > 10 ? v.slice(0, 8) + "…" : v}
-                  />
-                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="Affectées"
-                    stroke="#f97316"
-                    strokeWidth={2}
-                    fill="url(#colorAffectees)"
-                    animationDuration={700}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="Acceptées"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    fill="url(#colorAcceptees)"
-                    animationDuration={700}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="Refusées"
-                    stroke="#ef4444"
-                    strokeWidth={2}
-                    fill="url(#colorRefusees)"
-                    animationDuration={700}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-              <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-500 inline-block" />Affectées</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" />Refusées</span>
+        {/* ── Répartition géographique ────────────────────────────────────── */}
+        {!isCommercial && (
+          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
+                <MapPin className="w-4 h-4 text-purple-600" />
               </div>
-            </>
-          )}
-        </div>
+              <div>
+                <h3 className="font-semibold text-sm">Villes planifiées — résultats</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Performance des fiches dans les villes issues de la planification</p>
+              </div>
+            </div>
+            {villes.length > 0 ? (
+              <div className="space-y-2.5">
+                <div className="grid grid-cols-[1fr_60px_60px_60px_50px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-1 border-b border-border">
+                  <span>Ville</span>
+                  <span className="text-right">Total</span>
+                  <span className="text-right text-emerald-600">Accept.</span>
+                  <span className="text-right text-red-500">Refus.</span>
+                  <span className="text-right">Taux</span>
+                </div>
+                {villes.map((v) => (
+                  <div key={v.ville} className="grid grid-cols-[1fr_60px_60px_60px_50px] gap-2 items-center text-sm">
+                    <span className="font-medium truncate">{v.ville}</span>
+                    <span className="text-right tabular-nums text-muted-foreground">{v.total}</span>
+                    <span className="text-right tabular-nums text-emerald-600 font-medium">{v.accepted}</span>
+                    <span className="text-right tabular-nums text-red-500 font-medium">{v.refused}</span>
+                    <span className={`text-right tabular-nums font-bold ${v.rate >= 50 ? "text-emerald-600" : v.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{v.rate}%</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">Aucune fiche ne correspond aux villes planifiées</p>
+            )}
+          </div>
+        )}
 
       </div>
     </>

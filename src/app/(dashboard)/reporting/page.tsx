@@ -380,7 +380,7 @@ export default function ReportingPage() {
     : commerciaux;
   const filteredProspecteurs = prospSearch
     ? prospecteurs.filter((p) => p.name.toLowerCase().includes(prospSearch.toLowerCase()))
-    : (showAllProspecteurs ? prospecteurs : prospecteurs.slice(0, 5));
+    : (showAllProspecteurs ? prospecteurs : prospecteurs.slice(0, 8));
 
   const pieData = statusCounts.filter((s) => s.count > 0).map((s) => ({
     name: STATUS_LABELS[s.status],
@@ -666,18 +666,16 @@ export default function ReportingPage() {
               </div>
             ) : (
               <>
-                {prospecteurs.length > 5 && (
-                  <div className="relative mb-4">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                    <input
-                      type="text"
-                      placeholder="Rechercher un prospecteur…"
-                      value={prospSearch}
-                      onChange={(e) => setProspSearch(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    />
-                  </div>
-                )}
+                <div className="relative mb-4">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher un prospecteur…"
+                    value={prospSearch}
+                    onChange={(e) => setProspSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                </div>
                 <div className={`space-y-3 overflow-y-auto ${showAllProspecteurs || prospSearch ? "max-h-[400px]" : "max-h-[280px]"}`}>
                   {filteredProspecteurs.map((p, i) => {
                     const origIndex = prospecteurs.indexOf(p);
@@ -710,7 +708,7 @@ export default function ReportingPage() {
                     <p className="text-sm text-muted-foreground text-center py-3">Aucun prospecteur trouvé</p>
                   )}
                 </div>
-                {!prospSearch && prospecteurs.length > 5 && (
+                {!prospSearch && prospecteurs.length > 8 && (
                   <button
                     type="button"
                     onClick={() => setShowAllProspecteurs(!showAllProspecteurs)}

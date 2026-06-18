@@ -408,20 +408,20 @@ export default function DashboardPage() {
     const isAdmin       = profile.role === "ADMIN";
     const isCommercial  = profile.role === "COMMERCIAL";
 
-    // ── Compteurs ────────────────────────────────────────────────────────────
+    // ── Compteurs (filtrés par période) ────────────────────────────────────
     const statusesToCount: FicheStatus[] = isProspecteur
       ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
       : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
+    const periodDates = getDashPeriodDates(period);
     const results = await Promise.all(
       statusesToCount.map(async (s) => {
-        if (isProspecteur) {
-          const count = await countFichesByStatus(supabase, s, { createdBy: profile.id });
-          return [s, count] as const;
-        }
         let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
-        // Commercial : uniquement ses fiches affectées
+        if (isProspecteur) q = q.eq("created_by", profile.id);
         if (isCommercial) q = q.eq("assigned_to", profile.id);
+        if (periodDates) {
+          q = q.gte("created_at", `${periodDates.from}T00:00:00`).lte("created_at", `${periodDates.to}T23:59:59`);
+        }
         const { count } = await q;
         return [s, count ?? 0] as const;
       })

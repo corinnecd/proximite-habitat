@@ -24,6 +24,7 @@ import {
   ChevronDown, ChevronUp,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 type PeriodFilter = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER";
 
@@ -85,6 +86,7 @@ const VISIBLE_INIT = 6;
 const STATUS_CARD_STYLES: Record<FicheStatus, { border: string; icon: string; iconBg: string; Icon: React.ElementType }> = {
   BROUILLON:    { border: "border-l-slate-400",   icon: "text-slate-500",   iconBg: "bg-slate-100 dark:bg-slate-800",         Icon: Clock },
   SOUMISE:      { border: "border-l-blue-500",    icon: "text-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",         Icon: Send },
+  VALIDEE:      { border: "border-l-emerald-500", icon: "text-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40",   Icon: CheckCircle2 },
   AFFECTEE:     { border: "border-l-orange-500",  icon: "text-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",     Icon: UserCheck },
   ACCEPTEE:     { border: "border-l-emerald-500", icon: "text-emerald-600", iconBg: "bg-emerald-50 dark:bg-emerald-950/40",   Icon: CheckCircle2 },
   RETRACTATION: { border: "border-l-purple-500",  icon: "text-purple-600",  iconBg: "bg-purple-50 dark:bg-purple-950/40",     Icon: AlertCircle },
@@ -105,8 +107,10 @@ interface ProfileOption { id: string; first_name: string; last_name: string; }
 export default function FichesPage() {
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get("status") as FicheStatus | null;
+  const isValidationMode = initialStatus === "SOUMISE";
+  const highlightIds = useMemo(() => new Set((searchParams.get("highlight") ?? "").split(",").filter(Boolean)), [searchParams]);
   const { profile } = useProfile();
-  const isProspecteur = profile?.role === "PROSPECTEUR";
+  const isProspecteur = profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE";
   const isAdmin       = profile?.role === "ADMIN";
   const isCommercial  = profile?.role === "COMMERCIAL";
 
@@ -127,12 +131,16 @@ export default function FichesPage() {
   const [commercialFilter, setCommercialFilter] = useState("ALL");
   const [prospecteurs, setProspecteurs] = useState<ProfileOption[]>([]);
   const [commercials, setCommercials] = useState<ProfileOption[]>([]);
+  const [anterieures, setAnterieures] = useState<{ id: string }[]>([]);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [validationStats, setValidationStats] = useState<{ label: string; soumises: number; affectees: number; validees: number }[]>([]);
+  const [quarterLabel, setQuarterLabel] = useState("");
 
   // Stable — ne change pas entre les renders
   const supabase = useMemo(() => createClient(), []);
 
   const visibleStatuses: FicheStatus[] = isProspecteur
-    ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+    ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
     : isCommercial
     ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
     : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
@@ -150,7 +158,7 @@ export default function FichesPage() {
       const { data } = await supabase
         .from("profiles")
         .select("id, first_name, last_name, role")
-        .in("role", ["PROSPECTEUR", "COMMERCIAL"])
+        .in("role", ["PROSPECTEUR", "CHEF_EQUIPE", "COMMERCIAL"])
         .eq("is_active", true)
         .order("last_name");
       if (data) {
@@ -167,7 +175,7 @@ export default function FichesPage() {
     // Calculé ici pour éviter les closures périmées
     const role = profile?.role;
     const _isAdmin       = role === "ADMIN";
-    const _isProspecteur = role === "PROSPECTEUR";
+    const _isProspecteur = role === "PROSPECTEUR" || role === "CHEF_EQUIPE";
 
     let query = supabase
       .from("fiches")
@@ -199,35 +207,9 @@ export default function FichesPage() {
     if (_isAdmin) {
       const dates = getPeriodDates(periodFilter);
       if (dates) {
-        // Suffixe Z = UTC explicite, évite les ambiguïtés de timezone
-        const from = `${dates.from}T00:00:00Z`;
-        const to   = `${dates.to}T23:59:59Z`;
-
-        // IDs via l'historique (fiches soumises via le workflow RPC)
-        const { data: historyRows } = await supabase
-          .from("fiche_history")
-          .select("fiche_id")
-          .eq("new_status", "SOUMISE")
-          .gte("created_at", from)
-          .lte("created_at", to);
-        const idsFromHistory = new Set((historyRows ?? []).map((h) => h.fiche_id));
-
-        // IDs des fiches sans historique (seed / import direct) filtrées par created_at
-        const { data: legacyRows } = await supabase
-          .from("fiches")
-          .select("id")
-          .neq("status", "BROUILLON")
-          .gte("created_at", from)
-          .lte("created_at", to);
-        (legacyRows ?? []).forEach((f) => idsFromHistory.add(f.id));
-
-        const ficheIds = Array.from(idsFromHistory);
-        if (ficheIds.length === 0) {
-          setFiches([]); setHasMore(false); setPage(0);
-          if (append) setLoadingMore(false); else setLoading(false);
-          return;
-        }
-        query = query.in("id", ficheIds);
+        query = query
+          .gte("updated_at", `${dates.from}T00:00:00Z`)
+          .lte("updated_at", `${dates.to}T23:59:59Z`);
       }
       if (prospecteurFilter !== "ALL") query = query.eq("created_by", prospecteurFilter);
       if (commercialFilter  !== "ALL") query = query.eq("assigned_to", commercialFilter);
@@ -258,6 +240,118 @@ export default function FichesPage() {
     }
   // supabase est stable (useMemo), pas besoin dans les deps
   }, [statusFilter, search, profile, periodFilter, prospecteurFilter, commercialFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fiches antérieures au trimestre (toujours chargées)
+  useEffect(() => {
+    if (!profile || isProspecteur) return;
+    async function loadAnterieures() {
+      const now = new Date();
+      const q = Math.floor(now.getMonth() / 3);
+      const quarterStart = new Date(now.getFullYear(), q * 3, 1);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const qFrom = `${quarterStart.getFullYear()}-${pad(quarterStart.getMonth() + 1)}-${pad(quarterStart.getDate())}`;
+      let aq = supabase.from("fiches").select("id");
+      if (isCommercial && profile.id) aq = aq.eq("assigned_to", profile.id);
+      else aq = aq.neq("status", "BROUILLON");
+      aq = aq.lt("updated_at", `${qFrom}T00:00:00Z`).limit(50);
+      const { data } = await aq;
+      setAnterieures((data as { id: string }[]) ?? []);
+    }
+    loadAnterieures();
+  }, [profile, isProspecteur, isCommercial, supabase]);
+
+  // Compteurs par statut
+  useEffect(() => {
+    if (!profile) return;
+    async function loadStatusCounts() {
+      const statuses: FicheStatus[] = isProspecteur
+        ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+        : isCommercial
+        ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
+        : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+      const counts: Record<string, number> = {};
+      let total = 0;
+      await Promise.all(statuses.map(async (s) => {
+        let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
+        if (isProspecteur && profile.id) q = q.eq("created_by", profile.id);
+        else if (isCommercial && profile.id) q = q.eq("assigned_to", profile.id);
+        const { count } = await q;
+        counts[s] = count ?? 0;
+        total += count ?? 0;
+      }));
+      counts["ALL"] = total;
+      setStatusCounts(counts);
+    }
+    loadStatusCounts();
+  }, [profile, isProspecteur, isCommercial, supabase]);
+
+  // Évolution des validations par semaine (trimestre en cours) — mode validation uniquement
+  useEffect(() => {
+    if (!isValidationMode || !profile || !isAdmin) return;
+    async function loadValidationStats() {
+      const now = new Date();
+      const q = Math.floor(now.getMonth() / 3);
+      const quarterStart = new Date(now.getFullYear(), q * 3, 1);
+      const quarterEnd = new Date(now.getFullYear(), q * 3 + 3, 0);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+      const weeks: { label: string; from: string; to: string }[] = [];
+      const current = new Date(quarterStart);
+      // Align to Monday
+      const dayOfWeek = current.getDay() === 0 ? 6 : current.getDay() - 1;
+      current.setDate(current.getDate() - dayOfWeek);
+      let weekNum = 1;
+      while (current <= quarterEnd) {
+        const monday = new Date(current);
+        const sunday = new Date(current);
+        sunday.setDate(sunday.getDate() + 6);
+        const effMonday = monday < quarterStart ? quarterStart : monday;
+        const effSunday = sunday > quarterEnd ? quarterEnd : sunday;
+        const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
+        weeks.push({
+          label: `S${weekNum} (${shortDate(effMonday)}-${shortDate(effSunday)})`,
+          from: fmt(effMonday),
+          to: fmt(effSunday),
+        });
+        current.setDate(current.getDate() + 7);
+        weekNum++;
+      }
+
+      const results = await Promise.all(weeks.map(async (w) => {
+        // Fiches soumises dans cette semaine
+        const { count: soumises } = await supabase
+          .from("fiche_history")
+          .select("*", { count: "exact", head: true })
+          .eq("new_status", "SOUMISE")
+          .gte("created_at", `${w.from}T00:00:00Z`)
+          .lte("created_at", `${w.to}T23:59:59Z`);
+
+        // Fiches affectées dans cette semaine
+        const { count: affectees } = await supabase
+          .from("fiche_history")
+          .select("*", { count: "exact", head: true })
+          .eq("new_status", "AFFECTEE")
+          .gte("created_at", `${w.from}T00:00:00Z`)
+          .lte("created_at", `${w.to}T23:59:59Z`);
+
+        // Fiches validées (acceptées) dans cette semaine
+        const { count: validees } = await supabase
+          .from("fiche_history")
+          .select("*", { count: "exact", head: true })
+          .eq("new_status", "ACCEPTEE")
+          .gte("created_at", `${w.from}T00:00:00Z`)
+          .lte("created_at", `${w.to}T23:59:59Z`);
+
+        return { label: w.label, soumises: soumises ?? 0, affectees: affectees ?? 0, validees: validees ?? 0 };
+      }));
+
+      setValidationStats(results);
+      const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+      setQuarterLabel(`du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}`);
+    }
+    loadValidationStats();
+  }, [isValidationMode, profile, isAdmin, supabase]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore && !fetchError) fetchFiches(page + 1, true);
@@ -327,7 +421,7 @@ export default function FichesPage() {
 
   return (
     <>
-      <Topbar title="Fiches de pré-visite" actions={<ExportPdfButton title="Fiches de pré-visite" filename="fiches-preview" />} />
+      <Topbar title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} actions={<ExportPdfButton title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} filename={isValidationMode ? "fiches-a-valider" : "fiches-preview"} />} />
       <div className="p-6 lg:p-8 space-y-4">
 
         {/* Barre principale : recherche + export + nouvelle fiche */}
@@ -353,33 +447,37 @@ export default function FichesPage() {
           </div>
         </div>
 
-        {/* Filtres direction */}
+        {/* Filtres direction / période */}
         {isAdmin && (
           <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <CalendarRange className="w-4 h-4" />
-                Filtres direction
+            {!isValidationMode && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <CalendarRange className="w-4 h-4" />
+                  Filtres direction
+                </div>
+                {hasAdminFilters && (
+                  <button
+                    type="button"
+                    onClick={resetAdminFilters}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Réinitialiser les filtres"
+                  >
+                    <X className="w-3 h-3" />Réinitialiser
+                  </button>
+                )}
               </div>
-              {hasAdminFilters && (
-                <button
-                  type="button"
-                  onClick={resetAdminFilters}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Réinitialiser les filtres"
-                >
-                  <X className="w-3 h-3" />Réinitialiser
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* Période de soumission */}
-              <div className="col-span-2 space-y-1">
+            )}
+            <div className={isValidationMode ? "space-y-1" : "grid grid-cols-2 lg:grid-cols-4 gap-3"}>
+              {/* Période */}
+              <div className={isValidationMode ? "" : "col-span-2 space-y-1"}>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                  <CalendarDays className="w-3 h-3" />Période de soumission
+                  <CalendarDays className="w-3 h-3" />{isValidationMode ? "Période d'activité" : "Période de soumission"}
                 </label>
                 <div className="flex gap-2 flex-wrap">
-                  {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((p) => (
+                  {(Object.keys(PERIOD_LABELS) as PeriodFilter[])
+                    .filter((p) => !isValidationMode || (p !== "QUARTER"))
+                    .map((p) => (
                     <button
                       key={p}
                       type="button"
@@ -393,8 +491,31 @@ export default function FichesPage() {
                       {PERIOD_LABELS[p]}
                     </button>
                   ))}
+                  {!isValidationMode && (
+                    <button
+                      type="button"
+                      onClick={() => { setPeriodFilter("ALL"); setStatusFilter("ARCHIVEE"); }}
+                      className="relative group px-3 py-1.5 rounded-xl text-xs font-medium border transition-all bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-foreground inline-flex items-center gap-1.5"
+                    >
+                      <Archive className="w-3.5 h-3.5" />
+                      Antérieures
+                      {anterieures.length > 0 && (
+                        <span className="bg-primary/10 text-primary text-xs font-bold px-1.5 py-0.5 rounded-full">{anterieures.length}</span>
+                      )}
+                      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max max-w-xs px-3 py-2 rounded-lg bg-foreground text-background text-xs leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
+                        {anterieures.length} fiche{anterieures.length > 1 ? "s" : ""} archivée{anterieures.length > 1 ? "s" : ""} au cours du trimestre en cours.
+                        <br />Cliquer pour les visualiser.
+                      </span>
+                    </button>
+                  )}
                 </div>
+                {periodFilter !== "ALL" && (
+                  <p className="text-xs text-muted-foreground pt-1">
+                    Affichage : <span className="font-semibold text-foreground">{fiches.length} fiche{fiches.length > 1 ? "s" : ""}</span> {PERIOD_LABELS[periodFilter].toLowerCase()}
+                  </p>
+                )}
               </div>
+              {!isValidationMode && (<>
               {/* Filtre prospecteur */}
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground uppercase tracking-wide">Prospecteurs</label>
@@ -437,34 +558,52 @@ export default function FichesPage() {
                   </SelectContent>
                 </Select>
               </div>
+              </>)}
             </div>
           </div>
         )}
 
         {/* Filtres par statut */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        {!isValidationMode && (<div className="flex gap-2 overflow-x-auto overflow-y-visible pb-12">
           <button
             onClick={() => setStatusFilter("ALL")}
             aria-pressed={statusFilter === "ALL"}
-            className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+            className={`relative group px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
               statusFilter === "ALL" ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-secondary border"
             }`}
           >
             <Filter className="w-4 h-4 inline mr-1" />Toutes
+            {statusCounts["ALL"] != null && (
+              <span className="pointer-events-none absolute left-0 top-full mt-2 w-max px-3 py-1.5 rounded-lg bg-[#9B2335] text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
+                {statusCounts["ALL"]} fiche{statusCounts["ALL"] > 1 ? "s" : ""} au total
+              </span>
+            )}
           </button>
           {visibleStatuses.map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
               aria-pressed={statusFilter === s}
-              className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+              className={`relative group px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                 statusFilter === s ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-secondary border"
               }`}
             >
               {statusLabel(s)}
+              {statusCounts[s] != null && (
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-3 py-1.5 rounded-lg bg-[#9B2335] text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
+                  {statusCounts[s]} fiche{statusCounts[s] > 1 ? "s" : ""} {statusLabel(s).toLowerCase()}
+                </span>
+              )}
             </button>
           ))}
-        </div>
+        </div>)}
+
+        {/* Résumé période en mode validation */}
+        {isValidationMode && periodFilter !== "ALL" && (
+          <p className="text-xs text-muted-foreground">
+            Affichage : <span className="font-semibold text-foreground">{fiches.length} fiche{fiches.length > 1 ? "s" : ""} à valider</span> {PERIOD_LABELS[periodFilter].toLowerCase()}
+          </p>
+        )}
 
         {/* Liste des fiches */}
         {loading ? (
@@ -499,16 +638,18 @@ export default function FichesPage() {
           <div className="bg-card rounded-xl border border-border">
             <EmptyState
               illustration={search ? "search" : "fiches"}
-              title="Aucune fiche trouvée"
+              title={isValidationMode ? "Aucune fiche à valider" : "Aucune fiche trouvée"}
               description={
-                statusFilter !== "ALL"
+                isValidationMode
+                  ? (search ? `Aucun résultat pour "${search}"` : "Toutes les fiches ont été traitées")
+                  : statusFilter !== "ALL"
                   ? `Aucune fiche avec le statut "${STATUS_LABELS[statusFilter as FicheStatus]}"${search ? ` pour "${search}"` : ""}`
                   : search
                   ? `Aucun résultat pour "${search}"`
                   : "Commencez par créer votre première fiche de pré-visite"
               }
               action={
-                !search && statusFilter === "ALL" ? (
+                !isValidationMode && !search && statusFilter === "ALL" ? (
                   <Link href="/fiches/nouvelle" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-medium transition-colors">
                     <FilePlus className="w-4 h-4" />Nouvelle fiche
                   </Link>
@@ -521,12 +662,15 @@ export default function FichesPage() {
             {fiches.slice(0, visibleCount).map((fiche, idx) => {
               const s = STATUS_CARD_STYLES[fiche.status];
               const StatusIcon = s.Icon;
+              const isHighlighted = highlightIds.has(fiche.id);
               return (
                 <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                   <div
-                    className={`flex items-center gap-4 bg-card border border-border border-l-4 ${s.border} rounded-xl px-5 py-4 hover:translate-x-1 hover:shadow-md transition-all duration-200 cursor-pointer`}
+                    className={`flex items-center gap-4 bg-card border border-border border-l-4 ${s.border} rounded-xl px-5 py-4 hover:translate-x-1 hover:shadow-md transition-all duration-200 cursor-pointer ${isHighlighted ? "ring-2 ring-[#F97316] bg-[#F97316]/5 animate-[highlightPulse_1.5s_ease-in-out]" : ""}`}
                     style={{
-                      animation: "fadeSlideIn 0.25s ease both",
+                      animation: isHighlighted
+                        ? "fadeSlideIn 0.25s ease both, highlightPulse 1.5s ease-in-out"
+                        : "fadeSlideIn 0.25s ease both",
                       animationDelay: `${Math.min(idx, 10) * 40}ms`,
                     }}
                   >
@@ -556,6 +700,11 @@ export default function FichesPage() {
                         </span>
                       )}
                       <FicheStatusBadge status={fiche.status} />
+                      {isHighlighted && (
+                        <span className="text-[10px] font-semibold text-[#F97316] bg-[#F97316]/10 px-2 py-0.5 rounded-full whitespace-nowrap">
+                          Antérieure
+                        </span>
+                      )}
                       <span className="text-xs text-muted-foreground hidden sm:block">
                         {new Date(fiche.created_at).toLocaleDateString("fr-FR")}
                       </span>
@@ -592,6 +741,26 @@ export default function FichesPage() {
                 Voir moins
               </Button>
             ) : null}
+          </div>
+        )}
+
+        {isValidationMode && validationStats.length > 0 && (
+          <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Évolution des validations — Trimestre en cours {quarterLabel}</h3>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={validationStats} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" height={60} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{ borderRadius: "0.75rem", border: "1px solid var(--border)", background: "var(--card)" }}
+                  formatter={(value, name) => [value, name]}
+                />
+                <Bar dataKey="soumises" name="À valider" fill="#F97316" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="affectees" name="Validées et affectées" fill="#1B2659" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="validees" name="Acceptation Client" fill="#10B981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         )}
       </div>

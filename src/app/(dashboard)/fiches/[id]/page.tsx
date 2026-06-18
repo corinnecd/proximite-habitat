@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use, useCallback } from "react";
+import { useEffect, useState, use, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-  DialogFooter, DialogClose,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -34,10 +34,12 @@ import { toast } from "sonner";
 import {
   User, Home, Flame, Wind, Shield, Camera, FileText,
   Clock, ArrowLeft, UserCheck, Loader2, Pencil, Trash2,
-  Phone, MapPin, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, Copy,
+  Phone, MapPin, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, Copy, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { DownloadFicheButton } from "@/components/pdf/DownloadFicheButton";
+import { VilleMapDynamic } from "@/components/ui/VilleMapDynamic";
 import confetti from "canvas-confetti";
+import type { ZoneVille } from "@/types/database";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,6 +60,7 @@ interface ProfileEntry { id: string; first_name: string; last_name: string; role
 const STATUS_HERO: Record<FicheStatus, { border: string; iconBg: string; icon: string }> = {
   BROUILLON:    { border: "border-l-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800",       icon: "text-slate-500" },
   SOUMISE:      { border: "border-l-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",       icon: "text-blue-500" },
+  VALIDEE:      { border: "border-l-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "text-emerald-500" },
   AFFECTEE:     { border: "border-l-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",   icon: "text-orange-500" },
   ACCEPTEE:     { border: "border-l-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "text-emerald-600 dark:text-emerald-400" },
   RETRACTATION: { border: "border-l-purple-500",  iconBg: "bg-purple-50 dark:bg-purple-950/40",   icon: "text-purple-600 dark:text-purple-400" },
@@ -141,10 +144,20 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRejetDialog, setShowRejetDialog] = useState(false);
   const [rejetMotif, setRejetMotif] = useState("");
+  const [showReassignPanel, setShowReassignPanel] = useState(false);
+  const [reassignCommercialId, setReassignCommercialId] = useState("");
+  const [assignCommercialId, setAssignCommercialId] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
+  const [deleteMotif, setDeleteMotif] = useState("");
+  const [villeData, setVilleData] = useState<ZoneVille | null>(null);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showAnnulationDialog, setShowAnnulationDialog] = useState(false);
+  const [annulationMotif, setAnnulationMotif] = useState("");
 
   const { profile } = useProfile();
   const router = useRouter();
-  const supabase = createClient();
+  // useMemo évite une nouvelle référence à chaque render (stabilise useCallback fetchData)
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -172,6 +185,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         const name = await getProfileFullName(supabase, ficheData.created_by);
         if (name) setCreatorName(name);
       }
+      if (ficheData?.ville_id) {
+        const { data: vData } = await supabase.from("zones_villes").select("*").eq("id", ficheData.ville_id).single();
+        if (vData) setVilleData(vData);
+      } else {
+        setVilleData(null);
+      }
     } catch (err) {
       console.error("fetchData error", err);
       toast.error("Erreur lors du chargement de la fiche");
@@ -179,6 +198,15 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       setLoading(false);
     }
   }, [id, supabase]);
+
+  // B-03 : réinitialiser les états de validation quand l'id change (navigation entre fiches)
+  useEffect(() => {
+    setIsValidated(false);
+    setSelectedCommercial("");
+    setRejetMotif("");
+    setShowConfirmModal(false);
+    setShowRejetDialog(false);
+  }, [id]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -192,15 +220,27 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       .channel(`fiche-detail-${id}`)
       .on("postgres_changes",
         { event: "UPDATE", schema: "public", table: "fiches", filter: `id=eq.${id}` },
-        (payload) => {
-          if (payload.new?.status) {
-            setFiche((prev) => prev ? { ...prev, status: payload.new.status as FicheStatus } : prev);
-          }
-          getFicheHistory(supabase, id).then(setHistory);
-        })
+        () => { fetchData(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [id, supabase]);
+  }, [id, supabase, fetchData]);
+
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === "visible") fetchData();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [fetchData]);
+
+  useEffect(() => {
+    if (!showStatusDropdown) return;
+    function close(e: MouseEvent) {
+      if (!(e.target as HTMLElement).closest("[data-status-dropdown]")) setShowStatusDropdown(false);
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [showStatusDropdown]);
 
   async function handleStatusChange(newStatus: FicheStatus, comment?: string) {
     if (!fiche || !profile) return;
@@ -260,7 +300,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             user_id: profile.id,
             organization_id: orgId,
             type: "FICHE_SOUMISE",
-            title: "Fiche soumise à la direction",
+            title: "Nouvelle fiche à valider",
             message: `Votre fiche ${ref} a bien été soumise et est en attente de validation par la direction.`,
             fiche_id: fiche.id,
           }]);
@@ -310,10 +350,18 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
   async function handleDelete() {
     if (!fiche || !profile) return;
+    if (!deleteMotif.trim()) { toast.error("Le motif de suppression est obligatoire"); return; }
     setDeleting(true);
     try {
+      await supabase.from("fiche_history").insert({
+        fiche_id: fiche.id,
+        organization_id: profile.organization_id,
+        user_id: profile.id,
+        action: `Fiche supprimée — Motif : ${deleteMotif.trim()}`,
+        old_status: fiche.status,
+      });
       await deleteFicheCascade(supabase, fiche.id);
-      toast.success("Brouillon supprimé");
+      toast.success("Fiche supprimée");
       router.push("/");
     } catch (e) {
       console.error(e);
@@ -372,9 +420,64 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     })();
   }
 
+  async function handleAnnulationValidation() {
+    if (!fiche || !profile || !annulationMotif.trim()) {
+      toast.error("Le motif d'annulation est obligatoire.");
+      return;
+    }
+    setTransitioning(true);
+    const { error } = await supabase.rpc("transition_fiche", {
+      p_fiche_id: fiche.id,
+      p_new_status: "SOUMISE",
+      p_comment: annulationMotif.trim(),
+    });
+    if (error) { toast.error("Annulation refusée : " + error.message); setTransitioning(false); return; }
+    setFiche({ ...fiche, status: "SOUMISE", assigned_to: null });
+    toast.success("Validation annulée — la fiche revient en statut À valider.");
+    setShowAnnulationDialog(false);
+    setAnnulationMotif("");
+    setTransitioning(false);
+    void (async () => {
+      try {
+        const orgId = profile.organization_id;
+        const ref = fiche.reference;
+        const motif = annulationMotif.trim();
+        if (fiche.assigned_to) {
+          await createNotifications(supabase, [{
+            user_id: fiche.assigned_to,
+            organization_id: orgId,
+            type: "FICHE_REJETEE",
+            title: "Affectation annulée",
+            message: `La fiche ${ref} ne vous est plus affectée. Motif : ${motif}`,
+            fiche_id: fiche.id,
+          }]);
+        }
+        if (fiche.created_by) {
+          await createNotifications(supabase, [{
+            user_id: fiche.created_by,
+            organization_id: orgId,
+            type: "FICHE_REJETEE",
+            title: "Validation annulée",
+            message: `Votre fiche ${ref} n'est plus validée. Motif : ${motif}`,
+            fiche_id: fiche.id,
+          }]);
+        }
+      } catch { /* silencieux */ }
+    })();
+  }
+
   async function handleAssign(commercialId: string) {
     if (!fiche || !profile) return;
     setTransitioning(true);
+    // Étape 1 : SOUMISE → VALIDEE (si la fiche est encore SOUMISE)
+    if (fiche.status === "SOUMISE") {
+      const { error: errValidate } = await supabase.rpc("transition_fiche", {
+        p_fiche_id: fiche.id,
+        p_new_status: "VALIDEE",
+      });
+      if (errValidate) { toast.error("Validation refusée : " + errValidate.message); setTransitioning(false); return; }
+    }
+    // Étape 2 : VALIDEE → AFFECTEE
     const { error } = await supabase.rpc("transition_fiche", {
       p_fiche_id: fiche.id,
       p_new_status: "AFFECTEE",
@@ -428,6 +531,72 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     router.refresh();
   }
 
+  async function handleReassign() {
+    if (!fiche || !profile || !reassignCommercialId) return;
+    setTransitioning(true);
+    // Mise à jour directe (le RPC interdit AFFECTEE→AFFECTEE)
+    const { error } = await supabase
+      .from("fiches")
+      .update({ assigned_to: reassignCommercialId, status: "AFFECTEE", updated_at: new Date().toISOString() })
+      .eq("id", fiche.id);
+    if (error) { toast.error("Réaffectation refusée : " + error.message); setTransitioning(false); return; }
+    setFiche({ ...fiche, assigned_to: reassignCommercialId, status: "AFFECTEE" });
+    setShowReassignPanel(false);
+    setReassignCommercialId("");
+    setTransitioning(false);
+    toast.success("Affectation modifiée avec succès");
+
+    const oldCommercialId = fiche.assigned_to;
+    void (async () => {
+      try {
+        const ref = fiche.reference;
+        const orgId = profile.organization_id;
+
+        const notifications: Parameters<typeof createNotifications>[1] = [];
+
+        // Notifier l'ancien commercial que la fiche lui a été retirée
+        if (oldCommercialId && oldCommercialId !== reassignCommercialId) {
+          const { data: oldComm } = await supabase
+            .from("profiles").select("first_name, last_name").eq("id", oldCommercialId).single();
+          notifications.push({
+            user_id: oldCommercialId,
+            organization_id: orgId,
+            type: "FICHE_AFFECTEE",
+            title: "Fiche retirée de votre portefeuille",
+            message: `La fiche ${ref} a été réaffectée à un autre commercial par la direction.`,
+            fiche_id: fiche.id,
+          });
+
+          // Historique
+          const newComm = commercials.find((c) => c.id === reassignCommercialId);
+          await supabase.from("fiche_history").insert({
+            fiche_id: fiche.id,
+            organization_id: orgId,
+            user_id: profile.id,
+            action: `Réaffectation : ${oldComm ? `${oldComm.first_name} ${oldComm.last_name}` : "ancien commercial"} → ${newComm ? `${newComm.first_name} ${newComm.last_name}` : "nouveau commercial"}`,
+            old_status: "AFFECTEE",
+            new_status: "AFFECTEE",
+          });
+        }
+
+        // Notifier le nouveau commercial
+        notifications.push({
+          user_id: reassignCommercialId,
+          organization_id: orgId,
+          type: "FICHE_AFFECTEE",
+          title: "Fiche affectée",
+          message: `La fiche ${ref} vous a été affectée par la direction.`,
+          fiche_id: fiche.id,
+        });
+
+        if (notifications.length > 0) {
+          await createNotifications(supabase, notifications);
+        }
+        await sendEmailFicheAffectee(fiche.id);
+      } catch { /* silencieux */ }
+    })();
+  }
+
   // ── Loading ────────────────────────────────────────────────────────────────
 
   if (loading || !fiche) {
@@ -443,11 +612,56 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
+  if (profile?.role === "COMMERCIAL" && fiche.assigned_to !== profile.id && fiche.created_by !== profile.id) {
+    return (
+      <>
+        <Topbar title="Accès refusé" />
+        <div className="p-6 lg:p-8 max-w-lg mx-auto text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center mx-auto">
+            <Ban className="w-7 h-7 text-red-500" />
+          </div>
+          <h2 className="text-lg font-bold">Accès non autorisé</h2>
+          <p className="text-sm text-muted-foreground">
+            Cette fiche ne vous est plus affectée. Vous ne pouvez pas y accéder.
+          </p>
+          <Button onClick={() => router.push("/fiches")} className="bg-[#F97316] hover:bg-[#EA580C] text-white">
+            Retour aux fiches
+          </Button>
+        </div>
+      </>
+    );
+  }
+
+  if ((profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && fiche.created_by !== profile.id) {
+    return (
+      <>
+        <Topbar title="Accès refusé" />
+        <div className="p-6 lg:p-8 max-w-lg mx-auto text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center mx-auto">
+            <Ban className="w-7 h-7 text-red-500" />
+          </div>
+          <h2 className="text-lg font-bold">Accès non autorisé</h2>
+          <p className="text-sm text-muted-foreground">
+            Vous ne pouvez accéder qu&#39;aux fiches que vous avez créées.
+          </p>
+          <Button onClick={() => router.push("/fiches")} className="bg-[#F97316] hover:bg-[#EA580C] text-white">
+            Retour aux fiches
+          </Button>
+        </div>
+      </>
+    );
+  }
+
   const rawTransitions = profile ? getAvailableTransitions(profile.role, fiche.status) : [];
   // Pour ADMIN sur fiche SOUMISE : la bannière gère validation/rejet — on masque ces boutons du hero
-  const availableTransitions = (profile?.role === "ADMIN" && fiche.status === "SOUMISE")
-    ? rawTransitions.filter((s) => s !== "AFFECTEE" && s !== "BROUILLON")
-    : rawTransitions;
+  // Pour ADMIN sur fiche AFFECTEE : SOUMISE (re-soumission) est géré via l'Assign card — masqué ici
+  const availableTransitions = (() => {
+    if (profile?.role === "ADMIN" && fiche.status === "SOUMISE")
+      return rawTransitions.filter((s) => s !== "AFFECTEE" && s !== "BROUILLON");
+    if (profile?.role === "ADMIN" && fiche.status === "AFFECTEE")
+      return rawTransitions.filter((s) => s !== "SOUMISE");
+    return rawTransitions;
+  })();
   const hero = STATUS_HERO[fiche.status];
   const canEdit = profile && canEditFiche(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status);
 
@@ -583,9 +797,20 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               <div>
                 <div className="flex items-center gap-3 flex-wrap">
                   <h2 className="font-heading text-2xl leading-tight">
-                    {fiche.prospect_prenom} {fiche.prospect_nom}
+                    {[fiche.prospect_prenom, fiche.prospect_nom].filter(Boolean).join(" ") || "—"}
                   </h2>
-                  <FicheStatusBadge status={fiche.status} />
+                  {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && fiche.status === "AFFECTEE" ? (
+                    <>
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        Validée
+                      </span>
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                        Affectée
+                      </span>
+                    </>
+                  ) : (
+                    <FicheStatusBadge status={fiche.status} />
+                  )}
                 </div>
                 <button
                   type="button"
@@ -605,6 +830,17 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                     Saisi par <span className="font-medium text-foreground">{creatorName}</span>
                   </p>
                 )}
+                {fiche.assigned_to && (() => {
+                  const c = commercials.find((x) => x.id === fiche.assigned_to);
+                  return c ? (
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <UserCheck className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                      <p className="text-xs font-semibold text-orange-600 dark:text-orange-400">
+                        Affectée à <span className="text-orange-700 dark:text-orange-300">{c.first_name} {c.last_name}</span>
+                      </p>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </div>
 
@@ -623,11 +859,19 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 photoUrls={photos.map((p) => p.signedUrl).filter(Boolean)}
               />
 
-              {fiche.status === "BROUILLON" && canEdit && (
+              {profile?.role === "ADMIN" && (
                 <Button variant="outline" size="sm"
-                  onClick={() => setShowDeleteConfirm(true)}
+                  onClick={() => { setDeleteMotif(""); setShowDeleteConfirm(true); }}
                   className="rounded-xl gap-2 text-destructive hover:text-destructive border-destructive/30 hover:bg-red-50 dark:hover:bg-red-950/30"
-                  aria-label="Supprimer ce brouillon">
+                  aria-label="Supprimer cette fiche">
+                  <Trash2 className="w-4 h-4" />Supprimer
+                </Button>
+              )}
+              {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && fiche.created_by === profile.id && fiche.status === "BROUILLON" && (
+                <Button variant="outline" size="sm"
+                  onClick={() => { setDeleteMotif(""); setShowDeleteConfirm(true); }}
+                  className="rounded-xl gap-2 text-destructive hover:text-destructive border-destructive/30 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  aria-label="Supprimer cette fiche">
                   <Trash2 className="w-4 h-4" />Supprimer
                 </Button>
               )}
@@ -647,7 +891,45 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   </Button>
                 )}
 
-              {availableTransitions.map((status) => (
+              {/* Menu déroulant de changement de statut (Direction & Commercial) */}
+              {availableTransitions.length > 0 && (profile?.role === "ADMIN" || profile?.role === "COMMERCIAL") && (
+                <div className="relative" data-status-dropdown>
+                  <Button size="sm" disabled={transitioning}
+                    onClick={() => setShowStatusDropdown((v) => !v)}
+                    className="rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white gap-2">
+                    {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : "Changer le statut"}
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                  {showStatusDropdown && (
+                    <div className="absolute right-0 top-full mt-1 w-64 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+                      {availableTransitions.map((status) => {
+                        const dropdownLabels: Partial<Record<FicheStatus, string>> = {
+                          RETRACTATION: "Attente Acceptation Client",
+                          ACCEPTEE: "Acceptation Client",
+                          REFUSEE: "Refus Client",
+                          ARCHIVEE: "Archivé",
+                        };
+                        const dropdownColors: Partial<Record<FicheStatus, string>> = {
+                          RETRACTATION: "text-purple-600",
+                          ACCEPTEE: "text-emerald-600",
+                          REFUSEE: "text-red-600",
+                          ARCHIVEE: "text-slate-500",
+                          SOUMISE: "text-blue-600",
+                        };
+                        return (
+                          <button key={status} type="button"
+                            onClick={() => { setShowStatusDropdown(false); setPendingStatus(status); setStatusComment(""); }}
+                            className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-secondary transition-colors ${dropdownColors[status] || "text-foreground"}`}>
+                            {dropdownLabels[status] || STATUS_LABELS[status]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Boutons classiques pour le prospecteur */}
+              {availableTransitions.length > 0 && (profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && availableTransitions.map((status) => (
                 <Button key={status}
                   onClick={() => { setPendingStatus(status); setStatusComment(""); }}
                   disabled={transitioning} size="sm"
@@ -656,36 +938,203 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 </Button>
               ))}
             </div>
+
+              {/* Bouton vert "Valider la fiche" — ADMIN + SOUMISE uniquement */}
+              {profile?.role === "ADMIN" && fiche.status === "SOUMISE" && (
+                <Button size="sm" disabled={transitioning}
+                  onClick={() => { setPendingStatus("VALIDEE" as FicheStatus); setStatusComment(""); }}
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-2 w-full sm:w-auto">
+                  {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : (<><CheckCircle2 className="w-4 h-4" />Valider la fiche</>)}
+                </Button>
+              )}
+
+              {/* Bouton vert "Affecter à un commercial" — ADMIN + VALIDEE uniquement */}
+              {profile?.role === "ADMIN" && fiche.status === "VALIDEE" && (
+                <div className="w-full bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-4 py-3 space-y-3">
+                  <p className="text-xs uppercase tracking-wide text-emerald-600 font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" /> Fiche validée — Affecter à un commercial
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Select value={assignCommercialId} onValueChange={(v) => setAssignCommercialId(v ?? "")}>
+                      <SelectTrigger className="flex-1 rounded-xl bg-white dark:bg-background">
+                        <SelectValue placeholder="Choisir un commercial…">
+                          {assignCommercialId
+                            ? (() => { const c = commercials.find((x) => x.id === assignCommercialId); return c ? `${c.first_name} ${c.last_name}` : "Choisir…"; })()
+                            : "Choisir un commercial…"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {commercials.filter((c) => c.role === "COMMERCIAL").map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.first_name} {c.last_name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" disabled={!assignCommercialId || transitioning}
+                      onClick={async () => {
+                        if (!assignCommercialId) return;
+                        setTransitioning(true);
+                        try {
+                          const { error } = await supabase.rpc("transition_fiche", { p_fiche_id: fiche.id, p_new_status: "AFFECTEE" as FicheStatus, p_assigned_to: assignCommercialId });
+                          if (error) throw error;
+                          const comm = commercials.find((c) => c.id === assignCommercialId);
+                          const commName = comm ? `${comm.first_name} ${comm.last_name}` : "un commercial";
+                          toast.success(`Fiche ${fiche.reference} validée et affectée à ${commName}`, { duration: 5000 });
+                          router.refresh();
+                          window.location.reload();
+                        } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Erreur"); }
+                        finally { setTransitioning(false); }
+                      }}
+                      className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shrink-0">
+                      {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : (<><UserCheck className="w-4 h-4" />Affecter</>)}
+                    </Button>
+                  </div>
+                </div>
+              )}
           </div>
         </div>
 
-        {/* ── Assign card — réaffectation uniquement (AFFECTEE) ─────────── */}
+        {/* ── Modifier l'affectation (AFFECTEE · direction uniquement) ──── */}
         {profile && canAssignFiche(profile.role) && fiche.status === "AFFECTEE" && (
-            <div data-no-print className="bg-card border border-border rounded-2xl px-6 py-4 flex items-center gap-4">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <UserCheck className="w-5 h-5 text-primary" />
+          <div data-no-print className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-2xl px-6 py-4 space-y-3">
+            <div className="flex items-center gap-4">
+              <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0">
+                <UserCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <p className="text-sm font-medium">Affecter à un commercial</p>
-              <Select onValueChange={(v) => v && handleAssign(v)} value={fiche.assigned_to || ""}>
-                <SelectTrigger className="w-56 rounded-xl ml-auto">
-                  <SelectValue placeholder="Choisir…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {commercials.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.first_name} {c.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs uppercase tracking-wide text-blue-500 dark:text-blue-400 font-semibold">Commercial affecté</p>
+                <p className="text-sm font-bold text-blue-900 dark:text-blue-100 truncate">
+                  {(() => {
+                    const c = commercials.find((x) => x.id === fiche.assigned_to);
+                    return c ? `${c.first_name} ${c.last_name}` : "—";
+                  })()}
+                </p>
+              </div>
+              {!showReassignPanel && (
+                <Button
+                  size="sm"
+                  onClick={() => { setShowReassignPanel(true); setReassignCommercialId(""); }}
+                  className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-2 shrink-0"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Modifier l'affectation
+                </Button>
+              )}
             </div>
-          )}
+
+            {showReassignPanel && (
+              <div className="flex items-center gap-3 pt-1 border-t border-blue-200 dark:border-blue-800">
+                <Select value={reassignCommercialId} onValueChange={(v) => setReassignCommercialId(v ?? "")}>
+                  <SelectTrigger className="flex-1 rounded-xl bg-white dark:bg-background">
+                    <SelectValue placeholder="Choisir un autre commercial…">
+                      {reassignCommercialId
+                        ? (() => {
+                            const c = commercials.find((x) => x.id === reassignCommercialId);
+                            return c ? `${c.first_name} ${c.last_name}` : "Choisir un autre commercial…";
+                          })()
+                        : "Choisir un autre commercial…"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {commercials.filter((c) => c.role === "COMMERCIAL").map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.first_name} {c.last_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  onClick={handleReassign}
+                  disabled={!reassignCommercialId || transitioning}
+                  className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                >
+                  {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { setShowReassignPanel(false); setReassignCommercialId(""); }}
+                  className="rounded-xl shrink-0"
+                >
+                  Annuler
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Annuler la validation (AFFECTEE · direction uniquement) ──── */}
+        {fiche.status === "AFFECTEE" && profile?.role === "ADMIN" && (
+          <div className="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/20 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <p className="text-sm font-medium text-red-700 dark:text-red-300">Annuler la validation de cette fiche</p>
+              </div>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="rounded-xl"
+                onClick={() => setShowAnnulationDialog(true)}
+              >
+                <Ban className="w-4 h-4 mr-1" />
+                Annuler la validation
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <Dialog open={showAnnulationDialog} onOpenChange={setShowAnnulationDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                <AlertTriangle className="w-5 h-5" />
+                Annuler la validation de la fiche
+              </DialogTitle>
+              <DialogDescription>
+                La fiche reviendra en statut &quot;À valider&quot;. Le commercial ne sera plus affecté et le prospecteur sera notifié.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <label className="text-sm font-medium">
+                Motif de l&apos;annulation <span className="text-red-500">*</span>
+              </label>
+              <Textarea
+                placeholder="Indiquez le motif de l'annulation de la validation…"
+                value={annulationMotif}
+                onChange={(e) => setAnnulationMotif(e.target.value)}
+                rows={3}
+                className="resize-none"
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="ghost"
+                onClick={() => { setShowAnnulationDialog(false); setAnnulationMotif(""); }}
+                className="rounded-xl"
+              >
+                Annuler
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={!annulationMotif.trim() || transitioning}
+                onClick={handleAnnulationValidation}
+                className="rounded-xl"
+              >
+                {transitioning ? "Annulation en cours…" : "Confirmer l'annulation"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* ── Two-column layout ──────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* Main content */}
           <div className="lg:col-span-2 space-y-4">
+
+            {/* ── PDF PAIR 1 : Coordonnées + Habitation ─── */}
+            <div data-pdf-pair className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
             {/* Coordonnées */}
             <SectionCard
@@ -703,11 +1152,16 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                     value={
                       <span className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        {fiche.prospect_adresse}, {fiche.prospect_cp} {fiche.prospect_ville}
+                        {[fiche.prospect_adresse, [fiche.prospect_cp, fiche.prospect_ville].filter(Boolean).join(" ")].filter(Boolean).join(", ") || "—"}
                       </span>
                     }
                   />
                 </div>
+                {villeData && (
+                  <div className="col-span-2" data-no-print>
+                    <VilleMapDynamic lat={villeData.lat} lng={villeData.lng} villeNom={villeData.nom} />
+                  </div>
+                )}
                 <DataRow
                   label="Téléphone"
                   value={
@@ -747,7 +1201,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </SectionCard>
 
-            {/* Habitation */}
+            {/* Habitation — ferme la pair 1 */}
             <SectionCard
               icon={<Home className="w-4 h-4" />}
               iconBg="bg-primary/10"
@@ -770,8 +1224,10 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 />
               </div>
             </SectionCard>
+            </div>{/* fin pdf-pair 1 */}
 
-            {/* Chauffage */}
+            {/* ── PDF PAIR 2 : Chauffage + Ventilation ─── */}
+            <div data-pdf-pair className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SectionCard
               icon={<Flame className="w-4 h-4" />}
               iconBg="bg-orange-50 dark:bg-orange-950/30"
@@ -796,50 +1252,90 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </SectionCard>
 
-            {/* Ventilation + Isolation */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <SectionCard
-                icon={<Wind className="w-4 h-4" />}
-                iconBg="bg-cyan-50 dark:bg-cyan-950/30"
-                iconColor="text-cyan-600"
-                title="Ventilation"
-              >
-                <div className="space-y-2">
-                  {(fiche.systemes_ventilation || []).length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {(fiche.systemes_ventilation || []).map((v) => (
-                        <Badge key={v} variant="secondary" className="rounded-lg">{v}</Badge>
-                      ))}
-                    </div>
-                  ) : <p className="text-sm text-muted-foreground/60">Non renseigné</p>}
-                  <DataRow label="Âge" value={fiche.age_ventilation} />
-                </div>
-              </SectionCard>
+            <SectionCard
+              icon={<Wind className="w-4 h-4" />}
+              iconBg="bg-cyan-50 dark:bg-cyan-950/30"
+              iconColor="text-cyan-600"
+              title="Ventilation"
+            >
+              <div className="space-y-2">
+                {(fiche.systemes_ventilation || []).length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(fiche.systemes_ventilation || []).map((v) => (
+                      <Badge key={v} variant="secondary" className="rounded-lg">{v}</Badge>
+                    ))}
+                  </div>
+                ) : <p className="text-sm text-muted-foreground/60">Non renseigné</p>}
+                <DataRow label="Âge" value={fiche.age_ventilation} />
+              </div>
+            </SectionCard>
+            </div>{/* fin pdf-pair 2 */}
 
-              <SectionCard
-                icon={<Shield className="w-4 h-4" />}
-                iconBg="bg-emerald-50 dark:bg-emerald-950/30"
-                iconColor="text-emerald-600"
-                title="Isolation & Toiture"
-              >
-                <div className="space-y-2">
-                  {(fiche.nature_isolant || []).length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {(fiche.nature_isolant || []).map((n) => (
-                        <Badge key={n} variant="secondary" className="rounded-lg">{n}</Badge>
-                      ))}
-                    </div>
-                  ) : <p className="text-sm text-muted-foreground/60">Non renseigné</p>}
-                  <DataRow label="Épaisseur" value={fiche.epaisseur_isolant} />
-                  {(fiche.materiaux_toiture || []).length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-1">
-                      {(fiche.materiaux_toiture || []).map((m) => (
-                        <Badge key={m} variant="outline" className="rounded-lg text-xs">{m}</Badge>
-                      ))}
-                    </div>
-                  )}
+            {/* ── PDF PAIR 3 : Isolation + Consentement RGPD ─── */}
+            <div data-pdf-pair className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <SectionCard
+              icon={<Shield className="w-4 h-4" />}
+              iconBg="bg-emerald-50 dark:bg-emerald-950/30"
+              iconColor="text-emerald-600"
+              title="Isolation & Toiture"
+            >
+              <div className="space-y-2">
+                {(fiche.nature_isolant || []).length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(fiche.nature_isolant || []).map((n) => (
+                      <Badge key={n} variant="secondary" className="rounded-lg">{n}</Badge>
+                    ))}
+                  </div>
+                ) : <p className="text-sm text-muted-foreground/60">Non renseigné</p>}
+                <DataRow label="Épaisseur" value={fiche.epaisseur_isolant} />
+                {(fiche.materiaux_toiture || []).length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {(fiche.materiaux_toiture || []).map((m) => (
+                      <Badge key={m} variant="outline" className="rounded-lg text-xs">{m}</Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+
+            {/* Consentement RGPD */}
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-4 hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 </div>
-              </SectionCard>
+                <h3 className="font-semibold text-sm">Consentement RGPD</h3>
+              </div>
+              <div className="space-y-3">
+                <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 ${
+                  fiche.consentement_rgpd
+                    ? "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800"
+                    : "bg-muted border border-border"
+                }`}>
+                  <CheckCircle2 className={`w-4 h-4 shrink-0 ${fiche.consentement_rgpd ? "text-emerald-600" : "text-muted-foreground"}`} />
+                  <span className={`text-xs font-medium ${fiche.consentement_rgpd ? "text-emerald-800 dark:text-emerald-300" : "text-muted-foreground"}`}>
+                    {fiche.consentement_rgpd ? "Consentement obtenu" : "Non renseigné"}
+                  </span>
+                </div>
+                <DataRow label="Créée le" value={new Date(fiche.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })} />
+                <DataRow label="Modifiée le" value={new Date(fiche.updated_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })} />
+                {fiche.assigned_to && (() => {
+                  const c = commercials.find((x) => x.id === fiche.assigned_to);
+                  return c ? <DataRow label="Commercial" value={`${c.first_name} ${c.last_name}`} /> : null;
+                })()}
+              </div>
+            </div>
+            </div>{/* fin pdf-pair 3 */}
+
+            {/* En-tête page 2 — masqué via style inline (pas Tailwind) pour que le CSS print puisse l'overrider */}
+            <div data-pdf-page2-header style={{ display: "none" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "6px", borderBottom: "2px solid #F97316", marginBottom: "10px" }}>
+                <div>
+                  <span style={{ display: "block", fontWeight: 700, fontSize: "14px", color: "#0F172A" }}>Proximité Habitat Conseil</span>
+                  <span style={{ display: "block", fontSize: "11px", color: "#64748B" }}>Fiche de pré-visite énergétique — suite</span>
+                </div>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "#F97316" }}>{fiche.reference}</span>
+              </div>
             </div>
 
             {/* Photos */}
@@ -880,22 +1376,27 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* Historique */}
             <div className="bg-card border border-border rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-5">
+              <button
+                type="button"
+                onClick={() => setShowHistory(!showHistory)}
+                className="flex items-center gap-3 w-full text-left"
+              >
                 <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                   <Clock className="w-4 h-4 text-primary" />
                 </div>
                 <h3 className="font-semibold text-sm">Historique</h3>
                 {history.length > 0 && (
-                  <span className="ml-auto text-xs text-muted-foreground">{history.length} action{history.length > 1 ? "s" : ""}</span>
+                  <span className="ml-auto text-xs text-muted-foreground mr-2">{history.length} action{history.length > 1 ? "s" : ""}</span>
                 )}
-              </div>
-              {history.length === 0 ? (
+                {showHistory ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
+              </button>
+              {showHistory && (history.length === 0 ? (
                 <div className="flex flex-col items-center py-6 gap-2 text-muted-foreground">
                   <Clock className="w-8 h-8 opacity-20" />
                   <p className="text-sm">Aucun historique</p>
                 </div>
               ) : (
-                <div className="space-y-0">
+                <div className="space-y-0 mt-5">
                   {history.map((entry, idx) => {
                     // Couleur du point selon le nouveau statut
                     const dotColors: Record<string, string> = {
@@ -923,8 +1424,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                       ? (innerColors[entry.new_status] ?? "bg-primary")
                       : (idx === 0 ? "bg-[#F97316]" : "bg-primary");
                     const statusLabels: Record<string, string> = {
-                      BROUILLON: "Brouillon", SOUMISE: "À valider", AFFECTEE: "Affectée",
-                      RETRACTATION: "Att. Validation", ACCEPTEE: "Validée", REFUSEE: "Refusée", ARCHIVEE: "Archivée",
+                      BROUILLON: "Brouillon", SOUMISE: "À valider", VALIDEE: "Validée", AFFECTEE: "Validée et affectée",
+                      RETRACTATION: "Attente Acceptation Client", ACCEPTEE: "Acceptation Client", REFUSEE: "Refus Client", ARCHIVEE: "Archivé",
                     };
                     return (
                       <div
@@ -988,7 +1489,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                     );
                   })}
                 </div>
-              )}
+              ))}
             </div>
 
             {/* Motif du refus */}
@@ -1129,21 +1630,31 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* ── Dialog : suppression ──────────────────────────────────────────── */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-destructive flex items-center gap-2">
-              <Trash2 className="w-5 h-5" />Supprimer ce brouillon ?
+              <Trash2 className="w-5 h-5" />Supprimer cette fiche ?
             </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground py-2">
-            La fiche <span className="font-semibold text-foreground">{fiche?.reference}</span> sera
-            définitivement supprimée avec toutes ses photos. Cette action est irréversible.
-          </p>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              La fiche <span className="font-semibold text-foreground">{fiche?.reference}</span> sera
+              définitivement supprimée avec toutes ses photos. Cette action est irréversible.
+            </p>
+            <div className="space-y-1.5">
+              <label htmlFor="delete-motif" className="text-sm font-medium">Motif de suppression <span className="text-destructive">*</span></label>
+              <textarea
+                id="delete-motif"
+                value={deleteMotif}
+                onChange={(e) => setDeleteMotif(e.target.value)}
+                placeholder="Indiquez la raison de la suppression…"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-destructive/30"
+              />
+            </div>
+          </div>
           <DialogFooter className="gap-2">
-            <DialogClose>
-              <Button type="button" variant="outline" className="rounded-xl">Annuler</Button>
-            </DialogClose>
-            <Button onClick={handleDelete} disabled={deleting}
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setShowDeleteConfirm(false)}>Annuler</Button>
+            <Button onClick={handleDelete} disabled={deleting || !deleteMotif.trim()}
               className="bg-destructive hover:bg-destructive/90 text-white rounded-xl gap-2">
               {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               Supprimer définitivement
@@ -1152,7 +1663,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         </DialogContent>
       </Dialog>
 
-      {/* ── Dialog : motif de refus / commentaire de statut ─────────────── */}
+      {/* ── Dialog : motif obligatoire pour tout changement de statut ───── */}
       <Dialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) { setPendingStatus(null); setStatusComment(""); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1163,100 +1674,67 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   ? "text-purple-600 dark:text-purple-400"
                   : pendingStatus === "ACCEPTEE"
                     ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-foreground"
+                    : pendingStatus === "ARCHIVEE"
+                      ? "text-slate-600 dark:text-slate-400"
+                      : "text-foreground"
             }`}>
               {pendingStatus === "REFUSEE"
-                ? <><Ban className="w-5 h-5" />Refuser la fiche</>
+                ? <><Ban className="w-5 h-5" />Refus Client</>
                 : pendingStatus === "BROUILLON"
                   ? <><Ban className="w-5 h-5" />Renvoyer en brouillon</>
                   : pendingStatus === "RETRACTATION"
-                    ? <><CheckCircle2 className="w-5 h-5" />Attente Validation Client</>
+                    ? <><Clock className="w-5 h-5" />Attente Acceptation Client</>
                     : pendingStatus === "ACCEPTEE"
-                      ? <><CheckCircle2 className="w-5 h-5" />Valider la fiche</>
-                      : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
+                      ? <><CheckCircle2 className="w-5 h-5" />Acceptation Client</>
+                      : pendingStatus === "ARCHIVEE"
+                        ? <><ShieldCheck className="w-5 h-5" />Archiver la fiche</>
+                        : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
               }
             </DialogTitle>
             <DialogDescription>
-              {pendingStatus === "REFUSEE" || pendingStatus === "BROUILLON"
-                ? "Un motif obligatoire sera transmis au prospecteur."
-                : "Vous pouvez ajouter un commentaire optionnel pour ce changement de statut."
-              }
+              Le motif est obligatoire et sera conservé dans l&apos;historique de la fiche.
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-2 space-y-3">
-            {(pendingStatus === "REFUSEE" || pendingStatus === "BROUILLON") ? (
-              <>
-                <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
-                  <Ban className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-red-700 dark:text-red-300">
-                    {pendingStatus === "BROUILLON"
-                      ? <>Le motif du renvoi est <span className="font-bold">obligatoire</span>. Il sera transmis au prospecteur par email et conservé dans l&apos;historique.</>
-                      : <>Le motif du refus est <span className="font-bold">obligatoire</span>. Il sera transmis au prospecteur et conservé dans l&apos;historique de la fiche.</>
-                    }
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="textarea-motif" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {pendingStatus === "BROUILLON" ? "Motif du renvoi" : "Motif du refus"} <span className="text-red-500">*</span>
-                  </label>
-                  <Textarea
-                    id="textarea-motif"
-                    placeholder={pendingStatus === "BROUILLON"
-                      ? "Ex : Informations manquantes, photos insuffisantes, adresse incorrecte…"
-                      : "Ex : Le client n'est pas propriétaire, logement non éligible, déjà équipé…"
-                    }
-                    value={statusComment}
-                    onChange={(e) => setStatusComment(e.target.value)}
-                    rows={4}
-                    className={`bg-card resize-none transition-colors ${
-                      statusComment.trim().length === 0
-                        ? "border-red-300 dark:border-red-700 focus-visible:ring-red-400/30"
-                        : "border-emerald-300 dark:border-emerald-700"
-                    }`}
-                  />
-                  {statusComment.trim().length === 0 && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3" />
-                      {pendingStatus === "BROUILLON" ? "Veuillez saisir un motif de renvoi." : "Veuillez saisir un motif de refus."}
-                    </p>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <label htmlFor="textarea-comment" className="text-sm text-muted-foreground">
-                  Commentaire optionnel pour ce changement de statut.
-                </label>
-                <Textarea
-                  id="textarea-comment"
-                  placeholder="Observations, informations complémentaires…"
-                  value={statusComment}
-                  onChange={(e) => setStatusComment(e.target.value)}
-                  rows={3}
-                  className="bg-card resize-none"
-                />
-              </>
-            )}
+            <div className="space-y-1.5">
+              <label htmlFor="textarea-motif" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Motif <span className="text-red-500">*</span>
+              </label>
+              <Textarea
+                id="textarea-motif"
+                placeholder="Indiquez la raison de ce changement de statut…"
+                value={statusComment}
+                onChange={(e) => setStatusComment(e.target.value)}
+                rows={4}
+                className={`bg-card resize-none transition-colors ${
+                  statusComment.trim().length === 0
+                    ? "border-red-300 dark:border-red-700 focus-visible:ring-red-400/30"
+                    : "border-emerald-300 dark:border-emerald-700"
+                }`}
+              />
+              {statusComment.trim().length === 0 && (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />Veuillez saisir un motif avant de confirmer.
+                </p>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="gap-2">
-            <DialogClose>
-              <Button type="button" variant="outline" className="rounded-xl">Annuler</Button>
-            </DialogClose>
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setPendingStatus(null); setStatusComment(""); }}>Annuler</Button>
             <Button
               onClick={async () => {
                 if (!pendingStatus) return;
-                // Motif obligatoire pour REFUSEE
-                if ((pendingStatus === "REFUSEE" || pendingStatus === "BROUILLON") && !statusComment.trim()) {
-                  toast.error(pendingStatus === "BROUILLON" ? "Veuillez saisir un motif de renvoi avant de confirmer." : "Veuillez saisir un motif de refus avant de confirmer.");
+                if (!statusComment.trim()) {
+                  toast.error("Veuillez saisir un motif avant de confirmer.");
                   return;
                 }
-                await handleStatusChange(pendingStatus, statusComment.trim() || undefined);
+                await handleStatusChange(pendingStatus, statusComment.trim());
                 setPendingStatus(null);
                 setStatusComment("");
               }}
-              disabled={transitioning || ((pendingStatus === "REFUSEE" || pendingStatus === "BROUILLON") && !statusComment.trim())}
+              disabled={transitioning || !statusComment.trim()}
               className={`rounded-xl gap-2 text-white ${
                 pendingStatus === "REFUSEE"
                   ? "bg-red-600 hover:bg-red-700"
@@ -1328,9 +1806,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <DialogClose>
-              <Button type="button" variant="outline" className="rounded-xl">Annuler</Button>
-            </DialogClose>
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setShowRejetDialog(false); setRejetMotif(""); }}>Annuler</Button>
             <Button
               onClick={handleRejetFiche}
               disabled={transitioning || !rejetMotif.trim()}
@@ -1403,9 +1879,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               </div>
 
               <DialogFooter className="gap-2">
-                <DialogClose>
-                  <Button type="button" variant="outline" className="rounded-xl">Annuler</Button>
-                </DialogClose>
+                <Button type="button" variant="outline" className="rounded-xl" onClick={() => setShowConfirmModal(false)}>Annuler</Button>
                 <Button
                   disabled={transitioning}
                   onClick={async () => {

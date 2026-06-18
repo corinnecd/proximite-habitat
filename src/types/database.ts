@@ -11,4 +11,7 @@ export type {
   FicheHistory,
   FichePhoto,
   Notification,
+  ZoneDepartement,
+  ZoneVille,
+  PlanificationHebdo,
 } from "./database.types";

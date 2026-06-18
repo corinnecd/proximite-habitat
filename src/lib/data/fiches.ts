@@ -54,11 +54,12 @@ export async function getFichePhotos(db: Db, ficheId: string): Promise<FichePhot
 
 /** L'historique d'une fiche (du plus récent au plus ancien), avec l'auteur. */
 export async function getFicheHistory(db: Db, ficheId: string): Promise<FicheHistoryEntry[]> {
-  const { data } = await db
+  const { data, error } = await db
     .from("fiche_history")
     .select("*, profiles(first_name, last_name)")
     .eq("fiche_id", ficheId)
     .order("created_at", { ascending: false });
+  if (error) { console.error("[getFicheHistory]", error.message); return []; }
   return (data as unknown as FicheHistoryEntry[]) ?? [];
 }
 
@@ -140,7 +141,8 @@ export async function getFichesForExport(
     );
   }
 
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) { console.error("[getFichesForExport]", error.message); return []; }
   return (data as unknown as FicheExportRow[]) ?? [];
 }
 
@@ -169,7 +171,7 @@ export async function findDuplicateFiches(
 
   const conditions: string[] = [];
   if (tel && tel.replace(/\s+/g, "").length >= 6) conditions.push(`prospect_telephone.eq.${tel}`);
-  if (nom && cp) conditions.push(`and(prospect_nom.ilike.${nom},prospect_cp.eq.${cp})`);
+  if (nom && cp) conditions.push(`and(prospect_nom.ilike.%${nom}%,prospect_cp.eq.${cp})`);
   if (conditions.length === 0) return [];
 
   let query = db
@@ -192,11 +194,29 @@ export async function getFichesForStats(
   db: Db,
   opts?: { from?: string; assignedTo?: string },
 ): Promise<{ created_at: string; status: FicheStatus }[]> {
-  let query = db.from("fiches").select("created_at, status");
-  if (opts?.from) query = query.gte("created_at", opts.from);
-  if (opts?.assignedTo) query = query.eq("assigned_to", opts.assignedTo);
-  const { data } = await query;
-  return (data as { created_at: string; status: FicheStatus }[]) ?? [];
+  let fichesQuery = db.from("fiches").select("id, created_at, status");
+  if (opts?.from) fichesQuery = fichesQuery.gte("created_at", opts.from);
+  if (opts?.assignedTo) fichesQuery = fichesQuery.eq("assigned_to", opts.assignedTo);
+  const { data: fiches } = await fichesQuery;
+  if (!fiches || fiches.length === 0) return [];
+
+  const ficheIds = (fiches as { id: string }[]).map((f) => f.id);
+  const { data: histRows } = await db
+    .from("fiche_history")
+    .select("fiche_id, created_at")
+    .eq("new_status", "SOUMISE")
+    .in("fiche_id", ficheIds)
+    .order("created_at", { ascending: true });
+
+  const submissionDates = new Map<string, string>();
+  for (const h of (histRows ?? []) as { fiche_id: string; created_at: string }[]) {
+    if (!submissionDates.has(h.fiche_id)) submissionDates.set(h.fiche_id, h.created_at);
+  }
+
+  return (fiches as { id: string; created_at: string; status: FicheStatus }[]).map((f) => ({
+    created_at: submissionDates.get(f.id) ?? f.created_at,
+    status: f.status,
+  }));
 }
 
 /** Les commerciaux et admins actifs (pour l'affectation d'une fiche). */

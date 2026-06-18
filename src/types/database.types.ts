@@ -1,10 +1,11 @@
 // Types de la base de données — reflètent le schéma de `supabase/migrations/0001_initial_schema.sql`.
 // À terme, régénérer avec : `supabase gen types typescript --project-id <ref> > src/types/database.types.ts`.
 
-export type UserRole = "ADMIN" | "COMMERCIAL" | "PROSPECTEUR";
+export type UserRole = "ADMIN" | "COMMERCIAL" | "PROSPECTEUR" | "CHEF_EQUIPE";
 export type FicheStatus =
   | "BROUILLON"
   | "SOUMISE"
+  | "VALIDEE"
   | "AFFECTEE"
   | "ACCEPTEE"
   | "RETRACTATION"
@@ -39,6 +40,7 @@ export interface Database {
           last_name: string;
           role: UserRole;
           phone: string | null;
+          chef_equipe_id: string | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -51,6 +53,7 @@ export interface Database {
           last_name: string;
           role?: UserRole;
           phone?: string | null;
+          chef_equipe_id?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -72,6 +75,7 @@ export interface Database {
           prospect_cp: string | null;
           prospect_ville: string | null;
           prospect_telephone: string | null;
+          prospect_email: string | null;
           disponibilites: string[];
           date_visite: string | null;
           heure_visite: string | null;
@@ -92,6 +96,11 @@ export interface Database {
           epaisseur_isolant: string | null;
           types_pose_toiture: string[];
           materiaux_toiture: string[];
+          departement_code: string | null;
+          ville_id: string | null;
+          rdv_date: string | null;
+          referent_nom: string | null;
+          referent_telephone: string | null;
           observations: string | null;
           signature_url: string | null;
           consentement_rgpd: boolean;
@@ -111,6 +120,7 @@ export interface Database {
           prospect_cp?: string | null;
           prospect_ville?: string | null;
           prospect_telephone?: string | null;
+          prospect_email?: string | null;
           disponibilites?: string[];
           date_visite?: string | null;
           heure_visite?: string | null;
@@ -131,6 +141,11 @@ export interface Database {
           epaisseur_isolant?: string | null;
           types_pose_toiture?: string[];
           materiaux_toiture?: string[];
+          departement_code?: string | null;
+          ville_id?: string | null;
+          rdv_date?: string | null;
+          referent_nom?: string | null;
+          referent_telephone?: string | null;
           observations?: string | null;
           signature_url?: string | null;
           consentement_rgpd?: boolean;
@@ -186,6 +201,62 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["fiche_photos"]["Insert"]>;
+        Relationships: [];
+      };
+      zones_departements: {
+        Row: {
+          code: string;
+          nom: string;
+          region: string;
+        };
+        Insert: {
+          code: string;
+          nom: string;
+          region: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["zones_departements"]["Insert"]>;
+        Relationships: [];
+      };
+      zones_villes: {
+        Row: {
+          id: string;
+          departement_code: string;
+          nom: string;
+          code_postal: string;
+          lat: number;
+          lng: number;
+        };
+        Insert: {
+          id?: string;
+          departement_code: string;
+          nom: string;
+          code_postal: string;
+          lat?: number;
+          lng?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["zones_villes"]["Insert"]>;
+        Relationships: [];
+      };
+      planification_hebdo: {
+        Row: {
+          id: string;
+          organization_id: string;
+          semaine_du: string;
+          ville_id: string;
+          chef_equipe_id: string | null;
+          created_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          semaine_du: string;
+          ville_id: string;
+          chef_equipe_id?: string | null;
+          created_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["planification_hebdo"]["Insert"]>;
         Relationships: [];
       };
       notifications: {
@@ -244,3 +315,6 @@ export type Fiche = Tables["fiches"]["Row"];
 export type FicheHistory = Tables["fiche_history"]["Row"];
 export type FichePhoto = Tables["fiche_photos"]["Row"];
 export type Notification = Tables["notifications"]["Row"];
+export type ZoneDepartement = Tables["zones_departements"]["Row"];
+export type ZoneVille = Tables["zones_villes"]["Row"];
+export type PlanificationHebdo = Tables["planification_hebdo"]["Row"];

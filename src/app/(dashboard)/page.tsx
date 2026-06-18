@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { sendEmailFicheAffectee, sendEmailFicheDecision } from "@/lib/email";
 import { toast } from "sonner";
+import { createNotifications } from "@/lib/data/notifications";
 
 // ── Filtre période dashboard ──────────────────────────────────────────────────
 type DashPeriod = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER";
@@ -47,13 +48,18 @@ function getDashPeriodDates(period: DashPeriod): { from: string; to: string } | 
   if (period === "TODAY") { const t = fmt(now); return { from: t, to: t }; }
   if (period === "WEEK") {
     const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
-    const mon = new Date(now); mon.setDate(now.getDate() - day);
-    return { from: fmt(mon), to: fmt(now) };
+    const monday = new Date(now); monday.setDate(now.getDate() - day);
+    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+    return { from: fmt(monday), to: fmt(sunday) };
   }
-  if (period === "MONTH") return { from: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, to: fmt(now) };
+  if (period === "MONTH") {
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { from: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, to: fmt(lastDay) };
+  }
   if (period === "QUARTER") {
     const q = Math.floor(now.getMonth() / 3);
-    return { from: `${now.getFullYear()}-${pad(q * 3 + 1)}-01`, to: fmt(now) };
+    const lastDay = new Date(now.getFullYear(), q * 3 + 3, 0);
+    return { from: `${now.getFullYear()}-${pad(q * 3 + 1)}-01`, to: fmt(lastDay) };
   }
   return null;
 }
@@ -63,6 +69,7 @@ function getDashPeriodDates(period: DashPeriod): { from: string; to: string } | 
 const STATUS_ICONS: Record<FicheStatus, React.ReactNode> = {
   BROUILLON:    <Clock className="w-5 h-5" />,
   SOUMISE:      <Send className="w-5 h-5" />,
+  VALIDEE:      <CheckCircle2 className="w-5 h-5" />,
   AFFECTEE:     <UserCheck className="w-5 h-5" />,
   ACCEPTEE:     <CheckCircle2 className="w-5 h-5" />,
   RETRACTATION: <AlertCircle className="w-5 h-5" />,
@@ -73,6 +80,7 @@ const STATUS_ICONS: Record<FicheStatus, React.ReactNode> = {
 const COUNTER_STYLES: Record<FicheStatus, string> = {
   BROUILLON:    "border-l-slate-400   bg-card/80  backdrop-blur-sm text-muted-foreground",
   SOUMISE:      "border-l-blue-500    bg-blue-50/80   dark:bg-blue-950/30   backdrop-blur-sm text-blue-700   dark:text-blue-400",
+  VALIDEE:      "border-l-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/30 backdrop-blur-sm text-emerald-700 dark:text-emerald-400",
   AFFECTEE:     "border-l-orange-500  bg-orange-50/80 dark:bg-orange-950/30 backdrop-blur-sm text-orange-700 dark:text-orange-400",
   ACCEPTEE:     "border-l-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/30 backdrop-blur-sm text-emerald-700 dark:text-emerald-400",
   RETRACTATION: "border-l-purple-500  bg-purple-50/80 dark:bg-purple-950/30 backdrop-blur-sm text-purple-700 dark:text-purple-400",
@@ -178,8 +186,8 @@ function UrgencyBadge({ days }: { days: number }) {
 // ── Composant bloc par statut ─────────────────────────────────────────────────
 
 const STATUS_LABELS_FR: Record<string, string> = {
-  BROUILLON: "Brouillon", SOUMISE: "À valider", AFFECTEE: "Affectée",
-  RETRACTATION: "Att. Validation", ACCEPTEE: "Validée", REFUSEE: "Refusée", ARCHIVEE: "Archivée",
+  BROUILLON: "Brouillon", SOUMISE: "À valider", VALIDEE: "Validée", AFFECTEE: "Validée et affectée",
+  RETRACTATION: "Attente Acceptation Client", ACCEPTEE: "Acceptation Client", REFUSEE: "Refus Client", ARCHIVEE: "Archivé",
 };
 
 function StatusBlock({
@@ -353,10 +361,11 @@ function StatusBlock({
 export default function DashboardPage() {
   const { profile, loading: profileLoading } = useProfile();
   const [counts, setCounts] = useState<Record<FicheStatus, number>>({
-    BROUILLON: 0, SOUMISE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
+    BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
   });
-  const [recentFiches, setRecentFiches]   = useState<FicheListItem[]>([]);
-  const [historyFiches, setHistoryFiches] = useState<FicheListItem[]>([]);
+  const [periodFicheCount, setPeriodFicheCount] = useState(0);
+  const [periodCounts, setPeriodCounts] = useState<Record<DashPeriod, number>>({ ALL: 0, TODAY: 0, WEEK: 0, MONTH: 0, QUARTER: 0 });
+  const [anterieures, setAnterieures] = useState<{ id: string; reference: string; prospect_nom: string; prospect_prenom: string; status: FicheStatus; updated_at: string }[]>([]);
   const [fichesPending,         setFichesPending]         = useState<FicheEnAttente[]>([]);
   const [fichesAffectees,       setFichesAffectees]       = useState<FicheAffectee[]>([]);
   const [fichesAffecteesAdmin,  setFichesAffecteesAdmin]  = useState<FicheAffectee[]>([]);
@@ -380,6 +389,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [ficheToDelete, setFicheToDelete] = useState<{ id: string; reference: string } | null>(null);
+  const [deleteMotif, setDeleteMotif] = useState("");
   const [ficheToAssign, setFicheToAssign] = useState<{ id: string; reference: string; nom: string; created_by: string } | null>(null);
   const [assignCommercialId, setAssignCommercialId] = useState("");
   const [assigning, setAssigning] = useState(false);
@@ -389,7 +399,7 @@ export default function DashboardPage() {
   const [traiterComment, setTraiterComment] = useState("");
   const [traiting, setTraiting] = useState(false);
   const [dashPeriod, setDashPeriod] = useState<DashPeriod>("ALL");
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchData = useCallback(async (period: DashPeriod = "ALL") => {
     if (!profile) return;
@@ -403,7 +413,6 @@ export default function DashboardPage() {
       ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
       : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
-    const dates = getDashPeriodDates(period);
     const results = await Promise.all(
       statusesToCount.map(async (s) => {
         if (isProspecteur) {
@@ -413,15 +422,12 @@ export default function DashboardPage() {
         let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
         // Commercial : uniquement ses fiches affectées
         if (isCommercial) q = q.eq("assigned_to", profile.id);
-        if (dates) {
-          q = q.gte("created_at", `${dates.from}T00:00:00Z`).lte("created_at", `${dates.to}T23:59:59Z`);
-        }
         const { count } = await q;
         return [s, count ?? 0] as const;
       })
     );
     const allCounts: Record<FicheStatus, number> = {
-      BROUILLON: 0, SOUMISE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
+      BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
     };
     results.forEach(([s, c]) => { allCounts[s] = c; });
     setCounts(allCounts);
@@ -541,27 +547,20 @@ export default function DashboardPage() {
       setFichesArchivees((archiveesRes.data as unknown as FicheAffectee[]) ?? []);
     }
 
-    // ── Fiches récentes ──────────────────────────────────────────────────────
-    let recentQuery = supabase
-      .from("fiches")
-      .select(FICHE_LIST_COLUMNS)
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    if (isProspecteur) {
-      recentQuery = recentQuery.eq("created_by", profile.id).eq("status", "BROUILLON");
-    } else if (isCommercial) {
-      // Commercial : activité récente = ses fiches ACCEPTEE / REFUSEE / ARCHIVEE
-      recentQuery = recentQuery
-        .eq("assigned_to", profile.id)
-        .in("status", ["ACCEPTEE", "REFUSEE", "ARCHIVEE"]);
-    } else {
-      // Admin : toutes sauf brouillons et soumises (déjà en section dédiée)
-      recentQuery = recentQuery.neq("status", "BROUILLON").neq("status", "SOUMISE");
+    // ── Fiches antérieures (avant le trimestre en cours) ────────────────────
+    if (!isProspecteur) {
+      const pad2 = (n: number) => String(n).padStart(2, "0");
+      const now2 = new Date();
+      const q2 = Math.floor(now2.getMonth() / 3);
+      const quarterStart = new Date(now2.getFullYear(), q2 * 3, 1);
+      const qFrom = `${quarterStart.getFullYear()}-${pad2(quarterStart.getMonth() + 1)}-${pad2(quarterStart.getDate())}`;
+      let aq = supabase.from("fiches").select("id, reference, prospect_nom, prospect_prenom, status, updated_at");
+      if (isCommercial) aq = aq.eq("assigned_to", profile.id);
+      else aq = aq.neq("status", "BROUILLON");
+      aq = aq.lt("updated_at", `${qFrom}T00:00:00Z`).order("updated_at", { ascending: false }).limit(50);
+      const { data: antData } = await aq;
+      setAnterieures((antData as typeof anterieures) ?? []);
     }
-
-    const { data } = await recentQuery;
-    setRecentFiches((data as FicheListItem[]) || []);
 
     // ── Fiches prospecteur par statut ────────────────────────────────────────
     if (isProspecteur) {
@@ -933,10 +932,18 @@ export default function DashboardPage() {
         </div>
 
         {/* Filtre période — direction uniquement */}
-        {!isProspecteur && (
+        {!isProspecteur && (() => {
+          const now = new Date();
+          const qIdx = Math.floor(now.getMonth() / 3);
+          const qStart = new Date(now.getFullYear(), qIdx * 3, 1);
+          const qEnd = new Date(now.getFullYear(), qIdx * 3 + 3, 0);
+          const fmtD = (d: Date) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+          return (
           <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <CalendarDays className="w-3.5 h-3.5" />Période de soumission
+              <CalendarDays className="w-3.5 h-3.5" />Période d&apos;activité
+              <span className="text-sm font-bold text-foreground tracking-normal">DU TRIMESTRE EN COURS</span>
+              <span className="text-xs font-medium text-muted-foreground tracking-normal">{fmtD(qStart)} — {fmtD(qEnd)}</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(DASH_PERIOD_LABELS) as DashPeriod[]).map((p) => (
@@ -950,9 +957,23 @@ export default function DashboardPage() {
                   {DASH_PERIOD_LABELS[p]}
                 </button>
               ))}
+              {/* Antérieures */}
+              <Link href={`/fiches?status=ARCHIVEE${anterieures.length > 0 ? `&highlight=${anterieures.map(f => f.id).join(",")}` : ""}`}
+                className="relative group px-3 py-1.5 rounded-xl text-sm font-medium transition-all bg-muted text-muted-foreground hover:bg-secondary border border-border inline-flex items-center gap-1.5">
+                <Archive className="w-3.5 h-3.5" />
+                Antérieures
+                {anterieures.length > 0 && (
+                  <span className="bg-primary/10 text-primary text-xs font-bold px-1.5 py-0.5 rounded-full">{anterieures.length}</span>
+                )}
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max max-w-xs px-3 py-2 rounded-lg bg-foreground text-background text-xs leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
+                  {anterieures.length} fiche{anterieures.length > 1 ? "s" : ""} archivée{anterieures.length > 1 ? "s" : ""} au cours du trimestre en cours.
+                  <br />Cliquer pour les visualiser.
+                </span>
+              </Link>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Compteurs par statut */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">

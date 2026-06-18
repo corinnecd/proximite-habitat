@@ -1,12 +1,13 @@
 import type { UserRole, FicheStatus } from "@/types/database";
 
 const STATUS_TRANSITIONS: Record<FicheStatus, { to: FicheStatus[]; roles: UserRole[] }[]> = {
-  BROUILLON: [{ to: ["SOUMISE"], roles: ["PROSPECTEUR", "COMMERCIAL", "ADMIN"] }],
-  SOUMISE: [{ to: ["AFFECTEE"], roles: ["ADMIN"] }, { to: ["BROUILLON"], roles: ["ADMIN"] }],
-  AFFECTEE: [{ to: ["RETRACTATION", "REFUSEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
-  RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
-  ACCEPTEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN"] }],
-  REFUSEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
+  BROUILLON: [{ to: ["SOUMISE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE", "COMMERCIAL", "ADMIN"] }],
+  SOUMISE: [{ to: ["VALIDEE"], roles: ["ADMIN"] }, { to: ["BROUILLON"], roles: ["ADMIN"] }],
+  VALIDEE: [{ to: ["AFFECTEE"], roles: ["ADMIN"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
+  AFFECTEE: [{ to: ["RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
+  RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
+  ACCEPTEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }],
+  REFUSEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
   ARCHIVEE: [],
 };
 
@@ -32,23 +33,23 @@ export function canEditFiche(
   if (status === "ARCHIVEE" || status === "RETRACTATION") return false;
   if (role === "ADMIN") return true;
   if (role === "COMMERCIAL") return ficheCreatedBy === userId || ficheAssignedTo === userId;
-  if (role === "PROSPECTEUR") return ficheCreatedBy === userId;
+  if (role === "PROSPECTEUR" || role === "CHEF_EQUIPE") return ficheCreatedBy === userId;
   return false;
 }
 
 export const STATUS_LABELS: Record<FicheStatus, string> = {
-  BROUILLON: "Brouillon", SOUMISE: "À valider", AFFECTEE: "Affectée",
-  RETRACTATION: "Attente Validation Client", ACCEPTEE: "Validée par le Client",
-  REFUSEE: "Refusée par le client", ARCHIVEE: "Archivée",
+  BROUILLON: "Brouillon", SOUMISE: "À valider", VALIDEE: "Validée", AFFECTEE: "Validée et affectée",
+  RETRACTATION: "Attente Acceptation Client", ACCEPTEE: "Acceptation Client",
+  REFUSEE: "Refus Client", ARCHIVEE: "Archivé",
 };
 
 export const STATUS_COLORS: Record<FicheStatus, string> = {
   BROUILLON: "bg-gray-100 text-gray-700", SOUMISE: "bg-blue-100 text-blue-700",
-  AFFECTEE: "bg-orange-100 text-orange-700", ACCEPTEE: "bg-green-100 text-green-700",
+  VALIDEE: "bg-emerald-100 text-emerald-700", AFFECTEE: "bg-orange-100 text-orange-700", ACCEPTEE: "bg-green-100 text-green-700",
   RETRACTATION: "bg-purple-100 text-purple-700",
   REFUSEE: "bg-red-100 text-red-700", ARCHIVEE: "bg-gray-200 text-gray-500",
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  ADMIN: "Direction", COMMERCIAL: "Commercial", PROSPECTEUR: "Prospecteur",
+  ADMIN: "Direction", COMMERCIAL: "Commercial", PROSPECTEUR: "Prospecteur", CHEF_EQUIPE: "Chef d'équipe",
 };

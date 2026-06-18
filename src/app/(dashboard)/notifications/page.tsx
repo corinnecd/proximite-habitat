@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,15 @@ import {
 import {
   CheckCheck, FileText, Check, Loader2, Search, X, Calendar,
   SendHorizonal, UserCheck, ThumbsUp, ThumbsDown, RotateCcw,
+  Bell, BellOff, Clock, AlertCircle, Trash2,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { deleteFicheCascade } from "@/lib/data/fiches";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useProfile } from "@/lib/hooks/use-profile";
-import type { Notification } from "@/types/database";
+import type { Notification, FicheStatus } from "@/types/database";
+import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
+import { toast } from "sonner";
 
 const PAGE_SIZE = 20;
 
@@ -59,40 +64,223 @@ function getDateRange(period: PeriodFilter, customFrom: string, customTo: string
   return {};
 }
 
-// ── Statut ────────────────────────────────────────────────────────────────────
+// ── Types de notification ─────────────────────────────────────────────────────
 type NotifType = "FICHE_SOUMISE" | "FICHE_AFFECTEE" | "FICHE_ACCEPTEE" | "FICHE_REFUSEE" | "FICHE_REJETEE";
 
-const ALL_STATUS_OPTIONS: { value: NotifType; label: string; icon: React.ElementType; color: string }[] = [
-  { value: "FICHE_SOUMISE",  label: "Soumise",            icon: SendHorizonal, color: "text-blue-500"   },
-  { value: "FICHE_AFFECTEE", label: "Affectée",           icon: UserCheck,     color: "text-purple-500" },
-  { value: "FICHE_ACCEPTEE", label: "Acceptée",           icon: ThumbsUp,      color: "text-emerald-500"},
-  { value: "FICHE_REFUSEE",  label: "Refusée",            icon: ThumbsDown,    color: "text-red-500"    },
-  { value: "FICHE_REJETEE",  label: "Renvoyée brouillon", icon: RotateCcw,     color: "text-orange-500" },
-];
+const TYPE_CONFIG: Record<NotifType, {
+  label: string;
+  icon: React.ElementType;
+  filterColor: string;       // couleur pill filtre
+  iconBg: string;            // fond icône carte
+  iconColor: string;         // couleur icône carte
+  badgeCls: string;          // badge type sur la carte
+  priority: number;          // 1 = urgent, 2 = info, 3 = archivage
+}> = {
+  FICHE_SOUMISE:  {
+    label: "Soumise",
+    icon: SendHorizonal,
+    filterColor: "text-blue-500",
+    iconBg: "bg-blue-100 dark:bg-blue-900/40",
+    iconColor: "text-blue-600 dark:text-blue-400",
+    badgeCls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+    priority: 1,
+  },
+  FICHE_AFFECTEE: {
+    label: "Affectée",
+    icon: UserCheck,
+    filterColor: "text-purple-500",
+    iconBg: "bg-purple-100 dark:bg-purple-900/40",
+    iconColor: "text-purple-600 dark:text-purple-400",
+    badgeCls: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+    priority: 1,
+  },
+  FICHE_REJETEE:  {
+    label: "Rejetée",
+    icon: RotateCcw,
+    filterColor: "text-orange-500",
+    iconBg: "bg-orange-100 dark:bg-orange-900/40",
+    iconColor: "text-orange-600 dark:text-orange-400",
+    badgeCls: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+    priority: 1,
+  },
+  FICHE_ACCEPTEE: {
+    label: "Acceptation Client",
+    icon: ThumbsUp,
+    filterColor: "text-emerald-500",
+    iconBg: "bg-emerald-100 dark:bg-emerald-900/40",
+    iconColor: "text-emerald-600 dark:text-emerald-400",
+    badgeCls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    priority: 2,
+  },
+  FICHE_REFUSEE:  {
+    label: "Refus Client",
+    icon: ThumbsDown,
+    filterColor: "text-red-500",
+    iconBg: "bg-red-100 dark:bg-red-900/40",
+    iconColor: "text-red-600 dark:text-red-400",
+    badgeCls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    priority: 2,
+  },
+};
 
-// Statuts pertinents par rôle
+// Statuts disponibles par rôle (filtre)
 const STATUS_BY_ROLE: Record<string, NotifType[]> = {
-  ADMIN:        ["FICHE_SOUMISE", "FICHE_ACCEPTEE", "FICHE_REFUSEE"],
-  COMMERCIAL:   ["FICHE_AFFECTEE"],
-  PROSPECTEUR:  ["FICHE_SOUMISE", "FICHE_AFFECTEE", "FICHE_ACCEPTEE", "FICHE_REFUSEE", "FICHE_REJETEE"],
+  ADMIN:       ["FICHE_SOUMISE", "FICHE_ACCEPTEE", "FICHE_REFUSEE"],
+  COMMERCIAL:  ["FICHE_AFFECTEE", "FICHE_ACCEPTEE", "FICHE_REFUSEE"],
+  PROSPECTEUR: ["FICHE_SOUMISE", "FICHE_AFFECTEE", "FICHE_REJETEE", "FICHE_ACCEPTEE", "FICHE_REFUSEE"],
 };
 
-// Badge couleur par type sur la carte notification
-const TYPE_BADGE: Record<string, { label: string; cls: string }> = {
-  FICHE_SOUMISE:  { label: "Soumise",   cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"         },
-  FICHE_AFFECTEE: { label: "Affectée",  cls: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
-  FICHE_ACCEPTEE: { label: "Acceptée",  cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-  FICHE_REFUSEE:  { label: "Refusée",   cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"             },
-  FICHE_REJETEE:  { label: "Brouillon", cls: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" },
-};
+// ── Groupement temporel ───────────────────────────────────────────────────────
+type Group = { label: string; icon: React.ElementType; notifications: Notification[] };
 
+function groupByDate(notifications: Notification[]): Group[] {
+  const now = new Date();
+  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+  const weekStart  = new Date(now); weekStart.setDate(now.getDate() - 6); weekStart.setHours(0, 0, 0, 0);
+  const monthStart = new Date(now); monthStart.setDate(now.getDate() - 29); monthStart.setHours(0, 0, 0, 0);
+
+  const today: Notification[]   = [];
+  const week: Notification[]    = [];
+  const month: Notification[]   = [];
+  const older: Notification[]   = [];
+
+  for (const n of notifications) {
+    const d = new Date(n.created_at);
+    if (d >= todayStart)  today.push(n);
+    else if (d >= weekStart) week.push(n);
+    else if (d >= monthStart) month.push(n);
+    else older.push(n);
+  }
+
+  const groups: Group[] = [];
+  if (today.length)  groups.push({ label: "Aujourd'hui",       icon: Bell,        notifications: today });
+  if (week.length)   groups.push({ label: "Cette semaine",     icon: Clock,       notifications: week });
+  if (month.length)  groups.push({ label: "Ce mois",           icon: Calendar,    notifications: month });
+  if (older.length)  groups.push({ label: "Plus anciennes",    icon: BellOff,     notifications: older });
+  return groups;
+}
+
+// ── Formatage date relative ───────────────────────────────────────────────────
+function formatRelativeDate(dateStr: string): string {
+  try {
+    const d    = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    const now  = new Date();
+    const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+    if (diff < 60)    return "À l'instant";
+    if (diff < 3600)  return `Il y a ${Math.floor(diff / 60)} min`;
+    if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} h`;
+    return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+  } catch {
+    return "";
+  }
+}
+
+// ── Composant carte notification ──────────────────────────────────────────────
+function NotifCard({
+  notif,
+  ficheStatus,
+  onClick,
+  onMarkRead,
+  onDelete,
+}: {
+  notif: Notification;
+  ficheStatus?: FicheStatus;
+  onClick: (n: Notification) => void;
+  onMarkRead: (id: string) => void;
+  onDelete?: (ficheId: string) => void;
+}) {
+  const cfg = TYPE_CONFIG[notif.type as NotifType];
+  const Icon = cfg?.icon ?? FileText;
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`${notif.read ? "" : "Non lue. "}${notif.title}${notif.fiche_id ? " — ouvrir la fiche" : ""}`}
+      onClick={() => onClick(notif)}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(notif); } }}
+      className={`rounded-xl shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50
+        ${!notif.read
+          ? "bg-blue-50/70 dark:bg-blue-950/25 ring-1 ring-blue-200 dark:ring-blue-800"
+          : "bg-card ring-1 ring-border/30 opacity-80 hover:opacity-100"
+        } ${notif.fiche_id ? "hover:ring-primary/40" : ""}`}
+    >
+      <div className="p-4 flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+
+          {/* Icône typée */}
+          <div className="relative shrink-0">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors
+              ${!notif.read ? (cfg?.iconBg ?? "bg-blue-100") : "bg-muted"}`}>
+              <Icon className={`w-5 h-5 ${!notif.read ? (cfg?.iconColor ?? "text-blue-600") : "text-muted-foreground"}`} />
+            </div>
+            {!notif.read && (
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#F97316] rounded-full border-2 border-white dark:border-background" />
+            )}
+          </div>
+
+          {/* Contenu */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+              <p className={`text-sm leading-snug ${!notif.read ? "font-semibold text-foreground" : "font-medium text-foreground/75"}`}>
+                {notif.title}
+              </p>
+              {ficheStatus
+                ? <FicheStatusBadge status={ficheStatus} short />
+                : cfg && (
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${cfg.badgeCls}`}>
+                    {cfg.label}
+                  </span>
+                )
+              }
+            </div>
+            <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{notif.message}</p>
+            <p className="text-xs text-muted-foreground/60 mt-1.5">{formatRelativeDate(notif.created_at)}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {!notif.read && (
+            <button
+              type="button"
+              title="Marquer comme lu"
+              aria-label="Marquer comme lu"
+              onClick={(e) => { e.stopPropagation(); onMarkRead(notif.id); }}
+              className="w-8 h-8 rounded-full hover:bg-primary/10 flex items-center justify-center text-primary/60 hover:text-primary transition-colors"
+            >
+              <Check className="w-4 h-4" />
+            </button>
+          )}
+          {notif.fiche_id && onDelete && (
+            <button
+              type="button"
+              title="Supprimer la fiche"
+              aria-label="Supprimer la fiche"
+              onClick={(e) => { e.stopPropagation(); onDelete(notif.fiche_id!); }}
+              className="w-8 h-8 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page principale ───────────────────────────────────────────────────────────
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [ficheStatuses, setFicheStatuses] = useState<Record<string, FicheStatus>>({});
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [deleteFicheId, setDeleteFicheId] = useState<string | null>(null);
+  const [deleteMotif, setDeleteMotif] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   // Filtres
   const [searchInput, setSearchInput] = useState("");
@@ -101,15 +289,18 @@ export default function NotificationsPage() {
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<NotifType[]>([]);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const { profile } = useProfile();
 
-  const statusOptions = profile?.role
-    ? ALL_STATUS_OPTIONS.filter((o) => (STATUS_BY_ROLE[profile.role] ?? []).includes(o.value))
-    : [];
+  const role = profile?.role ?? null;
+  const statusOptions = useMemo(() =>
+    role ? (STATUS_BY_ROLE[role] ?? []).map((v) => ({ value: v, ...TYPE_CONFIG[v] })) : [],
+    [role],
+  );
 
   const fetchNotifications = useCallback(async (
     uid: string,
@@ -125,47 +316,66 @@ export default function NotificationsPage() {
   ) => {
     if (append) setLoadingMore(true);
     else setLoading(true);
-    const from = pageToLoad * PAGE_SIZE;
-    const { dateFrom, dateTo } = getDateRange(opts.period ?? "all", opts.customFrom ?? "", opts.customTo ?? "");
-    const rows = await getNotifications(
-      supabase, uid,
-      { from, to: from + PAGE_SIZE - 1 },
-      opts.search || undefined,
-      dateFrom,
-      dateTo,
-      opts.types?.length ? opts.types : undefined,
-    );
-    setNotifications((prev) => (append ? [...prev, ...rows] : rows));
-    setHasMore(rows.length === PAGE_SIZE);
-    setPage(pageToLoad);
-    if (append) setLoadingMore(false);
-    setLoading(false);
+    try {
+      const from = pageToLoad * PAGE_SIZE;
+      const { dateFrom, dateTo } = getDateRange(opts.period ?? "all", opts.customFrom ?? "", opts.customTo ?? "");
+      const rows = await getNotifications(
+        supabase, uid,
+        { from, to: from + PAGE_SIZE - 1 },
+        opts.search || undefined,
+        dateFrom,
+        dateTo,
+        opts.types?.length ? opts.types : undefined,
+      );
+      const allRows = append ? [...notifications, ...rows] : rows;
+      setNotifications(allRows);
+      setHasMore(rows.length === PAGE_SIZE);
+
+      const ficheIds = [...new Set(allRows.filter((n) => n.fiche_id).map((n) => n.fiche_id!))];
+      if (ficheIds.length > 0) {
+        const { data: fiches } = await supabase.from("fiches").select("id, status").in("id", ficheIds);
+        if (fiches) {
+          const map: Record<string, FicheStatus> = {};
+          for (const f of fiches as { id: string; status: FicheStatus }[]) map[f.id] = f.status;
+          setFicheStatuses((prev) => ({ ...prev, ...map }));
+        }
+      }
+      setPage(pageToLoad);
+    } catch (e) {
+      console.error("[fetchNotifications]", e);
+      if (!append) setNotifications([]);
+    } finally {
+      if (append) setLoadingMore(false);
+      setLoading(false);
+    }
   }, [supabase]);
 
   useEffect(() => {
     async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
-      fetchNotifications(user.id);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        setUserId(user.id);
+        fetchNotifications(user.id);
+      } catch (e) {
+        console.error("[notifications init]", e);
+        setLoading(false);
+      }
     }
     init();
   }, [supabase, fetchNotifications]);
 
-  // Relance sur changement période
   useEffect(() => {
     if (!userId) return;
     fetchNotifications(userId, 0, false, { search, period, customFrom, customTo, types: selectedTypes });
   }, [period]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Relance sur dates custom
   useEffect(() => {
     if (!userId || period !== "custom") return;
     if (customFrom || customTo)
       fetchNotifications(userId, 0, false, { search, period, customFrom, customTo, types: selectedTypes });
   }, [customFrom, customTo]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Relance sur changement de types
   useEffect(() => {
     if (!userId) return;
     fetchNotifications(userId, 0, false, { search, period, customFrom, customTo, types: selectedTypes });
@@ -217,8 +427,55 @@ export default function NotificationsPage() {
     if (notif.fiche_id) router.push(`/fiches/${notif.fiche_id}`);
   }
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-  const isFiltered = !!(search || period !== "all" || selectedTypes.length > 0);
+  function handleDeleteRequest(ficheId: string) {
+    setDeleteFicheId(ficheId);
+    setDeleteMotif("");
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteFicheId || !deleteMotif.trim() || !profile) return;
+    setDeleting(true);
+    try {
+      await supabase.from("fiche_history").insert({
+        fiche_id: deleteFicheId,
+        organization_id: profile.organization_id,
+        user_id: profile.id,
+        action: `Fiche supprimée — Motif : ${deleteMotif.trim()}`,
+      });
+      await deleteFicheCascade(supabase, deleteFicheId);
+      setNotifications((prev) => prev.filter((n) => n.fiche_id !== deleteFicheId));
+      setDeleteFicheId(null);
+      toast.success("Fiche supprimée");
+    } catch {
+      toast.error("Erreur lors de la suppression");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  // Notifications filtrées localement (non lues seulement)
+  const displayed = useMemo(
+    () => showUnreadOnly ? notifications.filter((n) => !n.read) : notifications,
+    [notifications, showUnreadOnly],
+  );
+
+  // Tri : non lues d'abord (par priorité de type), puis lues (chronologiques)
+  const sorted = useMemo(() => {
+    const unread = [...displayed.filter((n) => !n.read)].sort((a, b) => {
+      const pa = TYPE_CONFIG[a.type as NotifType]?.priority ?? 9;
+      const pb = TYPE_CONFIG[b.type as NotifType]?.priority ?? 9;
+      if (pa !== pb) return pa - pb;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    const read = displayed.filter((n) => n.read); // déjà triées par created_at desc depuis l'API
+    return { unread, read };
+  }, [displayed]);
+
+  const groups = useMemo(() => groupByDate(sorted.read), [sorted.read]);
+
+  const unreadCount    = notifications.filter((n) => !n.read).length;
+  const isFiltered     = !!(search || period !== "all" || selectedTypes.length > 0 || showUnreadOnly);
+  const totalDisplayed = displayed.length;
 
   return (
     <>
@@ -228,7 +485,7 @@ export default function NotificationsPage() {
         {/* ── Bloc filtres ──────────────────────────────────────────────── */}
         <div className="bg-card rounded-2xl border border-border/40 shadow-sm p-4 space-y-4">
 
-          {/* Recherche textuelle */}
+          {/* Recherche */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
@@ -246,13 +503,11 @@ export default function NotificationsPage() {
             )}
           </div>
 
-          {/* Séparateur avec label */}
+          {/* Période */}
           <div className="flex items-center gap-3">
             <span className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/60 whitespace-nowrap">Période</span>
             <div className="flex-1 h-px bg-border/50" />
           </div>
-
-          {/* Filtres période */}
           <div className="flex flex-wrap gap-2">
             {(["all", "today", "week", "month", "custom"] as PeriodFilter[]).map((p) => (
               <button key={p} type="button" onClick={() => handlePeriodChange(p)}
@@ -282,19 +537,19 @@ export default function NotificationsPage() {
               </div>
               {(customFrom || customTo) && (
                 <button type="button" onClick={() => { setCustomFrom(""); setCustomTo(""); }}
-                  className="mb-0.5 text-muted-foreground hover:text-foreground transition-colors" aria-label="Réinitialiser">
+                  className="mb-0.5 text-muted-foreground hover:text-foreground transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               )}
             </div>
           )}
 
-          {/* Séparateur + pills statut — masqué si le rôle n'a qu'un seul type */}
+          {/* Filtre type — masqué si un seul type disponible */}
           {statusOptions.length > 1 && (
             <>
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/60 whitespace-nowrap">
-                  {profile?.role === "ADMIN" ? "Type de notification" : "Statut de fiche"}
+                  Type
                 </span>
                 <div className="flex-1 h-px bg-border/50" />
                 {selectedTypes.length > 0 && (
@@ -305,7 +560,7 @@ export default function NotificationsPage() {
                 )}
               </div>
               <div className="flex flex-wrap gap-2">
-                {statusOptions.map(({ value, label, icon: Icon, color }) => {
+                {statusOptions.map(({ value, label, icon: Icon, filterColor }) => {
                   const active = selectedTypes.includes(value);
                   return (
                     <button key={value} type="button" onClick={() => toggleType(value)}
@@ -314,7 +569,7 @@ export default function NotificationsPage() {
                           ? "bg-primary text-primary-foreground border-primary shadow-sm"
                           : "bg-background border-border hover:border-primary/40 hover:text-foreground text-muted-foreground"
                         }`}>
-                      <Icon className={`w-3 h-3 ${active ? "text-primary-foreground" : color}`} />
+                      <Icon className={`w-3 h-3 ${active ? "text-primary-foreground" : filterColor}`} />
                       {label}
                     </button>
                   );
@@ -325,29 +580,46 @@ export default function NotificationsPage() {
         </div>
 
         {/* ── En-tête résultats ──────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-1">
+        <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
           <p className="text-sm text-muted-foreground">
             {isFiltered
-              ? `${notifications.length} résultat${notifications.length !== 1 ? "s" : ""}`
+              ? `${totalDisplayed} résultat${totalDisplayed !== 1 ? "s" : ""}`
               : unreadCount > 0
                 ? `${unreadCount} non lue${unreadCount > 1 ? "s" : ""}`
                 : "Toutes les notifications sont lues"}
           </p>
-          {unreadCount > 0 && !isFiltered && (
-            <Button variant="outline" size="sm" onClick={markAllRead} className="rounded-xl gap-2">
-              <CheckCheck className="w-4 h-4" />Tout marquer comme lu
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Toggle non lues seulement */}
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowUnreadOnly((v) => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border
+                  ${showUnreadOnly
+                    ? "bg-[#F97316] text-white border-[#F97316] shadow-sm"
+                    : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+                  }`}
+              >
+                <AlertCircle className="w-3.5 h-3.5" />
+                Non lues ({unreadCount})
+              </button>
+            )}
+            {unreadCount > 0 && !showUnreadOnly && (
+              <Button variant="outline" size="sm" onClick={markAllRead} className="rounded-xl gap-2">
+                <CheckCheck className="w-4 h-4" />Tout marquer lu
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* ── Liste ─────────────────────────────────────────────────────── */}
+        {/* ── Contenu ───────────────────────────────────────────────────── */}
         {loading ? (
           <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 bg-card rounded-xl animate-pulse" />
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-20 bg-card rounded-xl animate-pulse" />
             ))}
           </div>
-        ) : notifications.length === 0 ? (
+        ) : displayed.length === 0 ? (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
               <EmptyState
@@ -362,71 +634,69 @@ export default function NotificationsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
-            {notifications.map((n) => {
-              const badge = TYPE_BADGE[n.type];
-              return (
-                <div
-                  key={n.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`${n.read ? "" : "Non lue. "}${n.title}${n.fiche_id ? " — ouvrir la fiche" : ""}`}
-                  onClick={() => handleClick(n)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(n); } }}
-                  className={`rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50
-                    ${!n.read
-                      ? "bg-blue-50/60 dark:bg-blue-950/20 ring-1 ring-blue-100 dark:ring-blue-900"
-                      : "bg-card ring-1 ring-border/30"
-                    } ${n.fiche_id ? "hover:ring-primary/30" : ""}`}
-                >
-                  <div className="p-5 flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4 flex-1 min-w-0">
-                      <div className="relative shrink-0">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center
-                          ${!n.read ? "bg-blue-100 text-blue-600" : "bg-muted text-muted-foreground"}`}>
-                          <FileText className="w-5 h-5" />
-                        </div>
-                        {!n.read && (
-                          <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-[#F97316] rounded-full border-2 border-white" />
-                        )}
+          <div className="space-y-6">
+
+            {/* ── Section : À traiter (non lues) ── */}
+            {sorted.unread.length > 0 && (
+              <section>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#F97316] animate-pulse" />
+                    <h2 className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
+                      À valider · {sorted.unread.length}
+                    </h2>
+                  </div>
+                  <div className="flex-1 h-px bg-border/50" />
+                  <button
+                    type="button"
+                    onClick={markAllRead}
+                    className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                  >
+                    <CheckCheck className="w-3 h-3" />Tout marquer lu
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {sorted.unread.map((n) => (
+                    <NotifCard key={n.id} notif={n} ficheStatus={n.fiche_id ? ficheStatuses[n.fiche_id] : undefined} onClick={handleClick} onMarkRead={markAsRead} onDelete={profile?.role === "ADMIN" ? handleDeleteRequest : undefined} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ── Section : Lues, groupées par date ── */}
+            {!showUnreadOnly && groups.length > 0 && (
+              <section className="space-y-5">
+                {sorted.unread.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-xs font-semibold tracking-widest uppercase text-muted-foreground/60">
+                      Historique
+                    </h2>
+                    <div className="flex-1 h-px bg-border/40" />
+                  </div>
+                )}
+                {groups.map((group) => {
+                  const GroupIcon = group.icon;
+                  return (
+                    <div key={group.label}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <GroupIcon className="w-3.5 h-3.5 text-muted-foreground/50" />
+                        <span className="text-xs font-medium text-muted-foreground/60">{group.label}</span>
+                        <div className="flex-1 h-px bg-border/30" />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className={`text-sm ${!n.read ? "font-semibold" : "font-medium text-foreground/80"}`}>
-                            {n.title}
-                          </p>
-                          {badge && (
-                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>
-                              {badge.label}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {new Date(n.created_at).toLocaleDateString("fr-FR", {
-                            day: "2-digit", month: "short", year: "numeric",
-                            hour: "2-digit", minute: "2-digit",
-                          })}
-                        </p>
+                      <div className="space-y-2">
+                        {group.notifications.map((n) => (
+                          <NotifCard key={n.id} notif={n} ficheStatus={n.fiche_id ? ficheStatuses[n.fiche_id] : undefined} onClick={handleClick} onMarkRead={markAsRead} onDelete={profile?.role === "ADMIN" ? handleDeleteRequest : undefined} />
+                        ))}
                       </div>
                     </div>
-                    {!n.read && (
-                      <button
-                        type="button"
-                        title="Marquer comme lu"
-                        aria-label="Marquer comme lu"
-                        onClick={(e) => { e.stopPropagation(); markAsRead(n.id); }}
-                        className="shrink-0 w-8 h-8 rounded-full hover:bg-blue-100 flex items-center justify-center text-blue-500 transition-colors"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </section>
+            )}
+
+            {/* Charger plus */}
             {hasMore && (
-              <div className="flex justify-center pt-2">
+              <div className="flex justify-center pt-1">
                 <Button variant="outline" onClick={loadMore} disabled={loadingMore} className="rounded-xl gap-2">
                   {loadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   Charger plus
@@ -436,6 +706,39 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
+      {/* Dialog suppression fiche */}
+      <Dialog open={deleteFicheId !== null} onOpenChange={(open) => { if (!open) setDeleteFicheId(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Trash2 className="w-5 h-5" />Supprimer cette fiche ?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              La fiche sera définitivement supprimée avec toutes ses photos. Cette action est irréversible.
+            </p>
+            <div className="space-y-1.5">
+              <label htmlFor="notif-delete-motif" className="text-sm font-medium">Motif de suppression <span className="text-destructive">*</span></label>
+              <textarea
+                id="notif-delete-motif"
+                value={deleteMotif}
+                onChange={(e) => setDeleteMotif(e.target.value)}
+                placeholder="Indiquez la raison de la suppression…"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-destructive/30"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setDeleteFicheId(null)}>Annuler</Button>
+            <Button onClick={handleDeleteConfirm} disabled={deleting || !deleteMotif.trim()}
+              className="bg-destructive hover:bg-destructive/90 text-white rounded-xl gap-2">
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Supprimer définitivement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

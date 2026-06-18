@@ -33,14 +33,14 @@ interface ProspecteurRow { name: string; total: number; submitted: number; accep
 
 // ── Palette statuts ───────────────────────────────────────────────────────────
 const STATUS_COLORS_HEX: Record<FicheStatus, string> = {
-  BROUILLON: "#94a3b8", SOUMISE: "#3b82f6",
+  BROUILLON: "#94a3b8", SOUMISE: "#3b82f6", VALIDEE: "#10b981",
   AFFECTEE: "#f97316", ACCEPTEE: "#10b981",
   RETRACTATION: "#a855f7",
   REFUSEE: "#ef4444", ARCHIVEE: "#cbd5e1",
 };
 
 const STATUS_BAR_COLORS: Record<FicheStatus, string> = {
-  BROUILLON: "bg-slate-400", SOUMISE: "bg-blue-500",
+  BROUILLON: "bg-slate-400", SOUMISE: "bg-blue-500", VALIDEE: "bg-emerald-500",
   AFFECTEE: "bg-orange-500", ACCEPTEE: "bg-emerald-500",
   RETRACTATION: "bg-purple-500",
   REFUSEE: "bg-red-500", ARCHIVEE: "bg-slate-300",
@@ -89,20 +89,21 @@ function KpiCard({
   );
 }
 
-function PeriodKpi({ label, value, delta, accent }: { label: string; value: number | string; delta?: number; accent?: "green" }) {
+function PeriodKpi({ label, value, delta, accent, accent_color, sub }: { label: string; value: number | string; delta?: number; accent?: "green"; accent_color?: "red"; sub?: string }) {
+  const borderClass = accent === "green" ? "border-l-emerald-500" : accent_color === "red" ? "border-l-red-500" : "border-l-primary/40";
+  const textClass = accent === "green" ? "text-emerald-600" : accent_color === "red" ? "text-red-500" : "";
   return (
-    <div className={`rounded-xl bg-card border border-border border-l-4 p-4 transition-all duration-200 hover:shadow-md ${accent === "green" ? "border-l-emerald-500" : "border-l-primary/40"}`}>
+    <div className={`rounded-xl bg-card border border-border border-l-4 p-4 transition-all duration-200 hover:shadow-md ${borderClass}`}>
       <p className="text-[11px] text-muted-foreground uppercase tracking-wide truncate">{label}</p>
       <div className="flex items-baseline gap-2 mt-1.5">
-        <p className={`text-2xl font-bold tabular-nums ${accent === "green" ? "text-emerald-600" : ""}`}>{value}</p>
-        {delta !== undefined && (
-          delta === 0
-            ? <span className="flex items-center text-xs text-muted-foreground"><Minus className="w-3 h-3" /></span>
-            : <span className={`flex items-center text-xs font-semibold ${delta > 0 ? "text-emerald-600" : "text-red-500"}`}>
-                {delta > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}{Math.abs(delta)}
-              </span>
+        <p className={`text-2xl font-bold tabular-nums ${textClass}`}>{value}</p>
+        {delta !== undefined && delta !== 0 && (
+          <span className={`flex items-center text-xs font-semibold ${delta > 0 ? "text-emerald-600" : "text-red-500"}`}>
+            {delta > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}{Math.abs(delta)}
+          </span>
         )}
       </div>
+      {sub && <p className="text-[10px] text-muted-foreground mt-1 truncate">{sub}</p>}
     </div>
   );
 }
@@ -178,7 +179,7 @@ export default function ReportingPage() {
     const isComm = role === "COMMERCIAL";
     const statuses: FicheStatus[] = isComm
       ? ["AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
-      : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+      : ["SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
     // Construire les bornes de la période si filtre actif
     const dates = getPeriodDates(period);
@@ -246,7 +247,8 @@ export default function ReportingPage() {
       }
     }
 
-    setStatPoints(await getFichesForStats(supabase, isComm ? { assignedTo: profileId } : undefined));
+    const allPoints = await getFichesForStats(supabase, isComm ? { assignedTo: profileId } : undefined);
+    setStatPoints(allPoints.filter((p) => p.status !== "BROUILLON"));
     setLoading(false);
   }
 
@@ -259,17 +261,38 @@ export default function ReportingPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, profileLoading, periodFilter]);
 
-  const accepted   = statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0;
-  const refused    = statusCounts.find((s) => s.status === "REFUSEE")?.count ?? 0;
-  const submitted  = statusCounts.reduce((a, b) => a + b.count, 0);
-  const inProgress = (statusCounts.find((s) => s.status === "SOUMISE")?.count ?? 0) +
-                     (statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0);
-  const conversionRate = submitted > 0 ? Math.round((accepted / submitted) * 100) : 0;
+  const accepted      = statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0;
+  const refused       = statusCounts.find((s) => s.status === "REFUSEE")?.count ?? 0;
+  const submitted     = statusCounts.reduce((a, b) => a + b.count, 0);
+  const inProgress    = (statusCounts.find((s) => s.status === "SOUMISE")?.count ?? 0) +
+                        (statusCounts.find((s) => s.status === "VALIDEE")?.count ?? 0) +
+                        (statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0);
+  // Taux de conversion basé uniquement sur les fiches affectées à un commercial
+  // (exclut les fiches rejetées par la direction avant affectation)
+  const assignedBase  = (statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0) +
+                        (statusCounts.find((s) => s.status === "RETRACTATION")?.count ?? 0) +
+                        accepted + refused +
+                        (statusCounts.find((s) => s.status === "ARCHIVEE")?.count ?? 0);
+  const conversionRate = assignedBase > 0 ? Math.round((accepted / assignedBase) * 100) : 0;
   const maxProspecteur = Math.max(...prospecteurs.map((p) => p.total), 1);
 
   const buckets = useMemo(() => buildBuckets(statPoints, granularity), [statPoints, granularity]);
   const { current, previous } = useMemo(() => currentAndPreviousPeriod(statPoints, granularity), [statPoints, granularity]);
   const totalDelta = current.total - previous.total;
+
+  const periodRangeLabel = useMemo(() => {
+    const fmt = (d: Date) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const s = current.start;
+    let end: Date;
+    switch (granularity) {
+      case "week": end = new Date(s.getFullYear(), s.getMonth(), s.getDate() + 6); break;
+      case "month": end = new Date(s.getFullYear(), s.getMonth() + 1, 0); break;
+      case "quarter": end = new Date(s.getFullYear(), s.getMonth() + 3, 0); break;
+      case "semester": end = new Date(s.getFullYear(), s.getMonth() + 6, 0); break;
+      case "year": end = new Date(s.getFullYear(), 11, 31); break;
+    }
+    return `du ${fmt(s)} au ${fmt(end)}`;
+  }, [current.start, granularity]);
 
   // Données pour le pie chart (filtrer les 0)
   const pieData = statusCounts.filter((s) => s.count > 0).map((s) => ({
@@ -281,9 +304,9 @@ export default function ReportingPage() {
   // Données pour le bar/area chart d'évolution
   const chartData = buckets.map((b) => ({
     name: b.label,
+    Affectées: b.assigned,
     Acceptées: b.accepted,
-    Autres: b.total - b.accepted,
-    Total: b.total,
+    Refusées: b.refused,
   }));
 
   // Données pour le bar chart des prospecteurs
@@ -375,7 +398,7 @@ export default function ReportingPage() {
           />
           <KpiCard
             label="Taux de conversion" value={`${conversionRate}%`}
-            sub={`${accepted} acceptée${accepted > 1 ? "s" : ""}`}
+            sub={`${accepted} acceptée${accepted > 1 ? "s" : ""} / ${assignedBase} affectée${assignedBase > 1 ? "s" : ""}`}
             Icon={CheckCircle2} iconBg="bg-emerald-100 dark:bg-emerald-900/30" iconColor="text-emerald-600"
             border="border-l-emerald-500"
             trend={{ delta: totalDelta }}
@@ -461,9 +484,13 @@ export default function ReportingPage() {
                         const cy = data.cy ?? 0;
                         const ma = data.midAngle ?? 0;
                         const or = data.outerRadius ?? 0;
+                        const cosA = Math.cos(-ma * RADIAN);
+                        const sinA = Math.sin(-ma * RADIAN);
+                        const tipX = cx + (or + 2) * cosA + 15;
+                        const tipY = cy + (or + 2) * sinA - 10;
                         setPieTooltipPos({
-                          x: cx + (or + 18) * Math.cos(-ma * RADIAN),
-                          y: cy + (or + 18) * Math.sin(-ma * RADIAN),
+                          x: cosA >= 0 ? tipX : tipX - 220,
+                          y: tipY,
                         });
                       }}
                       onMouseLeave={() => setPieTooltipPos(undefined)}
@@ -474,12 +501,15 @@ export default function ReportingPage() {
                     </Pie>
                     <Tooltip
                       position={pieTooltipPos}
+                      isAnimationActive={false}
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
                         const d = payload[0];
                         const pct = Math.round(((d.value as number) / pieData.reduce((s, p) => s + p.value, 0)) * 100);
                         return (
-                          <div className="bg-popover border border-border rounded-xl px-3 py-2 shadow-lg text-xs flex items-center gap-2">
+                          <div
+                            className="bg-popover border border-border rounded-xl px-3 py-2 shadow-lg text-xs flex items-center gap-2 transition-[transform] duration-300 ease-out"
+                          >
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.payload.color }} />
                             <span className="text-muted-foreground">{d.name}</span>
                             <span className="font-bold ml-1">{d.value}</span>
@@ -497,7 +527,7 @@ export default function ReportingPage() {
                     <div key={status} className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: STATUS_COLORS_HEX[status] }} />
                       <FicheStatusBadge status={status} />
-                      <span className="text-xs font-semibold tabular-nums">{count}</span>
+                      <span className="text-xs font-semibold tabular-nums ml-1">{count}</span>
                     </div>
                   ))}
                 </div>
@@ -587,7 +617,10 @@ export default function ReportingPage() {
               <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                 <TrendingUp className="w-4 h-4 text-blue-600" />
               </div>
-              <h3 className="font-semibold text-sm">Évolution</h3>
+              <div>
+                <h3 className="font-semibold text-sm">Évolution des fiches soumises</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Basée sur la date de soumission à la direction</p>
+              </div>
             </div>
             <Tabs value={granularity} onValueChange={(v) => setGranularity(v as Granularity)}>
               <TabsList variant="line" className="h-auto flex-wrap">
@@ -599,11 +632,12 @@ export default function ReportingPage() {
           </div>
 
           {/* KPIs période courante */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <PeriodKpi label={`Total ${CURRENT_PERIOD_LABELS[granularity]}`} value={current.total} delta={totalDelta} />
-            <PeriodKpi label="Soumises" value={current.submitted} />
-            <PeriodKpi label="Acceptées" value={current.accepted} accent="green" />
-            <PeriodKpi label="Conversion" value={`${periodConversion(current)}%`} accent="green" />
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+            <PeriodKpi label={`Total ${CURRENT_PERIOD_LABELS[granularity]}`} value={current.total} delta={totalDelta} sub={`Fiches soumises ${periodRangeLabel}`} />
+            <PeriodKpi label="Affectées" value={current.assigned} sub="Affectées à un commercial" />
+            <PeriodKpi label="Acceptées" value={current.accepted} accent="green" sub="Acceptées par le client" />
+            <PeriodKpi label="Refusées" value={current.refused} sub="Refusées par le client" accent_color="red" />
+            <PeriodKpi label="Conversion" value={`${periodConversion(current)}%`} accent="green" sub="Acceptées / Affectées" />
           </div>
 
           {/* Area chart */}
@@ -614,13 +648,17 @@ export default function ReportingPage() {
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                   <defs>
+                    <linearGradient id="colorAffectees" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                    </linearGradient>
                     <linearGradient id="colorAcceptees" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
-                    <linearGradient id="colorAutres" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                    <linearGradient id="colorRefusees" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
@@ -635,27 +673,34 @@ export default function ReportingPage() {
                   <Tooltip content={<CustomTooltip />} />
                   <Area
                     type="monotone"
-                    dataKey="Autres"
-                    stackId="1"
+                    dataKey="Affectées"
                     stroke="#f97316"
                     strokeWidth={2}
-                    fill="url(#colorAutres)"
+                    fill="url(#colorAffectees)"
                     animationDuration={700}
                   />
                   <Area
                     type="monotone"
                     dataKey="Acceptées"
-                    stackId="1"
                     stroke="#10b981"
                     strokeWidth={2}
                     fill="url(#colorAcceptees)"
                     animationDuration={700}
                   />
+                  <Area
+                    type="monotone"
+                    dataKey="Refusées"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    fill="url(#colorRefusees)"
+                    animationDuration={700}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
               <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-500 inline-block" />Affectées</span>
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#f97316]/60 inline-block" />Autres</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" />Refusées</span>
               </div>
             </>
           )}

@@ -6,11 +6,12 @@ import type { FicheStatus } from "@/types/database";
 const STATUS_LABELS_SHORT: Record<FicheStatus, string> = {
   BROUILLON: "Brouillon",
   SOUMISE: "À valider",
-  AFFECTEE: "Affectée",
-  RETRACTATION: "Att. Validation",
-  ACCEPTEE: "Validée",
-  REFUSEE: "Refusée",
-  ARCHIVEE: "Archivée",
+  VALIDEE: "Validée",
+  AFFECTEE: "Validée et affectée",
+  RETRACTATION: "Attente Acceptation Client",
+  ACCEPTEE: "Acceptation Client",
+  REFUSEE: "Refus Client",
+  ARCHIVEE: "Archivé",
 };
 
 export function FicheStatusBadge({ status, short = false }: { status: FicheStatus; short?: boolean }) {

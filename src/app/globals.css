@@ -55,7 +55,7 @@
   --card-foreground: #1E293B;
   --popover: #FFFFFF;
   --popover-foreground: #1E293B;
-  --primary: #1E3A5F;
+  --primary: #1B2659;
   --primary-foreground: #FFFFFF;
   --secondary: #F1F0ED;
   --secondary-foreground: #1E293B;
@@ -66,20 +66,20 @@
   --destructive: #EF4444;
   --border: #E5E2DB;
   --input: #E5E2DB;
-  --ring: #1E3A5F;
-  --chart-1: #1E3A5F;
+  --ring: #1B2659;
+  --chart-1: #1B2659;
   --chart-2: #F97316;
   --chart-3: #10B981;
   --chart-4: #F59E0B;
   --chart-5: #64748B;
   --radius: 0.75rem;
-  --sidebar: #1E3A5F;
+  --sidebar: #1B2659;
   --sidebar-foreground: #E2E8F0;
   --sidebar-primary: #F97316;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #2A4A6F;
+  --sidebar-accent: #252F70;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #2A4A6F;
+  --sidebar-border: #252F70;
   --sidebar-ring: #F97316;
 }
 
@@ -166,4 +166,15 @@
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.85); }
+  to   { transform: scale(1); }
+}
+
+@keyframes highlightPulse {
+  0%   { background-color: rgba(249, 115, 22, 0.15); }
+  50%  { background-color: rgba(249, 115, 22, 0.08); }
+  100% { background-color: rgba(249, 115, 22, 0.03); }
 }

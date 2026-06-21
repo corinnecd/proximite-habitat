@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getFicheById, getFichePhotos } from "@/lib/data/fiches";
 import { getProfileFullName } from "@/lib/data/profiles";
@@ -38,7 +38,7 @@ export default function ImprimerFichePage({ params }: { params: Promise<{ id: st
   const [photos, setPhotos] = useState<PhotoRow[]>([]);
   const [creatorName, setCreatorName] = useState("");
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     async function load() {
@@ -99,14 +99,14 @@ export default function ImprimerFichePage({ params }: { params: Promise<{ id: st
           <div className="text-right text-sm text-gray-500 space-y-0.5">
             <p>Statut : <span className="font-semibold text-gray-800">{STATUS_LABELS[fiche.status]}</span></p>
             <p>Date : {new Date(fiche.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}</p>
-            {creatorName && <p>Prospecteur : <span className="font-semibold text-gray-800">{creatorName}</span></p>}
+            {creatorName && <p>Référent : <span className="font-semibold text-gray-800">{creatorName}</span></p>}
           </div>
         </div>
 
         {/* Coordonnées */}
         <Section title="Coordonnées du prospect">
-          <Row label="Nom complet" value={`${fiche.prospect_prenom} ${fiche.prospect_nom}`} />
-          <Row label="Adresse" value={`${fiche.prospect_adresse}, ${fiche.prospect_cp} ${fiche.prospect_ville}`} />
+          <Row label="Nom complet" value={[fiche.prospect_prenom, fiche.prospect_nom].filter(Boolean).join(" ") || null} />
+          <Row label="Adresse" value={[fiche.prospect_adresse, [fiche.prospect_cp, fiche.prospect_ville].filter(Boolean).join(" ")].filter(Boolean).join(", ") || null} />
           <Row label="Téléphone" value={fiche.prospect_telephone} />
           <Row label="Disponibilités" value={(fiche.disponibilites || []).join(", ") || null} />
           <Row label="Date de visite" value={fiche.date_visite ? new Date(fiche.date_visite).toLocaleDateString("fr-FR") : null} />

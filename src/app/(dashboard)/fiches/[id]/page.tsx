@@ -24,11 +24,11 @@ import {
 import { getProfileFullName } from "@/lib/data/profiles";
 import { useProfile } from "@/lib/hooks/use-profile";
 import {
-  getAvailableTransitions, canAssignFiche, canEditFiche, STATUS_LABELS,
+  getAvailableTransitions, canAssignFiche, canEditFiche, canEditRdvDate, STATUS_LABELS, MOTIF_REFUS_LABELS,
 } from "@/lib/permissions";
 import { sendEmailFicheAffectee, sendEmailFicheDecision, sendEmailFicheRejetee } from "@/lib/email";
 import { createNotifications, getAdminIds } from "@/lib/data/notifications";
-import type { FicheStatus, Fiche } from "@/types/database";
+import type { FicheStatus, Fiche, MotifRefus } from "@/types/database";
 import Image from "next/image";
 import { toast } from "sonner";
 import {
@@ -139,6 +139,9 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<FicheStatus | null>(null);
   const [statusComment, setStatusComment] = useState("");
+  const [selectedMotifRefus, setSelectedMotifRefus] = useState<MotifRefus | "">("");
+  const [editingRdvDate, setEditingRdvDate] = useState(false);
+  const [rdvDateValue, setRdvDateValue] = useState("");
   const [selectedCommercial, setSelectedCommercial] = useState("");
   const [isValidated, setIsValidated] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -242,7 +245,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     return () => document.removeEventListener("mousedown", close);
   }, [showStatusDropdown]);
 
-  async function handleStatusChange(newStatus: FicheStatus, comment?: string) {
+  async function handleStatusChange(newStatus: FicheStatus, comment?: string, motifRefus?: MotifRefus) {
     if (!fiche || !profile) return;
     setTransitioning(true);
     const { error } = await supabase.rpc("transition_fiche", {
@@ -251,7 +254,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       p_comment: comment || null,
     });
     if (error) { toast.error("Transition refusée : " + error.message); setTransitioning(false); return; }
-    setFiche({ ...fiche, status: newStatus });
+
+    if (newStatus === "REFUSEE" && motifRefus) {
+      await supabase.from("fiches").update({ motif_refus: motifRefus }).eq("id", fiche.id);
+    }
+
+    setFiche({ ...fiche, status: newStatus, ...(motifRefus ? { motif_refus: motifRefus } : {}) });
     toast.success(`Statut changé : ${STATUS_LABELS[newStatus]}`);
     if (newStatus === "ACCEPTEE") {
       confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#1E3A5F", "#F97316", "#10B981", "#F59E0B"] });
@@ -264,7 +272,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         const ref = fiche.reference;
 
         if (newStatus === "BROUILLON" && fiche.created_by) {
-          // Direction a rejeté la fiche vers BROUILLON — notif + email au prospecteur
+          // Direction a rejeté la fiche vers BROUILLON — notif + email au référent
           const { data: prospProfile } = await supabase
             .from("profiles")
             .select("email, first_name")
@@ -295,7 +303,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             message: `${prospName} a soumis la fiche ${ref} — en attente de validation.`,
             fiche_id: fiche.id,
           })));
-          // Prospecteur : confirmation de soumission
+          // Référent : confirmation de soumission
           await createNotifications(supabase, [{
             user_id: profile.id,
             organization_id: orgId,
@@ -307,7 +315,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         }
 
         if (newStatus === "ACCEPTEE" || newStatus === "REFUSEE") {
-          // Prospecteur : vente validée ou refusée
+          // Référent : vente validée ou refusée
           if (fiche.created_by) {
             const { data: prospProfile } = await supabase
               .from("profiles")
@@ -398,11 +406,11 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     });
     if (error) { toast.error("Rejet refusé : " + error.message); setTransitioning(false); return; }
     setFiche({ ...fiche, status: "BROUILLON" });
-    toast.success("Fiche rejetée — le prospecteur a été notifié.");
+    toast.success("Fiche rejetée — le référent a été notifié.");
     setShowRejetDialog(false);
     setRejetMotif("");
     setTransitioning(false);
-    // Notification + email au prospecteur (non bloquant)
+    // Notification + email au référent (non bloquant)
     void (async () => {
       try {
         if (fiche.created_by) {
@@ -513,7 +521,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           await sendEmailFicheAffectee(fiche.id);
         }
 
-        // Notification → prospecteur : sa fiche a été validée et affectée
+        // Notification → référent : sa fiche a été validée et affectée
         if (fiche.created_by) {
           const commName = commProfile ? `${commProfile.first_name} ${commProfile.last_name}` : "un commercial";
           await createNotifications(supabase, [{
@@ -683,7 +691,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   Fiche à valider
                 </p>
                 <p className="text-xs text-red-600/80 dark:text-red-400/70 mt-0.5">
-                  Soumise par <span className="font-semibold">{creatorName || "un prospecteur"}</span>
+                  Soumise par <span className="font-semibold">{creatorName || "un référent"}</span>
                   {" "}— ces 2 étapes sont requises pour finaliser.
                 </p>
               </div>
@@ -811,6 +819,11 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   ) : (
                     <FicheStatusBadge status={fiche.status} />
                   )}
+                  {fiche.status === "REFUSEE" && fiche.motif_refus && (
+                    <span className="ml-2 text-xs font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                      {MOTIF_REFUS_LABELS[fiche.motif_refus]}
+                    </span>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -848,7 +861,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             <div className="flex items-center gap-2 flex-wrap">
               <DownloadFicheButton
                 fiche={fiche}
-                prospecteurNom={creatorName || "Prospecteur"}
+                référentNom={creatorName || "Référent"}
                 commercialNom={
                   fiche.assigned_to
                     ? commercials.find((c) => c.id === fiche.assigned_to)
@@ -928,7 +941,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   )}
                 </div>
               )}
-              {/* Boutons classiques pour le prospecteur */}
+              {/* Boutons classiques pour le référent */}
               {availableTransitions.length > 0 && (profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && availableTransitions.map((status) => (
                 <Button key={status}
                   onClick={() => { setPendingStatus(status); setStatusComment(""); }}
@@ -1092,7 +1105,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 Annuler la validation de la fiche
               </DialogTitle>
               <DialogDescription>
-                La fiche reviendra en statut &quot;À valider&quot;. Le commercial ne sera plus affecté et le prospecteur sera notifié.
+                La fiche reviendra en statut &quot;À valider&quot;. Le commercial ne sera plus affecté et le référent sera notifié.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-2">
@@ -1195,6 +1208,59 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                           {fiche.heure_visite && ` à ${fiche.heure_visite}`}
                         </span>
                       ) : null
+                    }
+                  />
+                </div>
+                <div className="col-span-2">
+                  <DataRow
+                    label="Date de rendez-vous"
+                    value={
+                      editingRdvDate ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            value={rdvDateValue}
+                            onChange={(e) => setRdvDateValue(e.target.value)}
+                            className="h-9 rounded-lg border border-border bg-card px-3 text-sm"
+                          />
+                          <Button size="sm" className="rounded-lg h-8 text-xs" onClick={async () => {
+                            if (!fiche || !profile) return;
+                            const oldDate = fiche.rdv_date;
+                            await supabase.from("fiches").update({ rdv_date: rdvDateValue || null }).eq("id", fiche.id);
+                            await supabase.from("fiche_history").insert({
+                              fiche_id: fiche.id,
+                              organization_id: profile.organization_id,
+                              user_id: profile.id,
+                              action: "MODIFICATION_RDV",
+                              comment: `Date de RDV modifiée : ${oldDate || "non définie"} → ${rdvDateValue || "non définie"}`,
+                            });
+                            setFiche({ ...fiche, rdv_date: rdvDateValue || null });
+                            setEditingRdvDate(false);
+                            toast.success("Date de rendez-vous mise à jour");
+                          }}>
+                            Enregistrer
+                          </Button>
+                          <Button size="sm" variant="ghost" className="rounded-lg h-8 text-xs" onClick={() => setEditingRdvDate(false)}>
+                            Annuler
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          {fiche.rdv_date
+                            ? new Date(fiche.rdv_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+                            : "Non définie"}
+                          {profile && canEditRdvDate(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status) && (
+                            <button
+                              type="button"
+                              onClick={() => { setRdvDateValue(fiche.rdv_date || ""); setEditingRdvDate(true); }}
+                              className="ml-2 text-xs text-primary hover:underline"
+                            >
+                              Modifier
+                            </button>
+                          )}
+                        </span>
+                      )
                     }
                   />
                 </div>
@@ -1664,7 +1730,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       </Dialog>
 
       {/* ── Dialog : motif obligatoire pour tout changement de statut ───── */}
-      <Dialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) { setPendingStatus(null); setStatusComment(""); } }}>
+      <Dialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className={`flex items-center gap-2 ${
@@ -1697,6 +1763,28 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           </DialogHeader>
 
           <div className="py-2 space-y-3">
+            {pendingStatus === "REFUSEE" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Type de refus <span className="text-red-500">*</span>
+                </label>
+                <Select value={selectedMotifRefus} onValueChange={(v) => setSelectedMotifRefus(v as MotifRefus)}>
+                  <SelectTrigger className="rounded-xl bg-card">
+                    <SelectValue placeholder="Sélectionner le type de refus…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(MOTIF_REFUS_LABELS) as MotifRefus[]).map((m) => (
+                      <SelectItem key={m} value={m}>{MOTIF_REFUS_LABELS[m]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!selectedMotifRefus && (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />Veuillez sélectionner le type de refus.
+                  </p>
+                )}
+              </div>
+            )}
             <div className="space-y-1.5">
               <label htmlFor="textarea-motif" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Motif <span className="text-red-500">*</span>
@@ -1722,7 +1810,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           </div>
 
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setPendingStatus(null); setStatusComment(""); }}>Annuler</Button>
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); }}>Annuler</Button>
             <Button
               onClick={async () => {
                 if (!pendingStatus) return;
@@ -1730,11 +1818,16 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   toast.error("Veuillez saisir un motif avant de confirmer.");
                   return;
                 }
-                await handleStatusChange(pendingStatus, statusComment.trim());
+                if (pendingStatus === "REFUSEE" && !selectedMotifRefus) {
+                  toast.error("Veuillez sélectionner le type de refus.");
+                  return;
+                }
+                await handleStatusChange(pendingStatus, statusComment.trim(), selectedMotifRefus as MotifRefus || undefined);
                 setPendingStatus(null);
                 setStatusComment("");
+                setSelectedMotifRefus("");
               }}
-              disabled={transitioning || !statusComment.trim()}
+              disabled={transitioning || !statusComment.trim() || (pendingStatus === "REFUSEE" && !selectedMotifRefus)}
               className={`rounded-xl gap-2 text-white ${
                 pendingStatus === "REFUSEE"
                   ? "bg-red-600 hover:bg-red-700"
@@ -1772,14 +1865,14 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             </DialogTitle>
             <DialogDescription>
               La fiche <span className="font-semibold">{fiche?.reference}</span> sera renvoyée en brouillon.
-              Le prospecteur recevra une notification avec votre motif.
+              Le référent recevra une notification avec votre motif.
             </DialogDescription>
           </DialogHeader>
           <div className="py-2 space-y-3">
             <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl">
               <Ban className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
               <p className="text-xs text-red-700 dark:text-red-300">
-                Le motif est <span className="font-bold">obligatoire</span>. Il sera transmis au prospecteur par notification et email.
+                Le motif est <span className="font-bold">obligatoire</span>. Il sera transmis au référent par notification et email.
               </p>
             </div>
             <div className="space-y-1.5">
@@ -1845,7 +1938,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                       <User className="w-4 h-4 text-emerald-600" />
                     </div>
                     <div>
-                      <p className="text-[10px] uppercase tracking-wide text-emerald-600/70 dark:text-emerald-400/70">Prospecteur</p>
+                      <p className="text-[10px] uppercase tracking-wide text-emerald-600/70 dark:text-emerald-400/70">Référent</p>
                       <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">{creatorName || "—"}</p>
                     </div>
                   </div>
@@ -1874,7 +1967,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
 
                 <p className="text-xs text-muted-foreground text-center">
-                  Le prospecteur et le commercial recevront chacun une notification.
+                  Le référent et le commercial recevront chacun une notification.
                 </p>
               </div>
 

@@ -110,7 +110,7 @@ interface VenteRow {
   assigned_to_profile: { first_name: string; last_name: string } | null;
 }
 
-interface ProspecteurStat {
+interface ReferentStat {
   id: string;
   nom: string;
   ventes: number;        // total ventes
@@ -373,7 +373,7 @@ export default function DashboardPage() {
   const [fichesRefusees,        setFichesRefusees]        = useState<FicheAffectee[]>([]);
   const [fichesArchivees,         setFichesArchivees]         = useState<FicheAffectee[]>([]);
   const [fichesRetractationComm,  setFichesRetractationComm]  = useState<FicheAffectee[]>([]);
-  // Prospecteur : fiches par statut
+  // Référent : fiches par statut
   const [prospBrouillons,   setProspBrouillons]   = useState<FicheListItem[]>([]);
   const [prospSoumises,     setProspSoumises]     = useState<FicheListItem[]>([]);
   const [prospAffectees,    setProspAffectees]    = useState<FicheListItem[]>([]);
@@ -381,7 +381,7 @@ export default function DashboardPage() {
   const [prospRetractees,   setProspRetractees]   = useState<FicheListItem[]>([]);
   const [prospRefusees,     setProspRefusees]     = useState<FicheListItem[]>([]);
   const [prospArchivees,    setProspArchivees]    = useState<FicheListItem[]>([]);
-  const [prospecteursStats, setProspecteursStats] = useState<ProspecteurStat[]>([]);
+  const [referentsStats, setRéférentsStats] = useState<ReferentStat[]>([]);
   const [commerciauxStats,  setCommerciauxStats]  = useState<CommercialStat[]>([]);
   const [totalVentes,       setTotalVentes]       = useState(0);
   const [mesVentes,         setMesVentes]          = useState(0);
@@ -403,13 +403,13 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async (period: DashPeriod = "ALL") => {
     if (!profile) return;
-    const isProspecteur = profile.role === "PROSPECTEUR";
+    const isReferent = profile.role === "PROSPECTEUR";
     try {
     const isAdmin       = profile.role === "ADMIN";
     const isCommercial  = profile.role === "COMMERCIAL";
 
     // ── Compteurs (filtrés par période) ────────────────────────────────────
-    const statusesToCount: FicheStatus[] = isProspecteur
+    const statusesToCount: FicheStatus[] = isReferent
       ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
       : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
@@ -417,7 +417,7 @@ export default function DashboardPage() {
     const results = await Promise.all(
       statusesToCount.map(async (s) => {
         let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
-        if (isProspecteur) q = q.eq("created_by", profile.id);
+        if (isReferent) q = q.eq("created_by", profile.id);
         if (isCommercial) q = q.eq("assigned_to", profile.id);
         if (periodDates) {
           q = q.gte("created_at", `${periodDates.from}T00:00:00`).lte("created_at", `${periodDates.to}T23:59:59`);
@@ -478,8 +478,8 @@ export default function DashboardPage() {
       if (isCommercial) setMesVentes(rows.length);
 
       if (isAdmin) {
-        // Tous les prospecteurs actifs (même ceux sans vente)
-        const { data: allProspecteurs } = await supabase
+        // Tous les référents actifs (même ceux sans vente)
+        const { data: allReferents } = await supabase
           .from("profiles")
           .select("id, first_name, last_name")
           .eq("role", "PROSPECTEUR")
@@ -489,7 +489,7 @@ export default function DashboardPage() {
         const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
         const pMap = new Map<string, { id: string; nom: string; ventes: number; ventesMoisCourant: number; ventesParMois: Map<string, number> }>();
-        for (const p of (allProspecteurs ?? [])) {
+        for (const p of (allReferents ?? [])) {
           pMap.set(p.id, { id: p.id, nom: `${p.first_name} ${p.last_name}`, ventes: 0, ventesMoisCourant: 0, ventesParMois: new Map() });
         }
         for (const r of rows) {
@@ -506,14 +506,14 @@ export default function DashboardPage() {
           entry.ventesParMois.set(ym, (entry.ventesParMois.get(ym) ?? 0) + 1);
           if (ym === currentYM) entry.ventesMoisCourant++;
         }
-        // Primes = nombre de mois où le prospecteur a atteint ≥3 ventes
-        const pStats: ProspecteurStat[] = Array.from(pMap.values()).map((p) => {
+        // Primes = nombre de mois où le référent a atteint ≥3 ventes
+        const pStats: ReferentStat[] = Array.from(pMap.values()).map((p) => {
           const primes = Array.from(p.ventesParMois.values()).filter((v) => v >= 3).length;
           const ventesCeMois = p.ventesMoisCourant;
           const prochainPalier = ventesCeMois >= 3 ? 0 : 3 - ventesCeMois;
           return { id: p.id, nom: p.nom, ventes: p.ventes, ventesMoisCourant: ventesCeMois, primes, prochainPalier };
         }).sort((a, b) => b.ventes - a.ventes);
-        setProspecteursStats(pStats);
+        setRéférentsStats(pStats);
 
         // Agrégation par commercial
         const cMap = new Map<string, CommercialStat>();
@@ -548,7 +548,7 @@ export default function DashboardPage() {
     }
 
     // ── Fiches antérieures (avant le trimestre en cours) ────────────────────
-    if (!isProspecteur) {
+    if (!isReferent) {
       const pad2 = (n: number) => String(n).padStart(2, "0");
       const now2 = new Date();
       const q2 = Math.floor(now2.getMonth() / 3);
@@ -562,8 +562,8 @@ export default function DashboardPage() {
       setAnterieures((antData as typeof anterieures) ?? []);
     }
 
-    // ── Fiches prospecteur par statut ────────────────────────────────────────
-    if (isProspecteur) {
+    // ── Fiches référent par statut ────────────────────────────────────────
+    if (isReferent) {
       const [bRes, sRes, affRes, retRes, accRes, refRes, arcRes] = await Promise.all([
         supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "BROUILLON").order("created_at", { ascending: false }),
         supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "SOUMISE").order("created_at", { ascending: false }),
@@ -664,7 +664,7 @@ export default function DashboardPage() {
       }));
       toast.success(`Fiche ${ficheToTraiter.reference} ${traiterDecision === "RETRACTATION" ? "en attente de validation ✓" : "refusée"}`);
 
-      // Email au prospecteur uniquement pour REFUSEE (RETRACTATION = étape intermédiaire)
+      // Email au référent uniquement pour REFUSEE (RETRACTATION = étape intermédiaire)
       if (traiterDecision === "REFUSEE" && ficheToTraiter.created_by) {
         void (async () => {
           try {
@@ -688,11 +688,11 @@ export default function DashboardPage() {
   }
 
   const totalFiches   = Object.values(counts).reduce((a, b) => a + b, 0);
-  const isProspecteur = profile?.role === "PROSPECTEUR";
+  const isReferent = profile?.role === "PROSPECTEUR";
   const isAdmin       = profile?.role === "ADMIN";
   const isCommercial  = profile?.role === "COMMERCIAL";
 
-  const visibleStatuses: FicheStatus[] = isProspecteur
+  const visibleStatuses: FicheStatus[] = isReferent
     ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
     : isCommercial
     ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
@@ -919,7 +919,7 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-xl font-medium text-foreground">Bonjour, {profile?.first_name}</h2>
             <p className="text-muted-foreground">
-              {isProspecteur
+              {isReferent
                 ? `${counts.BROUILLON} brouillon${counts.BROUILLON > 1 ? "s" : ""} en cours`
                 : `${totalFiches} fiche${totalFiches > 1 ? "s" : ""} au total`}
             </p>
@@ -932,7 +932,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Filtre période — direction uniquement */}
-        {!isProspecteur && (() => {
+        {!isReferent && (() => {
           const now = new Date();
           const qIdx = Math.floor(now.getMonth() / 3);
           const qStart = new Date(now.getFullYear(), qIdx * 3, 1);
@@ -994,8 +994,8 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* ── Prime du mois (prospecteur) ─────────────────────────────────── */}
-        {isProspecteur && (() => {
+        {/* ── Prime du mois (référent) ─────────────────────────────────── */}
+        {isReferent && (() => {
           const SEUIL = 3;
           const now = new Date();
           const ventesMonth = prospAcceptees.filter((f) => {
@@ -1053,22 +1053,22 @@ export default function DashboardPage() {
         {/* ── Section ADMIN : tableau des ventes (en haut) ────────────────── */}
         {isAdmin && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Classement prospecteurs */}
+            {/* Classement référents */}
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
                     <Trophy className="w-4 h-4 text-amber-600" />
                   </div>
-                  <h3 className="font-semibold text-sm">Ventes par prospecteur</h3>
+                  <h3 className="font-semibold text-sm">Ventes par référent</h3>
                 </div>
                 <span className="text-xs text-muted-foreground">{totalVentes} vente{totalVentes > 1 ? "s" : ""} au total</span>
               </div>
-              {prospecteursStats.length === 0 ? (
+              {referentsStats.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
               ) : (
                 <div className="space-y-3">
-                  {prospecteursStats.map((p, i) => {
+                  {referentsStats.map((p, i) => {
                     // Prime mensuelle : 3 ventes dans le même mois calendaire
                     const primeCeMois = p.ventesMoisCourant >= 3;
                     const progressPct = Math.min((p.ventesMoisCourant / 3) * 100, 100);
@@ -1408,7 +1408,7 @@ export default function DashboardPage() {
 
 
         {/* ── Section PROSPECTEUR : 6 blocs fiches ───────────────────────────── */}
-        {isProspecteur && (() => {
+        {isReferent && (() => {
           const blocs: { status: FicheStatus; label: string; fiches: FicheListItem[]; color: string; badgeBg: string; iconBg: string; iconColor: string; hoverBg: string; emptyMsg: string }[] = [
             { status: "BROUILLON",    label: "Mes brouillons",           fiches: prospBrouillons, color: "border-l-slate-400",   badgeBg: "bg-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800/40",    iconColor: "text-slate-500",   hoverBg: "hover:bg-slate-50/60",   emptyMsg: "Aucun brouillon en cours." },
             { status: "SOUMISE",      label: "À valider par la direction", fiches: prospSoumises,   color: "border-l-blue-500",    badgeBg: "bg-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",       iconColor: "text-blue-500",    hoverBg: "hover:bg-blue-50/40",    emptyMsg: "Aucune fiche en attente." },

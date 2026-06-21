@@ -110,7 +110,7 @@ export default function FichesPage() {
   const isValidationMode = initialStatus === "SOUMISE";
   const highlightIds = useMemo(() => new Set((searchParams.get("highlight") ?? "").split(",").filter(Boolean)), [searchParams]);
   const { profile } = useProfile();
-  const isProspecteur = profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE";
+  const isReferent = profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE";
   const isAdmin       = profile?.role === "ADMIN";
   const isCommercial  = profile?.role === "COMMERCIAL";
 
@@ -127,9 +127,9 @@ export default function FichesPage() {
 
   // Filtres direction uniquement
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("ALL");
-  const [prospecteurFilter, setProspecteurFilter] = useState("ALL");
+  const [référentFilter, setRéférentFilter] = useState("ALL");
   const [commercialFilter, setCommercialFilter] = useState("ALL");
-  const [prospecteurs, setProspecteurs] = useState<ProfileOption[]>([]);
+  const [référents, setRéférents] = useState<ProfileOption[]>([]);
   const [commercials, setCommercials] = useState<ProfileOption[]>([]);
   const [anterieures, setAnterieures] = useState<{ id: string }[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -139,7 +139,7 @@ export default function FichesPage() {
   // Stable — ne change pas entre les renders
   const supabase = useMemo(() => createClient(), []);
 
-  const visibleStatuses: FicheStatus[] = isProspecteur
+  const visibleStatuses: FicheStatus[] = isReferent
     ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
     : isCommercial
     ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
@@ -151,7 +151,7 @@ export default function FichesPage() {
     return STATUS_LABELS[s];
   };
 
-  // Chargement des listes de prospecteurs et commerciaux pour les filtres admin
+  // Chargement des listes de référents et commerciaux pour les filtres admin
   useEffect(() => {
     if (!isAdmin) return;
     async function loadUsers() {
@@ -162,7 +162,7 @@ export default function FichesPage() {
         .eq("is_active", true)
         .order("last_name");
       if (data) {
-        setProspecteurs(data.filter((u) => u.role === "PROSPECTEUR"));
+        setRéférents(data.filter((u) => u.role === "PROSPECTEUR"));
         setCommercials(data.filter((u) => u.role === "COMMERCIAL"));
       }
     }
@@ -175,7 +175,7 @@ export default function FichesPage() {
     // Calculé ici pour éviter les closures périmées
     const role = profile?.role;
     const _isAdmin       = role === "ADMIN";
-    const _isProspecteur = role === "PROSPECTEUR" || role === "CHEF_EQUIPE";
+    const _isReferent = role === "PROSPECTEUR" || role === "CHEF_EQUIPE";
 
     let query = supabase
       .from("fiches")
@@ -189,12 +189,12 @@ export default function FichesPage() {
     // Filtre statut
     if (statusFilter !== "ALL") {
       query = query.eq("status", statusFilter);
-    } else if (!_isProspecteur) {
+    } else if (!_isReferent) {
       query = query.neq("status", "BROUILLON");
     }
 
-    // Prospecteur : ne voit que ses propres fiches
-    if (_isProspecteur && profile?.id) {
+    // Référent : ne voit que ses propres fiches
+    if (_isReferent && profile?.id) {
       query = query.eq("created_by", profile.id);
     }
 
@@ -211,7 +211,7 @@ export default function FichesPage() {
           .gte("updated_at", `${dates.from}T00:00:00Z`)
           .lte("updated_at", `${dates.to}T23:59:59Z`);
       }
-      if (prospecteurFilter !== "ALL") query = query.eq("created_by", prospecteurFilter);
+      if (référentFilter !== "ALL") query = query.eq("created_by", référentFilter);
       if (commercialFilter  !== "ALL") query = query.eq("assigned_to", commercialFilter);
     }
 
@@ -239,11 +239,11 @@ export default function FichesPage() {
       if (append) setLoadingMore(false); else setLoading(false);
     }
   // supabase est stable (useMemo), pas besoin dans les deps
-  }, [statusFilter, search, profile, periodFilter, prospecteurFilter, commercialFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [statusFilter, search, profile, periodFilter, référentFilter, commercialFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fiches antérieures au trimestre (toujours chargées)
   useEffect(() => {
-    if (!profile || isProspecteur) return;
+    if (!profile || isReferent) return;
     async function loadAnterieures() {
       const now = new Date();
       const q = Math.floor(now.getMonth() / 3);
@@ -258,13 +258,13 @@ export default function FichesPage() {
       setAnterieures((data as { id: string }[]) ?? []);
     }
     loadAnterieures();
-  }, [profile, isProspecteur, isCommercial, supabase]);
+  }, [profile, isReferent, isCommercial, supabase]);
 
   // Compteurs par statut
   useEffect(() => {
     if (!profile) return;
     async function loadStatusCounts() {
-      const statuses: FicheStatus[] = isProspecteur
+      const statuses: FicheStatus[] = isReferent
         ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
         : isCommercial
         ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
@@ -273,7 +273,7 @@ export default function FichesPage() {
       let total = 0;
       await Promise.all(statuses.map(async (s) => {
         let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
-        if (isProspecteur && profile.id) q = q.eq("created_by", profile.id);
+        if (isReferent && profile.id) q = q.eq("created_by", profile.id);
         else if (isCommercial && profile.id) q = q.eq("assigned_to", profile.id);
         const { count } = await q;
         counts[s] = count ?? 0;
@@ -283,7 +283,7 @@ export default function FichesPage() {
       setStatusCounts(counts);
     }
     loadStatusCounts();
-  }, [profile, isProspecteur, isCommercial, supabase]);
+  }, [profile, isReferent, isCommercial, supabase]);
 
   // Évolution des validations par semaine (trimestre en cours) — mode validation uniquement
   useEffect(() => {
@@ -361,7 +361,7 @@ export default function FichesPage() {
     setExporting(true);
     try {
       const rows = await getFichesForExport(supabase, {
-        statusFilter, isProspecteur, createdBy: profile?.id, search: search || undefined,
+        statusFilter, isReferent, createdBy: profile?.id, search: search || undefined,
       });
       if (rows.length === 0) { toast.info("Aucune fiche à exporter"); return; }
       const csvRows: FicheCsvRow[] = rows.map((f) => ({
@@ -412,11 +412,11 @@ export default function FichesPage() {
     return () => { supabase.removeChannel(channel); };
   }, [fetchFiches]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasAdminFilters = isAdmin && (periodFilter !== "ALL" || prospecteurFilter !== "ALL" || commercialFilter !== "ALL");
+  const hasAdminFilters = isAdmin && (periodFilter !== "ALL" || référentFilter !== "ALL" || commercialFilter !== "ALL");
 
   function resetAdminFilters() {
     setPeriodFilter("ALL");
-    setProspecteurFilter("ALL"); setCommercialFilter("ALL");
+    setRéférentFilter("ALL"); setCommercialFilter("ALL");
   }
 
   return (
@@ -516,20 +516,20 @@ export default function FichesPage() {
                 )}
               </div>
               {!isValidationMode && (<>
-              {/* Filtre prospecteur */}
+              {/* Filtre référent */}
               <div className="space-y-1">
-                <label className="text-xs text-muted-foreground uppercase tracking-wide">Prospecteurs</label>
-                <Select value={prospecteurFilter} onValueChange={(v) => setProspecteurFilter(v ?? "ALL")}>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Référents</label>
+                <Select value={référentFilter} onValueChange={(v) => setRéférentFilter(v ?? "ALL")}>
                   <SelectTrigger className="h-10 bg-background rounded-xl text-sm">
                     <SelectValue>
-                      {prospecteurFilter === "ALL"
+                      {référentFilter === "ALL"
                         ? "Tous"
-                        : (() => { const p = prospecteurs.find((x) => x.id === prospecteurFilter); return p ? `${p.first_name} ${p.last_name}` : "Tous"; })()}
+                        : (() => { const p = référents.find((x) => x.id === référentFilter); return p ? `${p.first_name} ${p.last_name}` : "Tous"; })()}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL">Tous les prospecteurs</SelectItem>
-                    {prospecteurs.map((p) => (
+                    <SelectItem value="ALL">Tous les référents</SelectItem>
+                    {référents.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.first_name} {p.last_name}
                       </SelectItem>

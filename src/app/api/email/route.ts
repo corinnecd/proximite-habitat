@@ -7,7 +7,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 // ── Templates ─────────────────────────────────────────────────────────────────
 
-function templateFicheSoumise(reference: string, ficheId: string, prospecteurNom: string) {
+function templateFicheSoumise(reference: string, ficheId: string, referentNom: string) {
   const url = `${APP_URL}/fiches/${ficheId}`;
   return {
     subject: `[Proximité Habitat] Nouvelle fiche à valider — ${reference}`,
@@ -19,7 +19,7 @@ function templateFicheSoumise(reference: string, ficheId: string, prospecteurNom
         <div style="background:#fff;padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
           <h2 style="color:#1E3A5F;margin-top:0">Nouvelle fiche à valider</h2>
           <p>Bonjour,</p>
-          <p>Une nouvelle fiche de pré-visite (<strong>${reference}</strong>) vient d'être soumise par <strong>${prospecteurNom}</strong> et attend votre validation.</p>
+          <p>Une nouvelle fiche de pré-visite (<strong>${reference}</strong>) vient d'être soumise par <strong>${referentNom}</strong> et attend votre validation.</p>
           <div style="margin:24px 0">
             <a href="${url}" style="background:#F97316;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">
               Voir la fiche →
@@ -62,7 +62,7 @@ function templateFicheAffectee(reference: string, ficheId: string, commercialPre
 function templateFicheDecision(
   reference: string,
   ficheId: string,
-  prospecteurPrenom: string,
+  referentPrenom: string,
   decision: "ACCEPTEE" | "REFUSEE",
   motif?: string,
 ) {
@@ -81,7 +81,7 @@ function templateFicheDecision(
           <h2 style="color:${accepted ? "#10B981" : "#EF4444"};margin-top:0">
             ${accepted ? "✅ Votre fiche a été acceptée" : "❌ Votre fiche a été refusée"}
           </h2>
-          <p>Bonjour ${prospecteurPrenom},</p>
+          <p>Bonjour ${referentPrenom},</p>
           <p>Votre fiche de pré-visite <strong>${reference}</strong> a été ${accepted ? "acceptée" : "refusée"} par la direction.</p>
           ${!accepted && motif ? `
           <div style="background:#fef2f2;border-left:4px solid #EF4444;padding:12px 16px;border-radius:0 8px 8px 0;margin:16px 0">
@@ -103,7 +103,7 @@ function templateFicheDecision(
   };
 }
 
-function templateFicheRejetee(reference: string, ficheId: string, prospecteurPrenom: string, motif?: string) {
+function templateFicheRejetee(reference: string, ficheId: string, referentPrenom: string, motif?: string) {
   const url = `${APP_URL}/fiches/${ficheId}`;
   return {
     subject: `[Proximité Habitat] Votre fiche a été renvoyée en brouillon — ${reference}`,
@@ -114,7 +114,7 @@ function templateFicheRejetee(reference: string, ficheId: string, prospecteurPre
         </div>
         <div style="background:#fff;padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">
           <h2 style="color:#F97316;margin-top:0">⚠️ Fiche renvoyée en brouillon</h2>
-          <p>Bonjour ${prospecteurPrenom},</p>
+          <p>Bonjour ${referentPrenom},</p>
           <p>Votre fiche de pré-visite <strong>${reference}</strong> a été renvoyée en brouillon par la direction. Elle nécessite des corrections avant de pouvoir être soumise à nouveau.</p>
           ${motif ? `
           <div style="background:#fff7ed;border-left:4px solid #F97316;padding:12px 16px;border-radius:0 8px 8px 0;margin:16px 0">
@@ -140,12 +140,8 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
-  // Seuls ADMIN et COMMERCIAL de la même organisation peuvent déclencher des emails transactionnels
   const { data: caller } = await supabase.from("profiles").select("role, organization_id").eq("id", user.id).single();
-  if (!caller || !["ADMIN", "COMMERCIAL"].includes(caller.role)) {
-    return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-  }
-  if (!caller.organization_id) {
+  if (!caller?.organization_id) {
     return NextResponse.json({ error: "Organisation introuvable" }, { status: 403 });
   }
 
@@ -163,6 +159,12 @@ export async function POST(request: NextRequest) {
     motif?: string;
   };
 
+  // PROSPECTEUR autorisé uniquement pour FICHE_SOUMISE (soumettre sa propre fiche)
+  // ADMIN et COMMERCIAL autorisés pour tous les types
+  if (!["ADMIN", "COMMERCIAL"].includes(caller.role) && body.type !== "FICHE_SOUMISE") {
+    return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+  }
+
   const { type, ficheId, motif } = body;
 
   // ── Résolution sécurisée : charger la fiche et vérifier l'organisation ──
@@ -179,16 +181,16 @@ export async function POST(request: NextRequest) {
 
   try {
     if (type === "FICHE_SOUMISE") {
-      // Résoudre les admins et le prospecteur depuis la DB
-      const [{ data: admins }, { data: prospecteur }] = await Promise.all([
+      // Résoudre les admins et le referent depuis la DB
+      const [{ data: admins }, { data: referent }] = await Promise.all([
         supabase.from("profiles").select("email").eq("organization_id", fiche.organization_id).eq("role", "ADMIN").eq("is_active", true),
         supabase.from("profiles").select("first_name, last_name").eq("id", fiche.created_by).single(),
       ]);
       const adminEmails = (admins ?? []).map((a) => a.email).filter(Boolean) as string[];
       if (adminEmails.length === 0) return NextResponse.json({ sent: 0 });
 
-      const prospecteurNom = prospecteur ? `${prospecteur.first_name} ${prospecteur.last_name}` : "un prospecteur";
-      const tpl = templateFicheSoumise(fiche.reference, ficheId, prospecteurNom);
+      const referentNom = referent ? `${referent.first_name} ${referent.last_name}` : "un referent";
+      const tpl = templateFicheSoumise(fiche.reference, ficheId, referentNom);
       await resend.emails.send({ from: FROM_EMAIL, to: adminEmails, subject: tpl.subject, html: tpl.html });
       return NextResponse.json({ sent: adminEmails.length });
     }
@@ -206,20 +208,20 @@ export async function POST(request: NextRequest) {
     if (type === "FICHE_DECISION") {
       const { decision } = body;
       if (!decision) return NextResponse.json({ sent: 0 });
-      const { data: prospecteur } = await supabase.from("profiles").select("email, first_name").eq("id", fiche.created_by).single();
-      if (!prospecteur?.email) return NextResponse.json({ sent: 0 });
+      const { data: referent } = await supabase.from("profiles").select("email, first_name").eq("id", fiche.created_by).single();
+      if (!referent?.email) return NextResponse.json({ sent: 0 });
 
-      const tpl = templateFicheDecision(fiche.reference, ficheId, prospecteur.first_name ?? "Prospecteur", decision, motif);
-      await resend.emails.send({ from: FROM_EMAIL, to: prospecteur.email, subject: tpl.subject, html: tpl.html });
+      const tpl = templateFicheDecision(fiche.reference, ficheId, referent.first_name ?? "Référent", decision, motif);
+      await resend.emails.send({ from: FROM_EMAIL, to: referent.email, subject: tpl.subject, html: tpl.html });
       return NextResponse.json({ sent: 1 });
     }
 
     if (type === "FICHE_REJETEE") {
-      const { data: prospecteur } = await supabase.from("profiles").select("email, first_name").eq("id", fiche.created_by).single();
-      if (!prospecteur?.email) return NextResponse.json({ sent: 0 });
+      const { data: referent } = await supabase.from("profiles").select("email, first_name").eq("id", fiche.created_by).single();
+      if (!referent?.email) return NextResponse.json({ sent: 0 });
 
-      const tpl = templateFicheRejetee(fiche.reference, ficheId, prospecteur.first_name ?? "Prospecteur", motif);
-      await resend.emails.send({ from: FROM_EMAIL, to: prospecteur.email, subject: tpl.subject, html: tpl.html });
+      const tpl = templateFicheRejetee(fiche.reference, ficheId, referent.first_name ?? "Référent", motif);
+      await resend.emails.send({ from: FROM_EMAIL, to: referent.email, subject: tpl.subject, html: tpl.html });
       return NextResponse.json({ sent: 1 });
     }
 

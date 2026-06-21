@@ -29,12 +29,12 @@ export async function sendEmailFicheAffectee(ficheId: string) {
   await postEmail({ type: "FICHE_AFFECTEE", ficheId });
 }
 
-/** Notifie le prospecteur que la direction a renvoyé sa fiche en brouillon. */
+/** Notifie le référent que la direction a renvoyé sa fiche en brouillon. */
 export async function sendEmailFicheRejetee(ficheId: string, motif?: string) {
   await postEmail({ type: "FICHE_REJETEE", ficheId, motif });
 }
 
-/** Notifie le prospecteur que sa fiche a été acceptée ou refusée par le commercial. */
+/** Notifie le référent que sa fiche a été acceptée ou refusée par le commercial. */
 export async function sendEmailFicheDecision(ficheId: string, decision: "ACCEPTEE" | "REFUSEE", motif?: string) {
   await postEmail({ type: "FICHE_DECISION", ficheId, decision, motif });
 }

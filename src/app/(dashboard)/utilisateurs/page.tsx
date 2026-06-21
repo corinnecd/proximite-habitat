@@ -30,13 +30,15 @@ const ROLE_STYLE: Record<UserRole, { border: string; avatarBg: string; avatarTex
   ADMIN:       { border: "border-l-purple-500", avatarBg: "bg-purple-100 dark:bg-purple-900/40", avatarText: "text-purple-700 dark:text-purple-300", badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
   COMMERCIAL:  { border: "border-l-blue-500",   avatarBg: "bg-blue-100 dark:bg-blue-900/40",    avatarText: "text-blue-700 dark:text-blue-300",    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
   PROSPECTEUR: { border: "border-l-emerald-500",avatarBg: "bg-emerald-100 dark:bg-emerald-900/40", avatarText: "text-emerald-700 dark:text-emerald-300", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+  CHEF_EQUIPE: { border: "border-l-amber-500", avatarBg: "bg-amber-100 dark:bg-amber-900/40", avatarText: "text-amber-700 dark:text-amber-300", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
 };
 
 const ROLE_FILTERS: Array<{ value: UserRole | "ALL"; label: string }> = [
   { value: "ALL", label: "Tous" },
   { value: "ADMIN", label: "Direction" },
   { value: "COMMERCIAL", label: "Commerciaux" },
-  { value: "PROSPECTEUR", label: "Prospecteurs" },
+  { value: "PROSPECTEUR", label: "Référents" },
+  { value: "CHEF_EQUIPE", label: "Chefs d'équipe" },
 ];
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -58,7 +60,7 @@ export default function UtilisateursPage() {
     role: "PROSPECTEUR" as UserRole, phone: "",
   });
   const { profile } = useProfile();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     getAllProfiles(supabase).then((data) => { setUsers(data); setLoading(false); });
@@ -81,7 +83,8 @@ export default function UtilisateursPage() {
     active: users.filter((u) => u.is_active).length,
     admins: users.filter((u) => u.role === "ADMIN").length,
     commercials: users.filter((u) => u.role === "COMMERCIAL").length,
-    prospecteurs: users.filter((u) => u.role === "PROSPECTEUR").length,
+    référents: users.filter((u) => u.role === "PROSPECTEUR").length,
+    chefsEquipe: users.filter((u) => u.role === "CHEF_EQUIPE").length,
   }), [users]);
 
   async function handleCreateUser(e: React.FormEvent) {
@@ -175,7 +178,7 @@ export default function UtilisateursPage() {
             { label: "Total", value: stats.total, Icon: Users, bg: "bg-primary/10", icon: "text-primary" },
             { label: "Actifs", value: stats.active, Icon: CheckCircle2, bg: "bg-emerald-100 dark:bg-emerald-900/30", icon: "text-emerald-600" },
             { label: "Commerciaux", value: stats.commercials, Icon: UserCheck, bg: "bg-blue-100 dark:bg-blue-900/30", icon: "text-blue-600" },
-            { label: "Prospecteurs", value: stats.prospecteurs, Icon: Users, bg: "bg-emerald-50 dark:bg-emerald-950/30", icon: "text-emerald-600" },
+            { label: "Référents", value: stats.référents, Icon: Users, bg: "bg-emerald-50 dark:bg-emerald-950/30", icon: "text-emerald-600" },
           ].map(({ label, value, Icon, bg, icon }) => (
             <div key={label} className="bg-card border border-border rounded-2xl p-5">
               <div className="flex items-center gap-3 mb-2">
@@ -257,9 +260,10 @@ export default function UtilisateursPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ADMIN">Direction (Admin)</SelectItem>
+                      <SelectItem value="ADMIN">Direction</SelectItem>
                       <SelectItem value="COMMERCIAL">Commercial</SelectItem>
-                      <SelectItem value="PROSPECTEUR">Prospecteur</SelectItem>
+                      <SelectItem value="CHEF_EQUIPE">Chef d&apos;équipe</SelectItem>
+                      <SelectItem value="PROSPECTEUR">Référent</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -405,9 +409,10 @@ export default function UtilisateursPage() {
               <Select value={editForm.role} onValueChange={(v) => v && setEditForm({ ...editForm, role: v as UserRole })}>
                 <SelectTrigger className="bg-card rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ADMIN">Direction (Admin)</SelectItem>
+                  <SelectItem value="ADMIN">Direction</SelectItem>
                   <SelectItem value="COMMERCIAL">Commercial</SelectItem>
-                  <SelectItem value="PROSPECTEUR">Prospecteur</SelectItem>
+                  <SelectItem value="CHEF_EQUIPE">Chef d&apos;équipe</SelectItem>
+                  <SelectItem value="PROSPECTEUR">Référent</SelectItem>
                 </SelectContent>
               </Select>
             </div>

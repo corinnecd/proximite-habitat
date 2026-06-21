@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -9,18 +9,88 @@ import type { FicheFormData } from "@/lib/validations/fiche";
 import { createClient } from "@/lib/supabase/client";
 import { findDuplicateFiches, type DuplicateFiche } from "@/lib/data/fiches";
 import { STATUS_LABELS } from "@/lib/permissions";
-import { User, MapPin, Phone, Calendar, AlertTriangle } from "lucide-react";
+import { useProfile } from "@/lib/hooks/use-profile";
+import { VilleMapDynamic } from "@/components/ui/VilleMapDynamic";
+import { Autocomplete } from "@/components/ui/autocomplete";
+import { User, MapPin, Phone, Mail, Calendar, AlertTriangle, Users, Map } from "lucide-react";
+import type { ZoneDepartement, ZoneVille } from "@/types/database";
 
 export function Step1Coordonnees({ currentFicheId }: { currentFicheId?: string }) {
   const { register, formState: { errors }, setValue, watch } = useFormContext<FicheFormData>();
+  const { profile } = useProfile();
+  const supabase = useMemo(() => createClient(), []);
   const disponibilites = watch("disponibilites") || [];
+
   function toggleJour(jour: string) {
     const updated = disponibilites.includes(jour) ? disponibilites.filter((j) => j !== jour) : [...disponibilites, jour];
     setValue("disponibilites", updated, { shouldDirty: true });
   }
 
-  // Détection de doublons : alerte si une fiche existe déjà pour le même
-  // prospect (même téléphone, ou même nom + même code postal).
+  // Départements & villes
+  const [departements, setDepartements] = useState<ZoneDepartement[]>([]);
+  const [villes, setVilles] = useState<ZoneVille[]>([]);
+  const [planifiedVilleIds, setPlanifiedVilleIds] = useState<Set<string>>(new Set());
+
+  const selectedDept = watch("departement_code");
+  const selectedVilleId = watch("ville_id");
+
+  const selectedVille = villes.find((v) => v.id === selectedVilleId);
+
+  useEffect(() => {
+    supabase.from("zones_departements").select("*").order("code").then(({ data }) => {
+      if (data) setDepartements(data);
+    });
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!selectedDept) { setVilles([]); return; }
+    supabase.from("zones_villes").select("*").eq("departement_code", selectedDept).order("nom").then(({ data }) => {
+      if (data) setVilles(data);
+    });
+  }, [selectedDept, supabase]);
+
+  // Charger les villes planifiées pour la semaine en cours
+  useEffect(() => {
+    if (!profile) return;
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    const mondayStr = monday.toISOString().slice(0, 10);
+
+    const chefId = profile.role === "CHEF_EQUIPE" ? profile.id : profile.chef_equipe_id;
+    let query = supabase
+      .from("planification_hebdo")
+      .select("ville_id")
+      .eq("semaine_du", mondayStr)
+      .eq("organization_id", profile.organization_id);
+    if (chefId) {
+      query = query.or(`chef_equipe_id.eq.${chefId},chef_equipe_id.is.null`);
+    }
+    query.then(({ data }) => {
+      if (data) setPlanifiedVilleIds(new Set(data.map((d) => d.ville_id)));
+    });
+  }, [profile, supabase]);
+
+  const filteredVilles = villes.filter((v) => planifiedVilleIds.size === 0 || planifiedVilleIds.has(v.id));
+
+  function handleDeptChange(code: string) {
+    setValue("departement_code", code || "", { shouldDirty: true, shouldValidate: true });
+    setValue("ville_id", "", { shouldDirty: true, shouldValidate: true });
+    setValue("prospect_ville", "", { shouldDirty: true });
+    setValue("prospect_cp", "", { shouldDirty: true });
+  }
+
+  function handleVilleChange(villeId: string) {
+    const ville = villes.find((v) => v.id === villeId);
+    setValue("ville_id", villeId || "", { shouldDirty: true, shouldValidate: true });
+    if (ville) {
+      setValue("prospect_ville", ville.nom, { shouldDirty: true });
+      setValue("prospect_cp", ville.code_postal, { shouldDirty: true });
+    }
+  }
+
+  // Détection de doublons
   const nom = watch("prospect_nom");
   const cp = watch("prospect_cp");
   const telephone = watch("prospect_telephone");
@@ -30,19 +100,17 @@ export function Step1Coordonnees({ currentFicheId }: { currentFicheId?: string }
     const hasNomCp = (nom?.trim().length ?? 0) >= 2 && (cp?.trim().length ?? 0) >= 4;
     const hasTel = (telephone?.replace(/\s+/g, "").length ?? 0) >= 6;
     if (!hasNomCp && !hasTel) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDuplicates([]);
       return;
     }
 
     let cancelled = false;
     const timer = setTimeout(async () => {
-      const supabase = createClient();
       const found = await findDuplicateFiches(supabase, { nom, cp, telephone, excludeId: currentFicheId });
       if (!cancelled) setDuplicates(found);
     }, 600);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [nom, cp, telephone, currentFicheId]);
+  }, [nom, cp, telephone, currentFicheId, supabase]);
 
   return (
     <div className="space-y-6">
@@ -81,6 +149,41 @@ export function Step1Coordonnees({ currentFicheId }: { currentFicheId?: string }
           {errors.prospect_prenom && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.prospect_prenom.message}</p>}
         </div>
       </div>
+
+      {/* Département & Ville */}
+      <div className="border border-border rounded-2xl p-4 space-y-4 bg-card/50">
+        <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+          <Map className="w-4 h-4" />
+          Zone de prospection *
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Département *</Label>
+            <Autocomplete
+              options={departements.map((d) => ({ value: d.code, label: `${d.code} — ${d.nom}` }))}
+              value={selectedDept || ""}
+              onChange={handleDeptChange}
+              placeholder="Rechercher un département…"
+            />
+            {errors.departement_code && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.departement_code.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label>Ville * {planifiedVilleIds.size > 0 && <span className="text-xs text-muted-foreground font-normal">(planifiée cette semaine)</span>}</Label>
+            <Autocomplete
+              options={filteredVilles.map((v) => ({ value: v.id, label: v.nom, sublabel: v.code_postal }))}
+              value={selectedVilleId || ""}
+              onChange={handleVilleChange}
+              placeholder={selectedDept ? "Rechercher une ville…" : "Choisir un département d'abord"}
+              disabled={!selectedDept}
+            />
+            {errors.ville_id && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.ville_id.message}</p>}
+          </div>
+        </div>
+        {selectedVille && (
+          <VilleMapDynamic lat={selectedVille.lat} lng={selectedVille.lng} villeNom={selectedVille.nom} />
+        )}
+      </div>
+
       <div className="space-y-2">
         <Label className="flex items-center gap-2"><MapPin className="w-4 h-4" />Adresse *</Label>
         <Input placeholder="12 rue de la Paix" className="h-12 bg-card" aria-invalid={!!errors.prospect_adresse} {...register("prospect_adresse")} />
@@ -88,12 +191,12 @@ export function Step1Coordonnees({ currentFicheId }: { currentFicheId?: string }
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2">
-          <Label>Code postal *</Label>
+          <Label>Code postal</Label>
           <Input placeholder="75001" maxLength={5} className="h-12 bg-card" aria-invalid={!!errors.prospect_cp} {...register("prospect_cp")} />
           {errors.prospect_cp && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.prospect_cp.message}</p>}
         </div>
         <div className="space-y-2">
-          <Label>Ville *</Label>
+          <Label>Ville</Label>
           <Input placeholder="Paris" className="h-12 bg-card" aria-invalid={!!errors.prospect_ville} {...register("prospect_ville")} />
           {errors.prospect_ville && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.prospect_ville.message}</p>}
         </div>
@@ -103,10 +206,37 @@ export function Step1Coordonnees({ currentFicheId }: { currentFicheId?: string }
         <Input placeholder="06 12 34 56 78" className="h-12 bg-card" aria-invalid={!!errors.prospect_telephone} {...register("prospect_telephone")} />
         {errors.prospect_telephone && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.prospect_telephone.message}</p>}
       </div>
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2"><Mail className="w-4 h-4" />Adresse email</Label>
+        <Input type="email" placeholder="client@email.fr" className="h-12 bg-card" aria-invalid={!!errors.prospect_email} {...register("prospect_email")} />
+        {errors.prospect_email && <p className="text-xs text-destructive flex items-center gap-1"><span>⚠</span>{errors.prospect_email.message}</p>}
+      </div>
       <div className="space-y-3"><Label className="flex items-center gap-2"><Calendar className="w-4 h-4" />Disponibilités</Label><div className="flex flex-wrap gap-3">{JOURS_DISPONIBILITES.map((j) => (<button key={j} type="button" onClick={() => toggleJour(j)} className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all ${disponibilites.includes(j) ? "bg-primary text-white border-primary" : "bg-card border-border hover:border-primary/50"}`}>{j}</button>))}</div></div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2"><Label>Date de visite</Label><Input type="date" className="h-12 bg-card" {...register("date_visite")} /></div>
         <div className="space-y-2"><Label>Heure souhaitée</Label><Input type="time" className="h-12 bg-card" {...register("heure_visite")} /></div>
+      </div>
+
+      {/* ── Rendez-vous & Référent habitant ── */}
+      <div className="border-t border-border pt-5 space-y-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+          <Calendar className="w-4 h-4" />
+          Rendez-vous &amp; Référent
+        </div>
+        <div className="space-y-2">
+          <Label>Rendez-vous pris le</Label>
+          <Input type="date" className="h-12 bg-card" {...register("rdv_date")} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2"><Users className="w-4 h-4" />Nom du référent habitant</Label>
+            <Input placeholder="Ex. : Marie Dupont" className="h-12 bg-card" {...register("referent_nom")} />
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2"><Phone className="w-4 h-4" />Numéro référent</Label>
+            <Input placeholder="06 12 34 56 78" className="h-12 bg-card" {...register("referent_telephone")} />
+          </div>
+        </div>
       </div>
     </div>
   );

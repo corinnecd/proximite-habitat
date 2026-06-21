@@ -4,12 +4,18 @@ export const step1Schema = z.object({
   prospect_nom: z.string().min(1, "Le nom est requis"),
   prospect_prenom: z.string().min(1, "Le prénom est requis"),
   prospect_adresse: z.string().min(1, "L'adresse est requise"),
-  prospect_cp: z.string().regex(/^\d{5}$/, "Code postal invalide (5 chiffres)"),
-  prospect_ville: z.string().min(1, "La ville est requise"),
+  prospect_cp: z.string().regex(/^\d{5}$/, "Code postal invalide (5 chiffres)").optional().or(z.literal("")),
+  prospect_ville: z.string().optional().or(z.literal("")),
+  departement_code: z.string().min(1, "Le département est requis"),
+  ville_id: z.string().min(1, "La ville de prospection est requise"),
   prospect_telephone: z.string().regex(/^(?:(?:\+33|0)\s?[1-9])(?:[\s.-]?\d{2}){4}$/, "Numéro de téléphone invalide"),
+  prospect_email: z.string().email("Adresse email invalide").nullable().optional().or(z.literal("")),
   disponibilites: z.array(z.string()).min(1, "Sélectionnez au moins une disponibilité"),
   date_visite: z.string().min(1, "La date de visite est requise"),
   heure_visite: z.string().nullable().optional(),
+  rdv_date: z.string().nullable().optional(),
+  referent_nom: z.string().nullable().optional(),
+  referent_telephone: z.string().nullable().optional(),
 });
 
 export const step2Schema = z.object({

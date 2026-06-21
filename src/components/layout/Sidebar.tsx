@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard, FileText, FilePlus, Users, Bell,
-  Building2, LogOut, Menu, X, UserCircle, BarChart3, ClipboardCheck,
+  Building2, LogOut, Menu, X, UserCircle, BarChart3, ClipboardCheck, CalendarDays,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/ui/BrandLogo";
 
 const mainNav = [
   { name: "Tableau de bord", href: "/",               icon: LayoutDashboard },
@@ -23,9 +24,13 @@ const suivisNav = [
   { name: "Mon profil",    href: "/profil",         icon: UserCircle },
 ];
 
+const planningNav = [
+  { name: "Planification", href: "/planification", icon: CalendarDays },
+];
+
 const adminNav = [
-  { name: "Utilisateurs", href: "/utilisateurs", icon: Users },
-  { name: "Reporting",    href: "/reporting",    icon: BarChart3 },
+  { name: "Utilisateurs",  href: "/utilisateurs",  icon: Users },
+  { name: "Reporting",     href: "/reporting",     icon: BarChart3 },
 ];
 
 const commercialNav = [
@@ -86,22 +91,20 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { profile } = useProfile();
+  const { profile, loading: profileLoading } = useProfile();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [badges, setBadges] = useState<Record<BadgeKey, number>>({ fiches: 0, notifs: 0, soumises: 0 });
   const supabase = createClient();
 
+  const fetchBadgesRef = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     if (!profile) return;
     async function fetchBadges() {
-      // Badge fiches : filtré selon le rôle
-      // - ADMIN/COMMERCIAL : toutes les fiches hors brouillons
-      // - PROSPECTEUR      : seulement ses propres fiches (created_by)
       let ficheQuery = supabase.from("fiches").select("id", { count: "exact", head: true });
       if (profile?.role === "PROSPECTEUR") {
         ficheQuery = ficheQuery.eq("created_by", profile.id);
       } else {
-        // ADMIN et COMMERCIAL : toutes les fiches hors brouillons
         ficheQuery = ficheQuery.neq("status", "BROUILLON");
       }
 
@@ -114,9 +117,9 @@ export function Sidebar() {
       ]);
       setBadges({ fiches: ficheCount ?? 0, notifs: notifCount ?? 0, soumises: soumisesCount ?? 0 });
     }
+    fetchBadgesRef.current = fetchBadges;
     fetchBadges();
 
-    // Realtime : met à jour le badge "fiches à valider" dès qu'une fiche change de statut
     const channel = supabase
       .channel(`sidebar-badges-${profile.id}-${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "fiches" }, () => {
@@ -129,6 +132,10 @@ export function Sidebar() {
 
     return () => { supabase.removeChannel(channel); };
   }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    fetchBadgesRef.current?.();
+  }, [pathname]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -154,14 +161,12 @@ export function Sidebar() {
       <div className="pointer-events-none absolute -top-16 -right-16 w-40 h-40 rounded-full bg-[#F97316] opacity-[.07] blur-2xl" />
 
       {/* Brand */}
-      <div className="px-5 py-5 border-b border-white/8">
+      <div className="px-5 py-4 border-b border-white/8">
         <Link href="/" className="flex items-center gap-3" onClick={close}>
-          <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
-            <Building2 className="w-5.5 h-5.5 text-[#FB923C]" />
-          </div>
+          <BrandLogo size={42} />
           <div>
-            <h1 className="text-sm font-semibold text-white tracking-tight leading-tight">Proximité Habitat</h1>
-            <p className="text-xs text-white/40">Conseil</p>
+            <h1 className="text-sm font-bold text-white tracking-wide leading-tight">PROXIMITÉ HABITAT</h1>
+            <p className="text-[10px] font-semibold text-white/50 tracking-widest">CONSEIL</p>
           </div>
         </Link>
       </div>
@@ -184,18 +189,24 @@ export function Sidebar() {
               onClick={close}
             />
           )}
+          {/* Placeholder pendant chargement pour réserver l'espace */}
+          {profileLoading && (
+            <div className="px-4 py-2.5"><div className="h-4 w-32 bg-white/10 rounded animate-pulse" /></div>
+          )}
           {/* Statut des Fiches */}
           <NavItem
             item={mainNav[1]}
             isActive={isActive(mainNav[1].href) && searchParams.get("status") !== "SOUMISE"}
             onClick={close}
           />
-          {/* Nouvelle fiche */}
-          <NavItem
-            item={mainNav[2]}
-            isActive={isActive(mainNav[2].href)}
-            onClick={close}
-          />
+          {/* Nouvelle fiche — Référent et Chef d'équipe */}
+          {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && (
+            <NavItem
+              item={mainNav[2]}
+              isActive={isActive(mainNav[2].href)}
+              onClick={close}
+            />
+          )}
         </div>
 
         <SectionLabel label="Suivi" />
@@ -208,6 +219,13 @@ export function Sidebar() {
               badge={badgeFor((item as { badge?: string }).badge)}
               onClick={close}
             />
+          ))}
+        </div>
+
+        <SectionLabel label="Planning" />
+        <div className="space-y-0.5">
+          {planningNav.map((item) => (
+            <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
           ))}
         </div>
 
@@ -231,31 +249,54 @@ export function Sidebar() {
             </div>
           </>
         )}
+        {profileLoading && (
+          <div className="px-3 pt-5 space-y-2">
+            <div className="h-2 w-20 bg-white/10 rounded animate-pulse ml-1" />
+            <div className="px-4 py-2.5"><div className="h-4 w-28 bg-white/10 rounded animate-pulse" /></div>
+            <div className="px-4 py-2.5"><div className="h-4 w-24 bg-white/10 rounded animate-pulse" /></div>
+          </div>
+        )}
       </nav>
 
       {/* Footer utilisateur */}
-      {profile && (
-        <div className="px-3 py-3 border-t border-white/8 space-y-0.5">
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl">
-            <div className="w-8 h-8 rounded-full bg-[#F97316] flex items-center justify-center text-xs font-bold text-white shrink-0">
-              {profile.first_name[0]}{profile.last_name[0]}
+      <div className="px-3 py-3 border-t border-white/8 space-y-0.5">
+        {profile ? (
+          <>
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl">
+              <div className="w-8 h-8 rounded-full bg-[#F97316] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                {profile.first_name[0]}{profile.last_name[0]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate leading-tight">
+                  {profile.first_name} {profile.last_name}
+                </p>
+                <p className="text-xs text-white/35">{ROLE_LABELS[profile.role]}</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate leading-tight">
-                {profile.first_name} {profile.last_name}
-              </p>
-              <p className="text-xs text-white/35">{ROLE_LABELS[profile.role]}</p>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-white/55 hover:text-white hover:bg-white/6 transition-all duration-200 w-full"
+            >
+              <LogOut className="w-4.5 h-4.5" />
+              Déconnexion
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl">
+              <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3.5 w-28 bg-white/10 rounded animate-pulse" />
+                <div className="h-2.5 w-16 bg-white/10 rounded animate-pulse" />
+              </div>
             </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-white/55 hover:text-white hover:bg-white/6 transition-all duration-200 w-full"
-          >
-            <LogOut className="w-4.5 h-4.5" />
-            Déconnexion
-          </button>
-        </div>
-      )}
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              <div className="h-4 w-4 bg-white/10 rounded animate-pulse" />
+              <div className="h-3.5 w-24 bg-white/10 rounded animate-pulse" />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 

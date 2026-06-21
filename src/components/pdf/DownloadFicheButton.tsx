@@ -6,13 +6,13 @@ import type { Fiche } from "@/types/database";
 
 interface Props {
   fiche: Fiche;
-  prospecteurNom: string;
+  référentNom: string;
   commercialNom?: string;
   photoUrls?: string[];
   orgName?: string;
 }
 
-export function DownloadFicheButton({ fiche, prospecteurNom, commercialNom, photoUrls, orgName }: Props) {
+export function DownloadFicheButton({ fiche, référentNom, commercialNom, photoUrls, orgName }: Props) {
   const [loading, setLoading] = useState(false);
 
   async function handleDownload() {
@@ -23,10 +23,9 @@ export function DownloadFicheButton({ fiche, prospecteurNom, commercialNom, phot
       const { FichePDF } = await import("./FichePDF");
       const { createElement } = await import("react");
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const blob = await pdf(
-        createElement(FichePDF, { fiche, prospecteurNom, commercialNom, photoUrls, orgName }) as any
-      ).toBlob();
+      const element = createElement(FichePDF, { fiche, référentNom, commercialNom, photoUrls, orgName });
+      // react-pdf renderer attend un ReactElement — le cast est nécessaire car ses types internes divergent de React 18
+      const blob = await pdf(element as Parameters<typeof pdf>[0]).toBlob();
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -36,6 +35,8 @@ export function DownloadFicheButton({ fiche, prospecteurNom, commercialNom, phot
       URL.revokeObjectURL(url);
     } catch (e) {
       console.error("PDF generation error:", e);
+      const { toast } = await import("sonner");
+      toast.error("Erreur lors de la génération du PDF");
     } finally {
       setLoading(false);
     }

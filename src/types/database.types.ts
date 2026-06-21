@@ -2,6 +2,7 @@
 // À terme, régénérer avec : `supabase gen types typescript --project-id <ref> > src/types/database.types.ts`.
 
 export type UserRole = "ADMIN" | "COMMERCIAL" | "PROSPECTEUR" | "CHEF_EQUIPE";
+export type MotifRefus = "RDC" | "ANNULATION" | "REFUS_CLASSIQUE";
 export type FicheStatus =
   | "BROUILLON"
   | "SOUMISE"
@@ -99,6 +100,7 @@ export interface Database {
           departement_code: string | null;
           ville_id: string | null;
           rdv_date: string | null;
+          motif_refus: MotifRefus | null;
           referent_nom: string | null;
           referent_telephone: string | null;
           observations: string | null;
@@ -144,6 +146,7 @@ export interface Database {
           departement_code?: string | null;
           ville_id?: string | null;
           rdv_date?: string | null;
+          motif_refus?: MotifRefus | null;
           referent_nom?: string | null;
           referent_telephone?: string | null;
           observations?: string | null;

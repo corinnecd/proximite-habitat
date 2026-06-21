@@ -8,7 +8,7 @@ import {
 } from "./permissions";
 
 describe("canTransition", () => {
-  it("autorise un prospecteur à soumettre un brouillon", () => {
+  it("autorise un référent à soumettre un brouillon", () => {
     expect(canTransition("PROSPECTEUR", "BROUILLON", "SOUMISE")).toBe(true);
   });
 
@@ -23,7 +23,7 @@ describe("canTransition", () => {
     expect(canTransition("ADMIN", "AFFECTEE", "ACCEPTEE")).toBe(true);
   });
 
-  it("interdit un prospecteur d'accepter une fiche affectée", () => {
+  it("interdit un référent d'accepter une fiche affectée", () => {
     expect(canTransition("PROSPECTEUR", "AFFECTEE", "ACCEPTEE")).toBe(false);
   });
 
@@ -44,7 +44,7 @@ describe("getAvailableTransitions", () => {
     );
   });
 
-  it("ne renvoie rien pour un prospecteur sur une fiche soumise", () => {
+  it("ne renvoie rien pour un référent sur une fiche soumise", () => {
     expect(getAvailableTransitions("PROSPECTEUR", "SOUMISE")).toEqual([]);
   });
 });
@@ -73,7 +73,7 @@ describe("canEditFiche", () => {
     expect(canEditFiche("COMMERCIAL", me, other, other, "AFFECTEE")).toBe(false);
   });
 
-  it("le prospecteur n'édite que ses propres fiches", () => {
+  it("le référent n'édite que ses propres fiches", () => {
     expect(canEditFiche("PROSPECTEUR", me, me, null, "BROUILLON")).toBe(true);
     expect(canEditFiche("PROSPECTEUR", me, other, me, "BROUILLON")).toBe(false);
   });

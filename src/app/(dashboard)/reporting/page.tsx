@@ -7,8 +7,8 @@ import { ExportPdfButton } from "@/components/ui/export-pdf-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
-import type { FicheStatus } from "@/types/database";
-import { STATUS_LABELS } from "@/lib/permissions";
+import type { FicheStatus, MotifRefus } from "@/types/database";
+import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
 import {
   BarChart3, TrendingUp, Users, FileText, Search, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, Clock, ArrowUp, ArrowDown, Minus,
@@ -22,7 +22,7 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface StatusCount { status: FicheStatus; count: number; }
-interface ProspecteurRow { name: string; total: number; submitted: number; accepted: number; }
+interface ReferentRow { name: string; total: number; submitted: number; accepted: number; }
 interface CommercialRow { name: string; assigned: number; accepted: number; refused: number; rate: number; }
 interface VilleRow { ville: string; accepted: number; refused: number; total: number; rate: number; }
 interface WeeklyPoint { label: string; soumises: number; acceptées: number; }
@@ -142,7 +142,7 @@ export default function ReportingPage() {
   const supabase = createClient();
 
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
-  const [prospecteurs, setProspecteurs] = useState<ProspecteurRow[]>([]);
+  const [referents, setReferents] = useState<ReferentRow[]>([]);
   const [commerciaux, setCommerciaux] = useState<CommercialRow[]>([]);
   const [villes, setVilles] = useState<VilleRow[]>([]);
   const [weeklyData, setWeeklyData] = useState<WeeklyPoint[]>([]);
@@ -152,10 +152,11 @@ export default function ReportingPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("ALL");
   const [pieTooltipPos, setPieTooltipPos] = useState<{ x: number; y: number } | undefined>(undefined);
-  const [showAllProspecteurs, setShowAllProspecteurs] = useState(false);
+  const [showAllReferents, setShowAllReferents] = useState(false);
   const [showAllCommerciaux, setShowAllCommerciaux] = useState(false);
   const [commSearch, setCommSearch] = useState("");
-  const [prospSearch, setProspSearch] = useState("");
+  const [refSearch, setRefSearch] = useState("");
+  const [motifRefusCounts, setMotifRefusCounts] = useState<Record<MotifRefus, number>>({ RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 });
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
@@ -182,7 +183,7 @@ export default function ReportingPage() {
       if (ficheIdsForPeriod.length === 0) {
         setStatusCounts(statuses.map((s) => ({ status: s, count: 0 })));
         setTotalFiches(0);
-        setProspecteurs([]);
+        setReferents([]);
         setCommerciaux([]);
         setVilles([]);
         setWeeklyData([]);
@@ -208,7 +209,7 @@ export default function ReportingPage() {
     // ── Données détaillées des fiches ──
     let fichesQuery = supabase
       .from("fiches")
-      .select("id, created_by, assigned_to, status, prospect_ville, created_at, profiles!created_by(first_name, last_name), assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)")
+      .select("id, created_by, assigned_to, status, motif_refus, prospect_ville, created_at, profiles!created_by(first_name, last_name), assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)")
       .neq("status", "BROUILLON");
     if (isComm) fichesQuery = fichesQuery.eq("assigned_to", profileId);
     if (ficheIdsForPeriod) fichesQuery = fichesQuery.in("id", ficheIdsForPeriod);
@@ -216,26 +217,35 @@ export default function ReportingPage() {
 
     type FicheRow = {
       id: string; created_by: string; assigned_to: string | null; status: string;
-      prospect_ville: string | null; created_at: string;
+      motif_refus: MotifRefus | null; prospect_ville: string | null; created_at: string;
       profiles: { first_name: string; last_name: string } | null;
       assigned_to_profile: { first_name: string; last_name: string } | null;
     };
     const fiches = (fichesRaw ?? []) as unknown as FicheRow[];
 
-    // ── 1. Productivité prospecteurs ──
+    // ── Ventilation des refus par motif ──
+    const motifCounts: Record<MotifRefus, number> = { RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 };
+    for (const f of fiches) {
+      if (f.status === "REFUSEE" && f.motif_refus) {
+        motifCounts[f.motif_refus]++;
+      }
+    }
+    setMotifRefusCounts(motifCounts);
+
+    // ── 1. Productivité référents ──
     if (!isComm) {
-      const prospMap: Record<string, ProspecteurRow> = {};
+      const refMap: Record<string, ReferentRow> = {};
       for (const f of fiches) {
         const key = f.created_by;
-        if (!prospMap[key]) {
+        if (!refMap[key]) {
           const name = f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Inconnu";
-          prospMap[key] = { name, total: 0, submitted: 0, accepted: 0 };
+          refMap[key] = { name, total: 0, submitted: 0, accepted: 0 };
         }
-        prospMap[key].total++;
-        prospMap[key].submitted++;
-        if (f.status === "ACCEPTEE") prospMap[key].accepted++;
+        refMap[key].total++;
+        refMap[key].submitted++;
+        if (f.status === "ACCEPTEE") refMap[key].accepted++;
       }
-      setProspecteurs(Object.values(prospMap).sort((a, b) => b.total - a.total));
+      setReferents(Object.values(refMap).sort((a, b) => b.total - a.total));
     }
 
     // ── 2. Taux de conversion par commercial ──
@@ -374,13 +384,13 @@ export default function ReportingPage() {
   // Taux de transformation = fiches soumises non encore validées et affectées
   const pendingValidation = soumises + validees;
   const pendingRate = totalFiches > 0 ? Math.round((pendingValidation / totalFiches) * 100) : 0;
-  const maxProspecteur = Math.max(...prospecteurs.map((p) => p.total), 1);
+  const maxReferent = Math.max(...referents.map((p) => p.total), 1);
   const filteredCommerciaux = commSearch
     ? commerciaux.filter((c) => c.name.toLowerCase().includes(commSearch.toLowerCase()))
     : commerciaux;
-  const filteredProspecteurs = prospSearch
-    ? prospecteurs.filter((p) => p.name.toLowerCase().includes(prospSearch.toLowerCase()))
-    : (showAllProspecteurs ? prospecteurs : prospecteurs.slice(0, 8));
+  const filteredReferents = refSearch
+    ? referents.filter((p) => p.name.toLowerCase().includes(refSearch.toLowerCase()))
+    : (showAllReferents ? referents : referents.slice(0, 8));
 
   const pieData = statusCounts.filter((s) => s.count > 0).map((s) => ({
     name: STATUS_LABELS[s.status],
@@ -388,7 +398,7 @@ export default function ReportingPage() {
     color: STATUS_COLORS_HEX[s.status],
   }));
 
-  const prospecteurChartData = prospecteurs.slice(0, 6).map((p) => ({
+  const referentChartData = referents.slice(0, 6).map((p) => ({
     name: p.name.split(" ")[0],
     fullName: p.name,
     Soumises: p.total,
@@ -437,7 +447,7 @@ export default function ReportingPage() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             {isCommercial
               ? <><Users className="w-4 h-4" /> Statistiques personnelles — vos fiches affectées</>
-              : <><BarChart3 className="w-4 h-4" /> Vue globale — tous commerciaux et prospecteurs réunis</>}
+              : <><BarChart3 className="w-4 h-4" /> Vue globale — tous commerciaux et référents réunis</>}
           </div>
           <button
             type="button"
@@ -510,7 +520,105 @@ export default function ReportingPage() {
           />
         </div>
 
-        {/* ── Ligne 2 : Pie chart + Prospecteurs ──────────────────────────── */}
+        {/* ── Analyse des refus par type ──────────────────────────────── */}
+        {refused > 0 && (() => {
+          const MOTIF_COLORS_HEX: Record<MotifRefus, string> = { RDC: "#f97316", ANNULATION: "#f59e0b", REFUS_CLASSIQUE: "#ef4444" };
+          const MOTIF_CARD_COLORS: Record<MotifRefus, { bg: string; text: string; bar: string; icon: string }> = {
+            RDC: { bg: "bg-orange-50 dark:bg-orange-950/20", text: "text-orange-700 dark:text-orange-300", bar: "bg-orange-500", icon: "🚪" },
+            ANNULATION: { bg: "bg-amber-50 dark:bg-amber-950/20", text: "text-amber-700 dark:text-amber-300", bar: "bg-amber-500", icon: "📞" },
+            REFUS_CLASSIQUE: { bg: "bg-red-50 dark:bg-red-950/20", text: "text-red-700 dark:text-red-300", bar: "bg-red-500", icon: "✋" },
+          };
+          const refusChartData = (Object.keys(MOTIF_REFUS_LABELS) as MotifRefus[])
+            .filter((m) => motifRefusCounts[m] > 0)
+            .map((m) => ({ name: MOTIF_REFUS_LABELS[m], value: motifRefusCounts[m], fill: MOTIF_COLORS_HEX[m] }));
+
+          return (
+            <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                  <XCircle className="w-4 h-4 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Analyse des refus</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    {refused} refus sur {assignedBase} fiche{assignedBase > 1 ? "s" : ""} affectée{assignedBase > 1 ? "s" : ""} — taux global de {refusalRate}%
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Donut chart + légende */}
+                <div className="flex flex-col items-center">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={refusChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={3}
+                        dataKey="value"
+                        labelLine={false}
+                        label={false}
+                      >
+                        {refusChartData.map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} stroke="transparent" />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, name: string) => [`${value} fiche${value > 1 ? "s" : ""}`, name]}
+                        contentStyle={{ borderRadius: 12, fontSize: 13, border: "1px solid #e5e7eb" }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-1">
+                    {refusChartData.map((entry) => {
+                      const pct = refused > 0 ? Math.round((entry.value / refused) * 100) : 0;
+                      return (
+                        <div key={entry.name} className="flex items-center gap-1.5 text-xs">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.fill }} />
+                          <span className="text-muted-foreground">{entry.name}</span>
+                          <span className="font-bold">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Détail par type */}
+                <div className="space-y-3">
+                  {(Object.keys(MOTIF_REFUS_LABELS) as MotifRefus[]).map((motif) => {
+                    const count = motifRefusCounts[motif];
+                    const pctRefus = refused > 0 ? Math.round((count / refused) * 100) : 0;
+                    const pctTotal = totalFiches > 0 ? Math.round((count / totalFiches) * 100) : 0;
+                    const c = MOTIF_CARD_COLORS[motif];
+                    return (
+                      <div key={motif} className={`rounded-xl p-4 ${c.bg} border border-transparent hover:border-border/50 transition-all`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{c.icon}</span>
+                            <span className="text-sm font-semibold">{MOTIF_REFUS_LABELS[motif]}</span>
+                          </div>
+                          <span className={`text-xl font-bold ${c.text}`}>{count}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden mb-2">
+                          <div className={`h-full rounded-full ${c.bar} transition-all duration-500`} style={{ width: `${pctRefus}%` }} />
+                        </div>
+                        <div className="flex justify-between text-[11px] text-muted-foreground">
+                          <span><strong className={c.text}>{pctRefus}%</strong> des refus</span>
+                          <span><strong>{pctTotal}%</strong> du total fiches</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── Ligne 2 : Pie chart + Référents ──────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* Pie chart — répartition par statut */}
@@ -629,7 +737,7 @@ export default function ReportingPage() {
             )}
           </div>
 
-          {/* Top prospecteurs (direction) ou performance (commercial) */}
+          {/* Top referents (direction) ou performance (commercial) */}
           <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
@@ -637,9 +745,9 @@ export default function ReportingPage() {
                   <Trophy className="w-4 h-4 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">{isCommercial ? "Ma performance" : "Productivité prospecteurs"}</h3>
-                  {!isCommercial && prospecteurs.length > 0 && (
-                    <p className="text-[11px] text-muted-foreground">{prospecteurs.length} prospecteur{prospecteurs.length > 1 ? "s" : ""}</p>
+                  <h3 className="font-semibold text-sm">{isCommercial ? "Ma performance" : "Productivité référents"}</h3>
+                  {!isCommercial && referents.length > 0 && (
+                    <p className="text-[11px] text-muted-foreground">{referents.length} référent{referents.length > 1 ? "s" : ""}</p>
                   )}
                 </div>
               </div>
@@ -659,7 +767,7 @@ export default function ReportingPage() {
                   <p className="text-sm text-muted-foreground text-center py-4">Aucune fiche affectée pour le moment</p>
                 )}
               </div>
-            ) : prospecteurs.length === 0 ? (
+            ) : referents.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
                 <p className="text-sm">Aucune fiche soumise pour le moment</p>
@@ -670,15 +778,15 @@ export default function ReportingPage() {
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Rechercher un prospecteur…"
-                    value={prospSearch}
-                    onChange={(e) => setProspSearch(e.target.value)}
+                    placeholder="Rechercher un référent…"
+                    value={refSearch}
+                    onChange={(e) => setRefSearch(e.target.value)}
                     className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
-                <div className={`space-y-3 overflow-y-auto ${showAllProspecteurs || prospSearch ? "max-h-[400px]" : "max-h-[280px]"}`}>
-                  {filteredProspecteurs.map((p, i) => {
-                    const origIndex = prospecteurs.indexOf(p);
+                <div className={`space-y-3 overflow-y-auto ${showAllReferents || refSearch ? "max-h-[400px]" : "max-h-[280px]"}`}>
+                  {filteredReferents.map((p, i) => {
+                    const origIndex = referents.indexOf(p);
                     const medalColor = origIndex === 0 ? "text-amber-500" : origIndex === 1 ? "text-slate-400" : origIndex === 2 ? "text-amber-700" : "text-muted-foreground";
                     const convRate = p.total > 0 ? Math.round((p.accepted / p.total) * 100) : 0;
                     return (
@@ -699,22 +807,22 @@ export default function ReportingPage() {
                               </span>
                             </div>
                           </div>
-                          <Bar2 value={p.total} max={maxProspecteur} colorClass="bg-primary/70" />
+                          <Bar2 value={p.total} max={maxReferent} colorClass="bg-primary/70" />
                         </div>
                       </div>
                     );
                   })}
-                  {prospSearch && filteredProspecteurs.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-3">Aucun prospecteur trouvé</p>
+                  {refSearch && filteredReferents.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-3">Aucun référent trouvé</p>
                   )}
                 </div>
-                {!prospSearch && prospecteurs.length > 8 && (
+                {!refSearch && referents.length > 8 && (
                   <button
                     type="button"
-                    onClick={() => setShowAllProspecteurs(!showAllProspecteurs)}
+                    onClick={() => setShowAllReferents(!showAllReferents)}
                     className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 py-2 rounded-lg hover:bg-primary/5 transition-colors"
                   >
-                    {showAllProspecteurs ? <><ChevronUp className="w-3.5 h-3.5" />Réduire</> : <><ChevronDown className="w-3.5 h-3.5" />Voir les {prospecteurs.length} prospecteurs</>}
+                    {showAllReferents ? <><ChevronUp className="w-3.5 h-3.5" />Réduire</> : <><ChevronDown className="w-3.5 h-3.5" />Voir les {referents.length} référents</>}
                   </button>
                 )}
               </>

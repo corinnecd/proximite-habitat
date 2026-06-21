@@ -5,6 +5,7 @@ export type {
   Database,
   UserRole,
   FicheStatus,
+  MotifRefus,
   Organization,
   Profile,
   Fiche,

@@ -24,6 +24,7 @@ const ROLE_STYLE: Record<UserRole, { heroBg: string; avatarBg: string; avatarTex
   ADMIN:       { heroBg: "from-purple-50 to-white dark:from-purple-950/20 dark:to-background", avatarBg: "bg-purple-100 dark:bg-purple-900/40", avatarText: "text-purple-700 dark:text-purple-300", badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
   COMMERCIAL:  { heroBg: "from-blue-50 to-white dark:from-blue-950/20 dark:to-background",   avatarBg: "bg-blue-100 dark:bg-blue-900/40",    avatarText: "text-blue-700 dark:text-blue-300",    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
   PROSPECTEUR: { heroBg: "from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background", avatarBg: "bg-emerald-100 dark:bg-emerald-900/40", avatarText: "text-emerald-700 dark:text-emerald-300", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+  CHEF_EQUIPE: { heroBg: "from-amber-50 to-white dark:from-amber-950/20 dark:to-background", avatarBg: "bg-amber-100 dark:bg-amber-900/40", avatarText: "text-amber-700 dark:text-amber-300", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
 };
 
 // ── Indicateur de force du mot de passe ──────────────────────────────────────
@@ -67,8 +68,16 @@ export default function ProfilPage() {
   const [savingPassword, setSavingPassword] = useState(false);
 
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [lastLogin, setLastLogin] = useState<string | null>(null);
 
   const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      const signIn = data.session?.user?.last_sign_in_at;
+      if (signIn) setLastLogin(signIn);
+    });
+  }, []);
 
   useEffect(() => {
     if (profile) {
@@ -216,13 +225,13 @@ export default function ProfilPage() {
               },
               {
                 icon: Clock,
-                label: "Dernière activité",
-                value: stats.lastActivity
-                  ? new Date(stats.lastActivity).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
+                label: "Dernière connexion",
+                value: lastLogin
+                  ? new Date(lastLogin).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
                   : "—",
-                sub: stats.lastActivity
-                  ? new Date(stats.lastActivity).getFullYear().toString()
-                  : "aucune fiche",
+                sub: lastLogin
+                  ? new Date(lastLogin).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+                  : "—",
                 color: "text-orange-600",
                 bg: "bg-orange-50 dark:bg-orange-950/30",
               },

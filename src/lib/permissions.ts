@@ -1,8 +1,8 @@
-import type { UserRole, FicheStatus } from "@/types/database";
+import type { UserRole, FicheStatus, MotifRefus } from "@/types/database";
 
 const STATUS_TRANSITIONS: Record<FicheStatus, { to: FicheStatus[]; roles: UserRole[] }[]> = {
   BROUILLON: [{ to: ["SOUMISE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE", "COMMERCIAL", "ADMIN"] }],
-  SOUMISE: [{ to: ["VALIDEE"], roles: ["ADMIN"] }, { to: ["BROUILLON"], roles: ["ADMIN"] }],
+  SOUMISE: [{ to: ["VALIDEE"], roles: ["ADMIN"] }, { to: ["BROUILLON"], roles: ["ADMIN", "PROSPECTEUR", "CHEF_EQUIPE"] }],
   VALIDEE: [{ to: ["AFFECTEE"], roles: ["ADMIN"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
   AFFECTEE: [{ to: ["RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
   RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
@@ -29,10 +29,26 @@ export function canEditFiche(
   ficheAssignedTo: string | null,
   status: FicheStatus,
 ): boolean {
-  // Une fiche archivée est définitivement en lecture seule, quel que soit le rôle.
-  if (status === "ARCHIVEE" || status === "RETRACTATION") return false;
+  if (status === "ARCHIVEE") return false;
   if (role === "ADMIN") return true;
   if (role === "COMMERCIAL") return ficheCreatedBy === userId || ficheAssignedTo === userId;
+  if (role === "PROSPECTEUR" || role === "CHEF_EQUIPE") {
+    if (ficheCreatedBy !== userId) return false;
+    return ["BROUILLON", "SOUMISE"].includes(status);
+  }
+  return false;
+}
+
+export function canEditRdvDate(
+  role: UserRole,
+  userId: string,
+  ficheCreatedBy: string,
+  ficheAssignedTo: string | null,
+  status: FicheStatus,
+): boolean {
+  if (status === "ARCHIVEE") return false;
+  if (role === "ADMIN") return true;
+  if (role === "COMMERCIAL") return ficheAssignedTo === userId;
   if (role === "PROSPECTEUR" || role === "CHEF_EQUIPE") return ficheCreatedBy === userId;
   return false;
 }
@@ -51,5 +67,11 @@ export const STATUS_COLORS: Record<FicheStatus, string> = {
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  ADMIN: "Direction", COMMERCIAL: "Commercial", PROSPECTEUR: "Prospecteur", CHEF_EQUIPE: "Chef d'équipe",
+  ADMIN: "Direction", COMMERCIAL: "Commercial", PROSPECTEUR: "Référent", CHEF_EQUIPE: "Chef d'équipe",
+};
+
+export const MOTIF_REFUS_LABELS: Record<MotifRefus, string> = {
+  RDC: "Refus de contrôle (RDC)",
+  ANNULATION: "Annulation client",
+  REFUS_CLASSIQUE: "Refus classique",
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Topbar } from "@/components/layout/Topbar";
@@ -18,7 +18,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
   const { id } = use(params);
   const { profile, loading: profileLoading } = useProfile();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [initialData, setInitialData] = useState<Record<string, unknown> | null>(null);
   const [initialPhotos, setInitialPhotos] = useState<PhotoRow[]>([]);
@@ -49,9 +49,9 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
         return;
       }
 
-      // Les prospecteurs ne peuvent modifier que leurs propres brouillons
+      // Les référents ne peuvent modifier que leurs propres brouillons
       if (profile.role === "PROSPECTEUR" && fiche.status !== "BROUILLON") {
-        setError("Seules les fiches en brouillon peuvent être modifiées par un prospecteur.");
+        setError("Seules les fiches en brouillon peuvent être modifiées par un référent.");
         setLoading(false);
         return;
       }
@@ -104,7 +104,9 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
     }
 
     load();
-  }, [id, profile, profileLoading, router, supabase]);
+  // supabase est stable (useMemo), pas besoin de l'inclure explicitement
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, profile, profileLoading, router]);
 
   // ── Loading ──────────────────────────────────────────────────────────────
 

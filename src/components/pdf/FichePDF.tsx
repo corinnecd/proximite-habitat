@@ -135,13 +135,13 @@ function SectionHead({ color, title }: { color: string; title: string }) {
 
 export interface FichePDFProps {
   fiche: Fiche;
-  référentNom: string;
+  referentNom: string;
   commercialNom?: string;
   photoUrls?: string[];
   orgName?: string;
 }
 
-export function FichePDF({ fiche, référentNom, commercialNom, photoUrls = [], orgName = "Proximité Habitat Conseil" }: FichePDFProps) {
+export function FichePDF({ fiche, referentNom, commercialNom, photoUrls = [], orgName = "Proximité Habitat Conseil" }: FichePDFProps) {
   const createdAt = new Date(fiche.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
   const printedAt = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 
@@ -173,7 +173,7 @@ export function FichePDF({ fiche, référentNom, commercialNom, photoUrls = [], 
           {/* Infos générales */}
           <View style={s.grid2}>
             <View style={s.col}>
-              <Val label="Référent" value={référentNom} />
+              <Val label="Référent" value={referentNom} />
             </View>
             <View style={s.col}>
               <Val label="Commercial assigné" value={commercialNom ?? undefined} />

@@ -381,7 +381,7 @@ export default function DashboardPage() {
   const [prospRetractees,   setProspRetractees]   = useState<FicheListItem[]>([]);
   const [prospRefusees,     setProspRefusees]     = useState<FicheListItem[]>([]);
   const [prospArchivees,    setProspArchivees]    = useState<FicheListItem[]>([]);
-  const [referentsStats, setRéférentsStats] = useState<ReferentStat[]>([]);
+  const [referentsStats, setReferentsStats] = useState<ReferentStat[]>([]);
   const [commerciauxStats,  setCommerciauxStats]  = useState<CommercialStat[]>([]);
   const [totalVentes,       setTotalVentes]       = useState(0);
   const [mesVentes,         setMesVentes]          = useState(0);
@@ -513,7 +513,7 @@ export default function DashboardPage() {
           const prochainPalier = ventesCeMois >= 3 ? 0 : 3 - ventesCeMois;
           return { id: p.id, nom: p.nom, ventes: p.ventes, ventesMoisCourant: ventesCeMois, primes, prochainPalier };
         }).sort((a, b) => b.ventes - a.ventes);
-        setRéférentsStats(pStats);
+        setReferentsStats(pStats);
 
         // Agrégation par commercial
         const cMap = new Map<string, CommercialStat>();

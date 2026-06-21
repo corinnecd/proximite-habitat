@@ -6,13 +6,13 @@ import type { Fiche } from "@/types/database";
 
 interface Props {
   fiche: Fiche;
-  référentNom: string;
+  referentNom: string;
   commercialNom?: string;
   photoUrls?: string[];
   orgName?: string;
 }
 
-export function DownloadFicheButton({ fiche, référentNom, commercialNom, photoUrls, orgName }: Props) {
+export function DownloadFicheButton({ fiche, referentNom, commercialNom, photoUrls, orgName }: Props) {
   const [loading, setLoading] = useState(false);
 
   async function handleDownload() {
@@ -23,7 +23,7 @@ export function DownloadFicheButton({ fiche, référentNom, commercialNom, photo
       const { FichePDF } = await import("./FichePDF");
       const { createElement } = await import("react");
 
-      const element = createElement(FichePDF, { fiche, référentNom, commercialNom, photoUrls, orgName });
+      const element = createElement(FichePDF, { fiche, referentNom, commercialNom, photoUrls, orgName });
       // react-pdf renderer attend un ReactElement — le cast est nécessaire car ses types internes divergent de React 18
       const blob = await pdf(element as Parameters<typeof pdf>[0]).toBlob();
 

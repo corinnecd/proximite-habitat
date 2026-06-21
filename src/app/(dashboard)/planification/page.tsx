@@ -53,7 +53,7 @@ export default function PlanificationPage() {
   const [villes, setVilles] = useState<ZoneVille[]>([]);
   const [selectedDept, setSelectedDept] = useState<string>("");
   const [planEntries, setPlanEntries] = useState<PlanEntry[]>([]);
-  const [chefsEquipe, setRéférents] = useState<{ id: string; first_name: string; last_name: string }[]>([]);
+  const [chefsEquipe, setReferents] = useState<{ id: string; first_name: string; last_name: string }[]>([]);
   const [selectedVilles, setSelectedVilles] = useState<Set<string>>(new Set());
   const [selectedChef, setSelectedChef] = useState<string>("");
   const [saving, setSaving] = useState(false);
@@ -81,7 +81,7 @@ export default function PlanificationPage() {
     ]);
 
     if (deptRes.data) setDepartements(deptRes.data);
-    if (chefsRes.data) setRéférents(chefsRes.data);
+    if (chefsRes.data) setReferents(chefsRes.data);
 
     const data = planRes.data;
     if (data && data.length > 0) {

@@ -25,7 +25,7 @@ interface StatusCount { status: FicheStatus; count: number; }
 interface ReferentRow { name: string; total: number; submitted: number; accepted: number; }
 interface CommercialRow { name: string; assigned: number; accepted: number; refused: number; rate: number; }
 interface VilleRow { ville: string; accepted: number; refused: number; total: number; rate: number; }
-interface WeeklyPoint { label: string; soumises: number; acceptées: number; }
+interface WeeklyPoint { label: string; soumises: number; acceptees: number; }
 interface DelaiInfo { avg: number; min: number; max: number; count: number; }
 
 // ── Palette statuts ───────────────────────────────────────────────────────────
@@ -309,15 +309,15 @@ export default function ReportingPage() {
       sun.setDate(sun.getDate() + 6);
       const fmtD = (d: Date) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
       const label = `${fmtD(ws)} - ${fmtD(sun)}`;
-      let soumises = 0, acceptées = 0;
+      let soumises = 0, acceptees = 0;
       for (const f of fiches) {
         const d = new Date(f.created_at);
         if (d >= ws && d < end) {
           soumises++;
-          if (f.status === "ACCEPTEE") acceptées++;
+          if (f.status === "ACCEPTEE") acceptees++;
         }
       }
-      return { label, soumises, acceptées };
+      return { label, soumises, acceptees };
     });
     setWeeklyData(weekBuckets);
 
@@ -375,7 +375,7 @@ export default function ReportingPage() {
   const validees      = statusCounts.find((s) => s.status === "VALIDEE")?.count ?? 0;
   const affectees     = statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0;
   const retractation  = statusCounts.find((s) => s.status === "RETRACTATION")?.count ?? 0;
-  // En cours = tout sauf acceptées, refusées, archivées
+  // En cours = tout sauf acceptees, refusées, archivées
   const inProgress    = soumises + validees + affectees + retractation;
   const assignedBase  = affectees + retractation + accepted + refused + archived;
   const acceptanceRate = assignedBase > 0 ? Math.round((accepted / assignedBase) * 100) : 0;
@@ -567,7 +567,7 @@ export default function ReportingPage() {
                         ))}
                       </Pie>
                       <Tooltip
-                        formatter={(value: number, name: string) => [`${value} fiche${value > 1 ? "s" : ""}`, name]}
+                        formatter={(value: unknown, name: unknown) => [`${value} fiche${Number(value) > 1 ? "s" : ""}`, String(name)]}
                         contentStyle={{ borderRadius: 12, fontSize: 13, border: "1px solid #e5e7eb" }}
                       />
                     </PieChart>
@@ -862,7 +862,7 @@ export default function ReportingPage() {
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="soumises" name="Soumises" stroke="#3b82f6" strokeWidth={2} fill="url(#gradSoumises)" animationDuration={700} />
-                <Area type="monotone" dataKey="acceptées" name="Acceptées" stroke="#10b981" strokeWidth={2} fill="url(#gradAcceptees)" animationDuration={700} />
+                <Area type="monotone" dataKey="acceptees" name="Acceptées" stroke="#10b981" strokeWidth={2} fill="url(#gradAcceptees)" animationDuration={700} />
               </AreaChart>
             </ResponsiveContainer>
           )}

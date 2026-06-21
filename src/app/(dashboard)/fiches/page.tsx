@@ -127,9 +127,9 @@ export default function FichesPage() {
 
   // Filtres direction uniquement
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("ALL");
-  const [référentFilter, setRéférentFilter] = useState("ALL");
+  const [referentFilter, setReferentFilter] = useState("ALL");
   const [commercialFilter, setCommercialFilter] = useState("ALL");
-  const [référents, setRéférents] = useState<ProfileOption[]>([]);
+  const [referents, setReferents] = useState<ProfileOption[]>([]);
   const [commercials, setCommercials] = useState<ProfileOption[]>([]);
   const [anterieures, setAnterieures] = useState<{ id: string }[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -151,7 +151,7 @@ export default function FichesPage() {
     return STATUS_LABELS[s];
   };
 
-  // Chargement des listes de référents et commerciaux pour les filtres admin
+  // Chargement des listes de referents et commerciaux pour les filtres admin
   useEffect(() => {
     if (!isAdmin) return;
     async function loadUsers() {
@@ -162,7 +162,7 @@ export default function FichesPage() {
         .eq("is_active", true)
         .order("last_name");
       if (data) {
-        setRéférents(data.filter((u) => u.role === "PROSPECTEUR"));
+        setReferents(data.filter((u) => u.role === "PROSPECTEUR"));
         setCommercials(data.filter((u) => u.role === "COMMERCIAL"));
       }
     }
@@ -211,7 +211,7 @@ export default function FichesPage() {
           .gte("updated_at", `${dates.from}T00:00:00Z`)
           .lte("updated_at", `${dates.to}T23:59:59Z`);
       }
-      if (référentFilter !== "ALL") query = query.eq("created_by", référentFilter);
+      if (referentFilter !== "ALL") query = query.eq("created_by", referentFilter);
       if (commercialFilter  !== "ALL") query = query.eq("assigned_to", commercialFilter);
     }
 
@@ -239,7 +239,7 @@ export default function FichesPage() {
       if (append) setLoadingMore(false); else setLoading(false);
     }
   // supabase est stable (useMemo), pas besoin dans les deps
-  }, [statusFilter, search, profile, periodFilter, référentFilter, commercialFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [statusFilter, search, profile, periodFilter, referentFilter, commercialFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fiches antérieures au trimestre (toujours chargées)
   useEffect(() => {
@@ -412,11 +412,11 @@ export default function FichesPage() {
     return () => { supabase.removeChannel(channel); };
   }, [fetchFiches]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasAdminFilters = isAdmin && (periodFilter !== "ALL" || référentFilter !== "ALL" || commercialFilter !== "ALL");
+  const hasAdminFilters = isAdmin && (periodFilter !== "ALL" || referentFilter !== "ALL" || commercialFilter !== "ALL");
 
   function resetAdminFilters() {
     setPeriodFilter("ALL");
-    setRéférentFilter("ALL"); setCommercialFilter("ALL");
+    setReferentFilter("ALL"); setCommercialFilter("ALL");
   }
 
   return (
@@ -519,17 +519,17 @@ export default function FichesPage() {
               {/* Filtre référent */}
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground uppercase tracking-wide">Référents</label>
-                <Select value={référentFilter} onValueChange={(v) => setRéférentFilter(v ?? "ALL")}>
+                <Select value={referentFilter} onValueChange={(v) => setReferentFilter(v ?? "ALL")}>
                   <SelectTrigger className="h-10 bg-background rounded-xl text-sm">
                     <SelectValue>
-                      {référentFilter === "ALL"
+                      {referentFilter === "ALL"
                         ? "Tous"
-                        : (() => { const p = référents.find((x) => x.id === référentFilter); return p ? `${p.first_name} ${p.last_name}` : "Tous"; })()}
+                        : (() => { const p = referents.find((x) => x.id === referentFilter); return p ? `${p.first_name} ${p.last_name}` : "Tous"; })()}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL">Tous les référents</SelectItem>
-                    {référents.map((p) => (
+                    <SelectItem value="ALL">Tous les referents</SelectItem>
+                    {referents.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.first_name} {p.last_name}
                       </SelectItem>

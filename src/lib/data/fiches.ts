@@ -118,7 +118,7 @@ export type FicheExportRow = {
  */
 export async function getFichesForExport(
   db: Db,
-  opts: { statusFilter: FicheStatus | "ALL"; isRéférent: boolean; createdBy?: string; search?: string },
+  opts: { statusFilter: FicheStatus | "ALL"; isReferent: boolean; createdBy?: string; search?: string },
 ): Promise<FicheExportRow[]> {
   let query = db
     .from("fiches")
@@ -129,10 +129,10 @@ export async function getFichesForExport(
 
   if (opts.statusFilter !== "ALL") {
     query = query.eq("status", opts.statusFilter);
-  } else if (!opts.isRéférent) {
+  } else if (!opts.isReferent) {
     query = query.neq("status", "BROUILLON");
   }
-  if (opts.isRéférent && opts.createdBy) {
+  if (opts.isReferent && opts.createdBy) {
     query = query.eq("created_by", opts.createdBy);
   }
   if (opts.search) {

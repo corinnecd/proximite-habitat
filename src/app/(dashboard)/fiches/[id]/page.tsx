@@ -861,7 +861,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             <div className="flex items-center gap-2 flex-wrap">
               <DownloadFicheButton
                 fiche={fiche}
-                référentNom={creatorName || "Référent"}
+                referentNom={creatorName || "Référent"}
                 commercialNom={
                   fiche.assigned_to
                     ? commercials.find((c) => c.id === fiche.assigned_to)

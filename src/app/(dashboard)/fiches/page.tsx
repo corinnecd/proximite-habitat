@@ -383,7 +383,8 @@ export default function FichesPage() {
         cree_le: new Date(f.created_at).toLocaleDateString("fr-FR"),
         modifie_le: new Date(f.updated_at).toLocaleDateString("fr-FR"),
       }));
-      const date = new Date().toISOString().slice(0, 10);
+      const now = new Date();
+      const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       downloadCsv(`fiches-${date}.csv`, toCsv(CSV_COLUMNS, csvRows));
       toast.success(`${rows.length} fiche${rows.length > 1 ? "s" : ""} exportée${rows.length > 1 ? "s" : ""}`);
     } catch {

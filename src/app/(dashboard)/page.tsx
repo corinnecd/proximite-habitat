@@ -437,7 +437,7 @@ export default function DashboardPage() {
         if (isReferent) q = q.eq("created_by", profile.id);
         if (isCommercial) q = q.eq("assigned_to", profile.id);
         if (periodDates) {
-          q = q.gte("created_at", `${periodDates.from}T00:00:00`).lte("created_at", `${periodDates.to}T23:59:59`);
+          q = q.gte("created_at", `${periodDates.from}T00:00:00Z`).lte("created_at", `${periodDates.to}T23:59:59Z`);
         }
         const { count } = await q;
         return [s, count ?? 0] as const;

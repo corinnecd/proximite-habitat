@@ -445,6 +445,9 @@ export default function ReportingPage() {
     if (profile.role !== "ADMIN" && profile.role !== "COMMERCIAL") { router.replace("/"); return; }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData(profile.id, profile.role, periodFilter);
+    setShowAllVilles(false);
+    setShowAllReferents(false);
+    setShowAllCommerciaux(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, profileLoading, periodFilter]);
 

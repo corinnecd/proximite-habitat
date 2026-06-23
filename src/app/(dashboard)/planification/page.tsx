@@ -64,7 +64,7 @@ export default function PlanificationPage() {
   const mondayStr = `${currentMonday.getFullYear()}-${String(currentMonday.getMonth() + 1).padStart(2, "0")}-${String(currentMonday.getDate()).padStart(2, "0")}`;
   const sunday = new Date(currentMonday);
   sunday.setDate(currentMonday.getDate() + 6);
-  const sundayStr = sunday.toISOString().slice(0, 10);
+  const sundayStr = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, "0")}-${String(sunday.getDate()).padStart(2, "0")}`;
 
   const isAdmin = profile?.role === "ADMIN";
 
@@ -200,7 +200,7 @@ export default function PlanificationPage() {
     if (!profile) return;
     const prevMonday = new Date(currentMonday);
     prevMonday.setDate(prevMonday.getDate() - 7);
-    const prevMondayStr = prevMonday.toISOString().slice(0, 10);
+    const prevMondayStr = `${prevMonday.getFullYear()}-${String(prevMonday.getMonth() + 1).padStart(2, "0")}-${String(prevMonday.getDate()).padStart(2, "0")}`;
 
     const { data } = await supabase
       .from("planification_hebdo")

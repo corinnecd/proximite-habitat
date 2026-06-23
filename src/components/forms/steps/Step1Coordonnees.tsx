@@ -56,7 +56,7 @@ export function Step1Coordonnees({ currentFicheId }: { currentFicheId?: string }
     const dayOfWeek = today.getDay();
     const monday = new Date(today);
     monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    const mondayStr = monday.toISOString().slice(0, 10);
+    const mondayStr = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
 
     const chefId = profile.role === "CHEF_EQUIPE" ? profile.id : profile.chef_equipe_id;
     let query = supabase

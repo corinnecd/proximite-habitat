@@ -100,6 +100,7 @@ export interface Database {
           departement_code: string | null;
           ville_id: string | null;
           rdv_date: string | null;
+          montant_ht: number | null;
           motif_refus: MotifRefus | null;
           referent_nom: string | null;
           referent_telephone: string | null;
@@ -146,6 +147,7 @@ export interface Database {
           departement_code?: string | null;
           ville_id?: string | null;
           rdv_date?: string | null;
+          montant_ht?: number | null;
           motif_refus?: MotifRefus | null;
           referent_nom?: string | null;
           referent_telephone?: string | null;

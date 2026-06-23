@@ -8,7 +8,7 @@ import { useProfile } from "@/lib/hooks/use-profile";
 import { toast } from "sonner";
 import {
   Calendar, ChevronLeft, ChevronRight, MapPin, Check, Copy,
-  Loader2, Users, Trash2, X, BarChart3, TrendingUp, FileText, Send, UserCheck, CheckCircle2,
+  Loader2, Users, Trash2, X, BarChart3, TrendingUp, FileText, Send, UserCheck, CheckCircle2, ChevronDown, ChevronUp,
 } from "lucide-react";
 import type { ZoneDepartement, ZoneVille } from "@/types/database";
 import { Autocomplete } from "@/components/ui/autocomplete";
@@ -59,8 +59,9 @@ export default function PlanificationPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [villeStats, setVilleStats] = useState<Map<string, VilleStats>>(new Map());
+  const [showAllPerfVilles, setShowAllPerfVilles] = useState(false);
 
-  const mondayStr = currentMonday.toISOString().slice(0, 10);
+  const mondayStr = `${currentMonday.getFullYear()}-${String(currentMonday.getMonth() + 1).padStart(2, "0")}-${String(currentMonday.getDate()).padStart(2, "0")}`;
   const sunday = new Date(currentMonday);
   sunday.setDate(currentMonday.getDate() + 6);
   const sundayStr = sunday.toISOString().slice(0, 10);
@@ -124,7 +125,8 @@ export default function PlanificationPage() {
       .select("ville_id, status")
       .eq("organization_id", profile.organization_id)
       .in("ville_id", villeIds)
-      .gte("created_at", mondayStr)
+      .neq("status", "BROUILLON")
+      .gte("created_at", mondayStr + "T00:00:00")
       .lte("created_at", sundayStr + "T23:59:59")
       .then(({ data }) => {
         const map = new Map<string, VilleStats>();
@@ -405,7 +407,17 @@ export default function PlanificationPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {planEntries.map((entry) => {
+                  {(() => {
+                    const sorted = [...planEntries].sort((a, b) => {
+                      const sa = villeStats.get(a.ville_id);
+                      const sb = villeStats.get(b.ville_id);
+                      const ra = sa && sa.total > 0 ? (sa.acceptee / sa.total) : 0;
+                      const rb = sb && sb.total > 0 ? (sb.acceptee / sb.total) : 0;
+                      if (rb !== ra) return rb - ra;
+                      return (sb?.total || 0) - (sa?.total || 0);
+                    });
+                    return (showAllPerfVilles ? sorted : sorted.slice(0, 5));
+                  })().map((entry) => {
                     const s = villeStats.get(entry.ville_id);
                     const rate = s && s.total > 0 ? Math.round((s.acceptee / s.total) * 100) : 0;
                     return (
@@ -444,6 +456,16 @@ export default function PlanificationPage() {
                 </tbody>
               </table>
             </div>
+            {planEntries.length > 5 && (
+              <button
+                onClick={() => setShowAllPerfVilles(!showAllPerfVilles)}
+                className="w-full text-center py-2 text-sm font-medium text-[#F97316] hover:text-[#F97316]/80 transition-colors flex items-center justify-center gap-1"
+              >
+                {showAllPerfVilles
+                  ? <>Voir moins <ChevronUp className="w-4 h-4" /></>
+                  : <>Voir plus ({planEntries.length - 5} villes) <ChevronDown className="w-4 h-4" /></>}
+              </button>
+            )}
           </div>
         )}
 

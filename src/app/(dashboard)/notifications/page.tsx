@@ -528,12 +528,12 @@ export default function NotificationsPage() {
               <div className="flex-1">
                 <label className="text-xs text-muted-foreground mb-1 block">Du</label>
                 <Input type="date" value={customFrom} max={customTo || undefined}
-                  onChange={(e) => setCustomFrom(e.target.value)} className="rounded-xl h-9 text-sm" />
+                  onChange={(e) => setCustomFrom(e.target.value)} onKeyDown={(e) => e.preventDefault()} className="rounded-xl h-9 text-sm" />
               </div>
               <div className="flex-1">
                 <label className="text-xs text-muted-foreground mb-1 block">Au</label>
                 <Input type="date" value={customTo} min={customFrom || undefined}
-                  onChange={(e) => setCustomTo(e.target.value)} className="rounded-xl h-9 text-sm" />
+                  onChange={(e) => setCustomTo(e.target.value)} onKeyDown={(e) => e.preventDefault()} className="rounded-xl h-9 text-sm" />
               </div>
               {(customFrom || customTo) && (
                 <button type="button" onClick={() => { setCustomFrom(""); setCustomTo(""); }}

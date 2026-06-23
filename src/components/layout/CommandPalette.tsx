@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Search, FileText, X, ArrowRight, Loader2 } from "lucide-react";
@@ -28,7 +28,7 @@ export function CommandPalette({ open, onClose }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Focus input when opened

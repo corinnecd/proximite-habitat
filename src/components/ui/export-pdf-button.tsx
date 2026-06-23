@@ -1,8 +1,18 @@
 "use client";
 
-import { FileDown, Loader2 } from "lucide-react";
+import { FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+
+// Preloaded libs — cached after first load
+let html2canvasLib: typeof import("html2canvas-pro")["default"] | null = null;
+let jsPDFLib: typeof import("jspdf")["jsPDF"] | null = null;
+const preloadPromise = typeof window !== "undefined"
+  ? Promise.all([import("html2canvas-pro"), import("jspdf")]).then(([h, j]) => {
+      html2canvasLib = h.default;
+      jsPDFLib = j.jsPDF;
+    })
+  : null;
 
 interface ExportPdfButtonProps {
   title: string;
@@ -24,34 +34,64 @@ export function ExportPdfButton({
   size = "sm",
 }: ExportPdfButtonProps) {
   const [loading, setLoading] = useState(false);
+  const toastRef = useRef<HTMLDivElement | null>(null);
+
+  // Preload libs on mount (no-op if already loaded)
+  useEffect(() => { preloadPromise; }, []);
+
+  function showToast(message: string) {
+    if (toastRef.current) toastRef.current.remove();
+    const el = document.createElement("div");
+    el.textContent = message;
+    Object.assign(el.style, {
+      position: "fixed", bottom: "24px", left: "50%", transform: "translateX(-50%)",
+      background: "#1e3a5f", color: "#fff", padding: "10px 24px", borderRadius: "8px",
+      fontSize: "14px", fontWeight: "500", zIndex: "9999", boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+      transition: "opacity 0.3s", opacity: "1",
+    });
+    document.body.appendChild(el);
+    toastRef.current = el;
+    setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el.remove(), 300); }, 2500);
+  }
 
   async function handleExport() {
     setLoading(true);
+    showToast("Génération du PDF en cours…");
     try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas-pro"),
-        import("jspdf"),
-      ]);
+      await preloadPromise;
+      const html2canvas = html2canvasLib!;
+      const jsPDF = jsPDFLib!;
 
       const main = document.querySelector("main");
       if (!main) { setLoading(false); return; }
 
-      const buttons = main.querySelectorAll("button, [data-no-print]");
-      buttons.forEach((b) => (b as HTMLElement).style.display = "none");
+      // Clone the main element to avoid modifying the visible DOM
+      const clone = main.cloneNode(true) as HTMLElement;
 
-      const canvas = await html2canvas(main as HTMLElement, {
+      // Remove buttons, search inputs, and no-print elements from the clone
+      clone.querySelectorAll("button, [data-no-print], input, select").forEach((el) => el.remove());
+
+      // Position clone off-screen but rendered
+      clone.style.position = "absolute";
+      clone.style.left = "-9999px";
+      clone.style.top = "0";
+      clone.style.width = `${main.scrollWidth}px`;
+      clone.style.zIndex = "-1";
+      document.body.appendChild(clone);
+
+      const canvas = await html2canvas(clone, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
       });
 
-      buttons.forEach((b) => (b as HTMLElement).style.display = "");
+      // Remove clone immediately after capture
+      document.body.removeChild(clone);
 
       const imgWidth = 190;
       const pageHeight = 277;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const imgData = canvas.toDataURL("image/png");
 
       const pdf = new jsPDF("p", "mm", "a4");
       const dateStr = new Date().toLocaleDateString("fr-FR", {
@@ -106,8 +146,10 @@ export function ExportPdfButton({
       }
 
       pdf.save(`${filename}.pdf`);
+      showToast("✓ PDF téléchargé avec succès");
     } catch (e) {
       console.error("[PDF export]", e);
+      showToast("Erreur lors de l'export PDF");
     } finally {
       setLoading(false);
     }
@@ -120,12 +162,10 @@ export function ExportPdfButton({
       onClick={handleExport}
       disabled={loading}
       className={`gap-2 ${className ?? ""}`}
+      data-no-print
     >
-      {loading
-        ? <Loader2 className="w-4 h-4 animate-spin" />
-        : <FileDown className="w-4 h-4" />
-      }
-      {loading ? "Export en cours…" : "Exporter PDF"}
+      <FileDown className="w-4 h-4" />
+      Exporter PDF
     </Button>
   );
 }

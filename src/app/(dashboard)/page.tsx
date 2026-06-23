@@ -21,7 +21,7 @@ import {
   FileText, FilePlus, Clock, CheckCircle2, XCircle, Send,
   UserCheck, Archive, History, Trash2, AlertCircle, ArrowRight,
   CalendarDays, User, Trophy, Medal, TrendingUp, Star, Activity,
-  ChevronDown, ChevronUp, Loader2,
+  ChevronDown, ChevronUp, Loader2, DollarSign, Euro, BarChart3,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -35,10 +35,10 @@ import { toast } from "sonner";
 import { createNotifications } from "@/lib/data/notifications";
 
 // ── Filtre période dashboard ──────────────────────────────────────────────────
-type DashPeriod = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER";
+type DashPeriod = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER" | "SEMESTER" | "YEAR";
 const DASH_PERIOD_LABELS: Record<DashPeriod, string> = {
   ALL: "Toutes les dates", TODAY: "Aujourd'hui",
-  WEEK: "Cette semaine", MONTH: "Ce mois", QUARTER: "Ce trimestre",
+  WEEK: "Cette semaine", MONTH: "Ce mois", QUARTER: "Ce trimestre", SEMESTER: "Ce semestre", YEAR: "Cette année",
 };
 function getDashPeriodDates(period: DashPeriod): { from: string; to: string } | null {
   if (period === "ALL") return null;
@@ -61,6 +61,44 @@ function getDashPeriodDates(period: DashPeriod): { from: string; to: string } | 
     const lastDay = new Date(now.getFullYear(), q * 3 + 3, 0);
     return { from: `${now.getFullYear()}-${pad(q * 3 + 1)}-01`, to: fmt(lastDay) };
   }
+  if (period === "SEMESTER") {
+    const sem = now.getMonth() < 6 ? 0 : 1;
+    return { from: `${now.getFullYear()}-${pad(sem * 6 + 1)}-01`, to: fmt(new Date(now.getFullYear(), sem * 6 + 6, 0)) };
+  }
+  if (period === "YEAR") {
+    return { from: `${now.getFullYear()}-01-01`, to: `${now.getFullYear()}-12-31` };
+  }
+  return null;
+}
+function getPeriodLabel(period: DashPeriod): string | null {
+  if (period === "ALL") return null;
+  const now = new Date();
+  const moisNoms = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+  if (period === "TODAY") {
+    return `${now.getDate()} ${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
+  }
+  if (period === "WEEK") {
+    const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const monday = new Date(now); monday.setDate(now.getDate() - day);
+    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+    return `${monday.getDate()} – ${sunday.getDate()} ${moisNoms[sunday.getMonth()]} ${sunday.getFullYear()}`;
+  }
+  if (period === "MONTH") {
+    return `${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
+  }
+  if (period === "QUARTER") {
+    const q = Math.floor(now.getMonth() / 3);
+    const from = new Date(now.getFullYear(), q * 3, 1);
+    const to = new Date(now.getFullYear(), q * 3 + 3, 0);
+    return `${from.getDate()} ${moisNoms[from.getMonth()]} – ${to.getDate()} ${moisNoms[to.getMonth()]} ${to.getFullYear()}`;
+  }
+  if (period === "SEMESTER") {
+    const sem = now.getMonth() < 6 ? 0 : 1;
+    const from = new Date(now.getFullYear(), sem * 6, 1);
+    const to = new Date(now.getFullYear(), sem * 6 + 6, 0);
+    return `${from.getDate()} ${moisNoms[from.getMonth()]} – ${to.getDate()} ${moisNoms[to.getMonth()]} ${to.getFullYear()}`;
+  }
+  if (period === "YEAR") return `${now.getFullYear()}`;
   return null;
 }
 
@@ -106,6 +144,7 @@ interface VenteRow {
   created_by: string;
   assigned_to: string | null;
   updated_at: string;
+  montant_ht: number | null;
   created_by_profile: { first_name: string; last_name: string } | null;
   assigned_to_profile: { first_name: string; last_name: string } | null;
 }
@@ -117,12 +156,14 @@ interface ReferentStat {
   ventesMoisCourant: number; // ventes ce mois-ci
   primes: number;        // mois avec ≥3 ventes
   prochainPalier: number; // ventes restantes ce mois avant la prime
+  ca: number;            // CA HT total
 }
 
 interface CommercialStat {
   id: string;
   nom: string;
   ventes: number;
+  ca: number;
 }
 
 interface ActivityEntry {
@@ -155,6 +196,7 @@ interface FicheAffectee {
   updated_at: string;
   created_at: string;
   created_by: string;
+  montant_ht: number | null;
   created_by_profile: { first_name: string; last_name: string } | null;
   fiche_history: HistoryEntry[];
 }
@@ -203,11 +245,9 @@ function StatusBlock({
   href: string;
   fiches: FicheAffectee[];
 }) {
-  const [showOlder, setShowOlder] = React.useState(false);
-  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const recent = fiches.filter((f) => new Date(f.updated_at).getTime() >= cutoff);
-  const older  = fiches.filter((f) => new Date(f.updated_at).getTime() <  cutoff);
-  const shown  = recent;
+  const [showAll, setShowAll] = React.useState(false);
+  const shown  = showAll ? fiches : fiches.slice(0, 5);
+  const hasMore = fiches.length > 5;
   return (
     <div className="space-y-3">
       {/* En-tête du bloc */}
@@ -293,66 +333,42 @@ function StatusBlock({
               </Link>
             );
           })}
-          {showOlder && older.length > 0 && older.map((fiche, idx) => {
-            const history = [...(fiche.fiche_history ?? [])].sort(
-              (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            );
-            return (
-              <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
-                <div className={`px-5 py-4 transition-colors cursor-pointer bg-muted/20 ${hoverColor} border-t border-border`}>
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-foreground truncate">
-                        {fiche.prospect_prenom} {fiche.prospect_nom}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="text-xs text-muted-foreground">{fiche.reference}</span>
-                        {fiche.prospect_ville && <span className="text-xs text-muted-foreground">{fiche.prospect_ville}</span>}
-                        {fiche.created_by_profile && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            {fiche.created_by_profile.first_name} {fiche.created_by_profile.last_name}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
-                      <CalendarDays className="w-3.5 h-3.5" />
-                      {new Date(fiche.updated_at).toLocaleDateString("fr-FR")}
-                    </div>
-                  </div>
-                  {history.length > 0 && (() => { const h = history[0]; return (
-                    <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                      {h.user && <span className="font-medium text-foreground/70">{h.user.first_name} {h.user.last_name}</span>}
-                      {h.old_status && h.new_status
-                        ? <span>{STATUS_LABELS_FR[h.old_status] ?? h.old_status}{" → "}{STATUS_LABELS_FR[h.new_status] ?? h.new_status}</span>
-                        : <span>{h.action}</span>}
-                      {h.comment && <span className="italic truncate max-w-[120px]">&quot;{h.comment}&quot;</span>}
-                      <span className="ml-auto shrink-0">
-                        {new Date(h.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
-                        {" "}{new Date(h.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    </div>
-                  ); })()}
-                </div>
-              </Link>
-            );
-          })}
-          {older.length > 0 && (
+          {hasMore && (
             <button
               type="button"
-              onClick={() => setShowOlder((v) => !v)}
+              onClick={() => setShowAll((v) => !v)}
               className="w-full px-4 py-2.5 text-center text-xs text-muted-foreground hover:bg-secondary/40 transition-colors border-t border-border flex items-center justify-center gap-1"
             >
-              {showOlder
+              {showAll
                 ? <><ChevronUp className="w-3.5 h-3.5" />Voir moins</>
-                : <><ChevronDown className="w-3.5 h-3.5" />+{older.length} fiche{older.length > 1 ? "s" : ""} antérieure{older.length > 1 ? "s" : ""} — Voir plus</>}
+                : <><ChevronDown className="w-3.5 h-3.5" />Voir plus ({fiches.length - 5} restante{fiches.length - 5 > 1 ? "s" : ""})</>}
             </button>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+function CollapsibleList({ items, renderItem, limit = 5 }: { items: { id: string }[]; renderItem: (item: any, idx: number, total: number) => React.ReactNode; limit?: number }) {
+  const [showAll, setShowAll] = React.useState(false);
+  const visible = showAll ? items : items.slice(0, limit);
+  const hasMore = items.length > limit;
+  return (
+    <>
+      {visible.map((item, idx) => renderItem(item, idx, visible.length))}
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          className="w-full px-4 py-2.5 text-center text-xs text-muted-foreground hover:bg-secondary/40 transition-colors border-t border-border flex items-center justify-center gap-1"
+        >
+          {showAll
+            ? <><ChevronUp className="w-3.5 h-3.5" />Voir moins</>
+            : <><ChevronDown className="w-3.5 h-3.5" />Voir plus ({items.length - limit} restante{items.length - limit > 1 ? "s" : ""})</>}
+        </button>
+      )}
+    </>
   );
 }
 
@@ -364,7 +380,7 @@ export default function DashboardPage() {
     BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
   });
   const [periodFicheCount, setPeriodFicheCount] = useState(0);
-  const [periodCounts, setPeriodCounts] = useState<Record<DashPeriod, number>>({ ALL: 0, TODAY: 0, WEEK: 0, MONTH: 0, QUARTER: 0 });
+  const [periodCounts, setPeriodCounts] = useState<Record<DashPeriod, number>>({ ALL: 0, TODAY: 0, WEEK: 0, MONTH: 0, QUARTER: 0, SEMESTER: 0, YEAR: 0 });
   const [anterieures, setAnterieures] = useState<{ id: string; reference: string; prospect_nom: string; prospect_prenom: string; status: FicheStatus; updated_at: string }[]>([]);
   const [fichesPending,         setFichesPending]         = useState<FicheEnAttente[]>([]);
   const [fichesAffectees,       setFichesAffectees]       = useState<FicheAffectee[]>([]);
@@ -385,6 +401,7 @@ export default function DashboardPage() {
   const [commerciauxStats,  setCommerciauxStats]  = useState<CommercialStat[]>([]);
   const [totalVentes,       setTotalVentes]       = useState(0);
   const [mesVentes,         setMesVentes]          = useState(0);
+  const [caTotal,           setCaTotal]            = useState(0);
   const [activityLog,       setActivityLog]        = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -464,17 +481,21 @@ export default function DashboardPage() {
       let ventesQuery = supabase
         .from("fiches")
         .select(
-          "id, created_by, assigned_to, updated_at, " +
+          "id, created_by, assigned_to, updated_at, montant_ht, " +
           "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name), " +
           "assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)"
         )
         .eq("status", "ACCEPTEE");
 
       if (isCommercial) ventesQuery = ventesQuery.eq("assigned_to", profile.id);
+      if (periodDates) {
+        ventesQuery = ventesQuery.gte("updated_at", `${periodDates.from}T00:00:00`).lte("updated_at", `${periodDates.to}T23:59:59`);
+      }
 
       const { data: ventes } = await ventesQuery;
       const rows = (ventes as unknown as VenteRow[]) ?? [];
       setTotalVentes(rows.length);
+      setCaTotal(rows.reduce((sum, r) => sum + (r.montant_ht ? Number(r.montant_ht) : 0), 0));
       if (isCommercial) setMesVentes(rows.length);
 
       if (isAdmin) {
@@ -488,41 +509,51 @@ export default function DashboardPage() {
         const now = new Date();
         const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-        const pMap = new Map<string, { id: string; nom: string; ventes: number; ventesMoisCourant: number; ventesParMois: Map<string, number> }>();
+        const pMap = new Map<string, { id: string; nom: string; ventes: number; ventesMoisCourant: number; ventesParMois: Map<string, number>; ca: number }>();
         for (const p of (allReferents ?? [])) {
-          pMap.set(p.id, { id: p.id, nom: `${p.first_name} ${p.last_name}`, ventes: 0, ventesMoisCourant: 0, ventesParMois: new Map() });
+          pMap.set(p.id, { id: p.id, nom: `${p.first_name} ${p.last_name}`, ventes: 0, ventesMoisCourant: 0, ventesParMois: new Map(), ca: 0 });
         }
         for (const r of rows) {
           if (!r.created_by) continue;
           if (!pMap.has(r.created_by) && r.created_by_profile) {
-            pMap.set(r.created_by, { id: r.created_by, nom: `${r.created_by_profile.first_name} ${r.created_by_profile.last_name}`, ventes: 0, ventesMoisCourant: 0, ventesParMois: new Map() });
+            pMap.set(r.created_by, { id: r.created_by, nom: `${r.created_by_profile.first_name} ${r.created_by_profile.last_name}`, ventes: 0, ventesMoisCourant: 0, ventesParMois: new Map(), ca: 0 });
           }
           const entry = pMap.get(r.created_by);
           if (!entry) continue;
           entry.ventes++;
-          // Mois de la vente (basé sur updated_at = date d'acceptation)
+          entry.ca += r.montant_ht ? Number(r.montant_ht) : 0;
           const d = new Date(r.updated_at);
           const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
           entry.ventesParMois.set(ym, (entry.ventesParMois.get(ym) ?? 0) + 1);
           if (ym === currentYM) entry.ventesMoisCourant++;
         }
-        // Primes = nombre de mois où le référent a atteint ≥3 ventes
         const pStats: ReferentStat[] = Array.from(pMap.values()).map((p) => {
           const primes = Array.from(p.ventesParMois.values()).filter((v) => v >= 3).length;
           const ventesCeMois = p.ventesMoisCourant;
           const prochainPalier = ventesCeMois >= 3 ? 0 : 3 - ventesCeMois;
-          return { id: p.id, nom: p.nom, ventes: p.ventes, ventesMoisCourant: ventesCeMois, primes, prochainPalier };
+          return { id: p.id, nom: p.nom, ventes: p.ventes, ventesMoisCourant: ventesCeMois, primes, prochainPalier, ca: p.ca };
         }).sort((a, b) => b.ventes - a.ventes);
         setReferentsStats(pStats);
 
-        // Agrégation par commercial
+        // Agrégation par commercial — include all active commercials even with 0 sales
         const cMap = new Map<string, CommercialStat>();
+        const { data: allCommProfiles } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name")
+          .eq("role", "COMMERCIAL")
+          .eq("is_active", true);
+        for (const p of allCommProfiles ?? []) {
+          cMap.set(p.id, { id: p.id, nom: `${p.first_name} ${p.last_name}`, ventes: 0, ca: 0 });
+        }
         for (const r of rows) {
-          if (!r.assigned_to || !r.assigned_to_profile) continue;
-          const nom = `${r.assigned_to_profile.first_name} ${r.assigned_to_profile.last_name}`;
+          if (!r.assigned_to) continue;
           const existing = cMap.get(r.assigned_to);
-          if (existing) { existing.ventes++; }
-          else { cMap.set(r.assigned_to, { id: r.assigned_to, nom, ventes: 1 }); }
+          const mt = r.montant_ht ? Number(r.montant_ht) : 0;
+          if (existing) { existing.ventes++; existing.ca += mt; }
+          else {
+            const nom = r.assigned_to_profile ? `${r.assigned_to_profile.first_name} ${r.assigned_to_profile.last_name}` : "Inconnu";
+            cMap.set(r.assigned_to, { id: r.assigned_to, nom, ventes: 1, ca: mt });
+          }
         }
         setCommerciauxStats(Array.from(cMap.values()).sort((a, b) => b.ventes - a.ventes));
       }
@@ -531,7 +562,7 @@ export default function DashboardPage() {
     // ── Fiches du commercial connecté ───────────────────────────────────────
     if (isCommercial) {
       const commCols =
-        "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, updated_at, created_by, " +
+        "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, updated_at, created_by, montant_ht, " +
         "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name)";
       const [affecteesRes, retractRes, accepteesRes, refuseesRes, archiveesRes] = await Promise.all([
         supabase.from("fiches").select(commCols).eq("status", "AFFECTEE").eq("assigned_to", profile.id).order("updated_at", { ascending: true }),
@@ -692,6 +723,10 @@ export default function DashboardPage() {
   const isAdmin       = profile?.role === "ADMIN";
   const isCommercial  = profile?.role === "COMMERCIAL";
 
+  const _dashPl = getPeriodLabel(dashPeriod);
+  const dashPeriodSuffix = _dashPl ? ` (${_dashPl})` : "";
+  const isAllPeriod = dashPeriod === "ALL";
+
   const visibleStatuses: FicheStatus[] = isReferent
     ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
     : isCommercial
@@ -702,7 +737,7 @@ export default function DashboardPage() {
   if (profileLoading || loading) {
     return (
       <>
-        <Topbar title="Tableau de bord" actions={<ExportPdfButton title="Tableau de bord" filename="dashboard" />} />
+        <Topbar title="Tableau de bord" actions={<ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" />} />
         <div className="p-6 lg:p-8 space-y-8 animate-pulse">
           {/* Greeting */}
           <div className="flex items-center justify-between">
@@ -828,7 +863,7 @@ export default function DashboardPage() {
   if (fetchError) {
     return (
       <>
-        <Topbar title="Tableau de bord" actions={<ExportPdfButton title="Tableau de bord" filename="dashboard" />} />
+        <Topbar title="Tableau de bord" actions={<ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" />} />
         <div className="p-6 lg:p-8 flex items-center justify-center min-h-[40vh]">
           <div className="text-center space-y-3">
             <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
@@ -911,7 +946,7 @@ export default function DashboardPage() {
       </Dialog>
 
       {deleteDialog}
-      <Topbar title="Tableau de bord" actions={<ExportPdfButton title="Tableau de bord" filename="dashboard" />} />
+      <Topbar title="Tableau de bord" actions={<ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" />} />
       <div className="p-6 lg:p-8 space-y-8">
 
         {/* En-tête */}
@@ -1050,107 +1085,175 @@ export default function DashboardPage() {
           );
         })()}
 
-        {/* ── Section ADMIN : tableau des ventes (en haut) ────────────────── */}
+        {/* ── Section ADMIN : KPI CA consolidé ──────────────────────────────── */}
         {isAdmin && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Classement référents */}
-            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                    <Trophy className="w-4 h-4 text-amber-600" />
+          <div className="space-y-6">
+            {/* KPI Cards CA */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-card border border-border border-l-4 border-l-amber-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <Euro className="w-5 h-5 text-amber-600" />
                   </div>
-                  <h3 className="font-semibold text-sm">Ventes par référent</h3>
                 </div>
-                <span className="text-xs text-muted-foreground">{totalVentes} vente{totalVentes > 1 ? "s" : ""} au total</span>
+                <p className="text-3xl font-bold tabular-nums">{caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA global HT consolidé" : <>CA HT consolidé<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{totalVentes} contrat{totalVentes > 1 ? "s" : ""} signé{totalVentes > 1 ? "s" : ""}</p>
               </div>
-              {referentsStats.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
-              ) : (
-                <div className="space-y-3">
-                  {referentsStats.map((p, i) => {
-                    // Prime mensuelle : 3 ventes dans le même mois calendaire
-                    const primeCeMois = p.ventesMoisCourant >= 3;
-                    const progressPct = Math.min((p.ventesMoisCourant / 3) * 100, 100);
-                    return (
-                      <div key={p.id} className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {i === 0 && <Medal className="w-4 h-4 text-amber-500 shrink-0" />}
-                            {i === 1 && <Medal className="w-4 h-4 text-slate-400 shrink-0" />}
-                            {i === 2 && <Medal className="w-4 h-4 text-amber-700 shrink-0" />}
-                            {i >= 3  && <span className="w-4 text-center text-xs font-bold text-muted-foreground">{i+1}</span>}
-                            <span className="text-sm font-medium">{p.nom}</span>
-                            {primeCeMois && (
-                              <span className="flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                                <Star className="w-2.5 h-2.5" />Prime ce mois !
-                              </span>
-                            )}
-                            {p.primes > 0 && !primeCeMois && (
-                              <span className="text-[10px] text-muted-foreground">
-                                {p.primes} prime{p.primes > 1 ? "s" : ""} débloquée{p.primes > 1 ? "s" : ""}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="font-bold text-foreground">{p.ventes} total</span>
-                            <span className="text-muted-foreground">· {p.ventesMoisCourant}/3 ce mois</span>
-                          </div>
-                        </div>
-                        {/* Barre progression vers la prime mensuelle */}
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all duration-700 ${primeCeMois ? "bg-amber-400" : "bg-emerald-500"}`}
-                            style={{ width: `${progressPct}%` }} />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          {primeCeMois
-                            ? "🏆 Prime exceptionnelle débloquée ce mois !"
-                            : `encore ${p.prochainPalier} vente${p.prochainPalier > 1 ? "s" : ""} ce mois pour la prime`}
-                        </p>
-                      </div>
-                    );
-                  })}
+              <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  </div>
                 </div>
-              )}
+                <AnimatedCounter value={totalVentes} className="text-3xl font-bold" />
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Ventes globales totales" : <>Ventes totales<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+              </div>
+              <div className="bg-card border border-border border-l-4 border-l-blue-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold tabular-nums">{totalVentes > 0 ? Math.round(caTotal / totalVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Chiffre d'affaires moyen global" : <>Chiffre d&apos;affaires moyen<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+              </div>
             </div>
-            {/* Classement commerciaux */}
-            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-emerald-600" />
-                </div>
-                <h3 className="font-semibold text-sm">Ventes par commercial</h3>
-              </div>
-              {commerciauxStats.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
-              ) : (
-                <div className="space-y-3">
-                  {commerciauxStats.map((c, i) => {
-                    const maxVentes = commerciauxStats[0]?.ventes ?? 1;
-                    return (
-                      <div key={c.id} className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {i === 0 && <Medal className="w-4 h-4 text-amber-500 shrink-0" />}
-                            {i === 1 && <Medal className="w-4 h-4 text-slate-400 shrink-0" />}
-                            {i === 2 && <Medal className="w-4 h-4 text-amber-700 shrink-0" />}
-                            {i >= 3  && <span className="w-4 text-center text-xs font-bold text-muted-foreground">{i+1}</span>}
-                            <span className="text-sm font-medium">{c.nom}</span>
-                          </div>
-                          <span className="text-xs font-bold text-foreground">{c.ventes} vente{c.ventes > 1 ? "s" : ""}</span>
-                        </div>
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full rounded-full bg-emerald-500 transition-all duration-700"
-                            style={{ width: `${(c.ventes / maxVentes) * 100}%` }} />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
-                          {c.ventes} vente{c.ventes > 1 ? "s" : ""} acceptée{c.ventes > 1 ? "s" : ""}
-                        </p>
+
+            {/* KPI Cards secondaires */}
+            {(() => {
+              const assignedBase = counts.AFFECTEE + counts.RETRACTATION + counts.ACCEPTEE + counts.REFUSEE + counts.ARCHIVEE;
+              const refusalRate = assignedBase > 0 ? Math.round((counts.REFUSEE / assignedBase) * 100) : 0;
+              const inProgress = counts.SOUMISE + counts.AFFECTEE + counts.RETRACTATION;
+              const totalAll = Object.values(counts).reduce((a, b) => a + b, 0);
+              const inProgressRate = totalAll > 0 ? Math.round((inProgress / totalAll) * 100) : 0;
+              return (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-card border border-border border-l-4 border-l-red-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                        <XCircle className="w-5 h-5 text-red-500" />
                       </div>
-                    );
-                  })}
+                    </div>
+                    <p className="text-3xl font-bold tabular-nums">{refusalRate}%</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global de refus" : <>Taux de refus<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{counts.REFUSEE} refusée{counts.REFUSEE > 1 ? "s" : ""} / {assignedBase} affectée{assignedBase > 1 ? "s" : ""}</p>
+                  </div>
+                  <div className="bg-card border border-border border-l-4 border-l-orange-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-orange-600" />
+                      </div>
+                    </div>
+                    <p className="text-3xl font-bold tabular-nums">{inProgressRate}%</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global en cours" : <>Taux en cours<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{inProgress} fiche{inProgress > 1 ? "s" : ""} · à valider, affectées, attente client</p>
+                  </div>
                 </div>
-              )}
+              );
+            })()}
+
+            {/* Tableaux référents + commerciaux */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Classement référents — ventes uniquement */}
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                      <Trophy className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <h3 className="font-semibold text-sm">Ventes par référent ({referentsStats.length} Référent{referentsStats.length > 1 ? "s" : ""})</h3>
+                  </div>
+                </div>
+                {referentsStats.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="grid grid-cols-[1fr_60px_70px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+                      <span>Référent</span>
+                      <span className="text-right">Ventes</span>
+                      <span className="text-right">Ce mois</span>
+                    </div>
+                    <CollapsibleList items={referentsStats} renderItem={(p: typeof referentsStats[0], idx: number) => {
+                      const primeCeMois = p.ventesMoisCourant >= 3;
+                      return (
+                        <div key={p.id} className="grid grid-cols-[1fr_60px_70px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-4 text-center text-xs font-bold text-muted-foreground shrink-0">{idx+1}</span>
+                            <span className="text-sm font-medium truncate">{p.nom}</span>
+                            {primeCeMois && <Star className="w-3 h-3 text-amber-500 shrink-0" />}
+                          </div>
+                          <span className="text-sm font-bold text-right tabular-nums">{p.ventes}</span>
+                          <span className={`text-xs text-right tabular-nums ${primeCeMois ? "text-amber-600 font-bold" : "text-muted-foreground"}`}>{p.ventesMoisCourant}/3</span>
+                        </div>
+                      );
+                    }} />
+                    {referentsStats.length > 0 && (
+                      <div className="grid grid-cols-[1fr_60px_70px] gap-2 pt-3 border-t border-border">
+                        <span className="text-sm font-bold">Total</span>
+                        <span className="text-sm font-bold text-right tabular-nums">{referentsStats.reduce((s, r) => s + r.ventes, 0)}</span>
+                        <span />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Classement commerciaux avec CA */}
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <h3 className="font-semibold text-sm">CA par commercial ({commerciauxStats.length} {commerciauxStats.length > 1 ? "Commerciaux" : "Commercial"})</h3>
+                  </div>
+                </div>
+                {commerciauxStats.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="grid grid-cols-[1fr_60px_80px_60px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+                      <span>Commercial</span>
+                      <span className="text-right">Ventes</span>
+                      <span className="text-right">CA HT</span>
+                      <span className="text-right">Conv.</span>
+                    </div>
+                    <CollapsibleList items={commerciauxStats} renderItem={(c: typeof commerciauxStats[0], idx: number) => {
+                      const rate = c.ventes > 0 ? Math.round((c.ventes / (commerciauxStats[0]?.ventes ?? 1)) * 100) : 0;
+                      return (
+                        <div key={c.id} className="space-y-1">
+                          <div className="grid grid-cols-[1fr_60px_80px_60px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="w-4 text-center text-xs font-bold text-muted-foreground shrink-0">{idx+1}</span>
+                              <span className="text-sm font-medium truncate">{c.nom}</span>
+                            </div>
+                            <span className="text-sm font-bold text-right tabular-nums">{c.ventes}</span>
+                            <span className={`text-sm font-bold text-right tabular-nums ${c.ca > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
+                              {c.ca > 0 ? c.ca.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}
+                            </span>
+                            <span className="text-xs text-right tabular-nums text-muted-foreground">{c.ventes > 0 && c.ca > 0 ? Math.round(c.ca / c.ventes).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€/v" : "—"}</span>
+                          </div>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mx-1">
+                            <div className="h-full rounded-full bg-emerald-500 transition-all duration-700"
+                              style={{ width: `${rate}%` }} />
+                          </div>
+                        </div>
+                      );
+                    }} />
+                    {commerciauxStats.length > 0 && (
+                      <div className="grid grid-cols-[1fr_60px_80px_60px] gap-2 pt-3 border-t border-border">
+                        <span className="text-sm font-bold">Total</span>
+                        <span className="text-sm font-bold text-right tabular-nums">{commerciauxStats.reduce((s, c) => s + c.ventes, 0)}</span>
+                        <span className="text-sm font-bold text-right tabular-nums text-amber-600">
+                          {commerciauxStats.reduce((s, c) => s + c.ca, 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                        </span>
+                        <span />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1163,7 +1266,7 @@ export default function DashboardPage() {
                 <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
                   <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
                 </div>
-                <h3 className="font-semibold text-base">Fiches en attente de validation</h3>
+                <h3 className="font-semibold text-base">Fiches en attente de validation{dashPeriodSuffix}</h3>
                 {fichesPending.length > 0 && (
                   <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                     {fichesPending.length}
@@ -1187,12 +1290,12 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="bg-card border border-red-200 dark:border-red-900/50 rounded-2xl overflow-hidden">
-                {fichesPending.map((fiche, idx) => {
+                <CollapsibleList items={fichesPending} renderItem={(fiche: FicheEnAttente, idx: number, total: number) => {
                   const days = daysSince(fiche.created_at);
                   return (
                     <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                       <div className={`flex items-center gap-4 px-5 py-4 hover:bg-red-50/40 dark:hover:bg-red-950/20 transition-colors cursor-pointer ${
-                        idx < fichesPending.length - 1 ? "border-b border-border" : ""
+                        idx < total - 1 ? "border-b border-border" : ""
                       }`}>
                         <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center shrink-0">
                           <AlertCircle className="w-4.5 h-4.5 text-red-500" />
@@ -1234,7 +1337,7 @@ export default function DashboardPage() {
                       </div>
                     </Link>
                   );
-                })}
+                }} />
               </div>
             )}
           </div>
@@ -1244,7 +1347,7 @@ export default function DashboardPage() {
         {isAdmin && (
           <div className="space-y-8">
             <StatusBlock
-              title="Affectées"
+              title={`Affectées${dashPeriodSuffix}`}
               total={counts.AFFECTEE}
               icon={<UserCheck className="w-4 h-4 text-orange-600 dark:text-orange-400" />}
               iconBg="bg-orange-100 dark:bg-orange-900/40"
@@ -1255,7 +1358,7 @@ export default function DashboardPage() {
               fiches={fichesAffecteesAdmin}
             />
             <StatusBlock
-              title="Validées par le Client"
+              title={`Validées par le Client${dashPeriodSuffix}`}
               total={counts.ACCEPTEE}
               icon={<CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
               iconBg="bg-emerald-100 dark:bg-emerald-900/40"
@@ -1266,7 +1369,7 @@ export default function DashboardPage() {
               fiches={fichesAcceptees}
             />
             <StatusBlock
-              title="Refusées par le client"
+              title={`Refusées par le client${dashPeriodSuffix}`}
               total={counts.REFUSEE}
               icon={<XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />}
               iconBg="bg-red-100 dark:bg-red-900/40"
@@ -1277,7 +1380,7 @@ export default function DashboardPage() {
               fiches={fichesRefusees}
             />
             <StatusBlock
-              title="Archivées"
+              title={`Archivées${dashPeriodSuffix}`}
               total={counts.ARCHIVEE}
               icon={<Archive className="w-4 h-4 text-slate-500 dark:text-slate-400" />}
               iconBg="bg-slate-100 dark:bg-slate-800/40"
@@ -1290,25 +1393,86 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── Section COMMERCIAL : KPI ventes personnelles ─────────────────── */}
-        {isCommercial && mesVentes > 0 && (
-          <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-5 py-4 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
+        {/* ── Section COMMERCIAL : CA et statistiques ventes ─────────────────── */}
+        {isCommercial && (
+          <div className="space-y-6">
+            {/* KPI cards */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+                <AnimatedCounter value={mesVentes} className="text-3xl font-bold" />
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Ventes globales réalisées" : <>Ventes réalisées<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+              </div>
+              <div className="bg-card border border-border border-l-4 border-l-amber-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                    <Euro className="w-5 h-5 text-amber-600" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold tabular-nums">{caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA global HT total" : <>CA HT total<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+              </div>
+              <div className="bg-card border border-border border-l-4 border-l-blue-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <BarChart3 className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+                <p className="text-3xl font-bold tabular-nums">{mesVentes > 0 ? Math.round(caTotal / mesVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Chiffre d'affaires moyen global" : <>Chiffre d&apos;affaires moyen<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="font-semibold text-sm text-emerald-800 dark:text-emerald-300">
-                {mesVentes} vente{mesVentes > 1 ? "s" : ""} réalisée{mesVentes > 1 ? "s" : ""}
-              </p>
-              <p className="text-xs text-emerald-700/70 dark:text-emerald-400/70 mt-0.5">
-                Total de vos fiches validées par le client
-              </p>
-            </div>
-            <Link href="/reporting">
-              <Button variant="outline" size="sm" className="rounded-xl gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-300">
-                <TrendingUp className="w-3.5 h-3.5" />Mon reporting
-              </Button>
-            </Link>
+
+            {/* Détail CA par fiche acceptée */}
+            {fichesAcceptees.length > 0 && (
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                      <Euro className="w-4 h-4 text-amber-600" />
+                    </div>
+                    <h3 className="font-semibold text-sm">{isAllPeriod ? "Détail global chiffre d'affaires" : `Détail chiffre d'affaires${dashPeriodSuffix}`}</h3>
+                  </div>
+                  <Link href="/reporting">
+                    <Button variant="ghost" size="sm" className="text-muted-foreground gap-1">
+                      Mon reporting <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  </Link>
+                </div>
+                <div className="space-y-1">
+                  <div className="grid grid-cols-[1fr_100px_100px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+                    <span>Client</span>
+                    <span className="text-right">Date</span>
+                    <span className="text-right">Montant HT</span>
+                  </div>
+                  <CollapsibleList items={fichesAcceptees} renderItem={(fiche: FicheAffectee, idx: number, total: number) => (
+                    <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
+                      <div className="grid grid-cols-[1fr_100px_100px] gap-2 items-center py-2.5 hover:bg-secondary/40 rounded-lg px-1 transition-colors cursor-pointer">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                          <p className="text-xs text-muted-foreground">{fiche.reference}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground text-right">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
+                        <span className={`text-sm font-bold text-right tabular-nums ${fiche.montant_ht ? "text-amber-600" : "text-muted-foreground"}`}>
+                          {fiche.montant_ht ? Number(fiche.montant_ht).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}
+                        </span>
+                      </div>
+                    </Link>
+                  )} />
+                  <div className="grid grid-cols-[1fr_100px_100px] gap-2 pt-3 border-t border-border">
+                    <span className="text-sm font-bold">Total</span>
+                    <span />
+                    <span className="text-sm font-bold text-right tabular-nums text-amber-600">
+                      {caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1320,7 +1484,7 @@ export default function DashboardPage() {
                 <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
                   <UserCheck className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                 </div>
-                <h3 className="font-semibold text-base">Mes fiches à traiter</h3>
+                <h3 className="font-semibold text-base">Mes fiches à traiter{dashPeriodSuffix}</h3>
                 {fichesAffectees.length > 0 && (
                   <span className="bg-[#F97316] text-white text-xs font-bold px-2 py-0.5 rounded-full">
                     {fichesAffectees.length}
@@ -1348,12 +1512,12 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                {fichesAffectees.map((fiche, idx) => {
+                <CollapsibleList items={fichesAffectees} renderItem={(fiche: FicheAffectee, idx: number, total: number) => {
                   const days = daysSince(fiche.updated_at);
                   return (
                     <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                       <div className={`flex items-center gap-4 px-5 py-4 hover:bg-orange-50/40 dark:hover:bg-orange-950/20 transition-colors cursor-pointer ${
-                        idx < fichesAffectees.length - 1 ? "border-b border-border" : ""
+                        idx < total - 1 ? "border-b border-border" : ""
                       }`}>
                         <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/40 flex items-center justify-center shrink-0">
                           <UserCheck className="w-4.5 h-4.5 text-orange-500" />
@@ -1400,7 +1564,7 @@ export default function DashboardPage() {
                       </div>
                     </Link>
                   );
-                })}
+                }} />
               </div>
             )}
           </div>
@@ -1427,7 +1591,7 @@ export default function DashboardPage() {
                       <div className={`w-8 h-8 rounded-xl ${iconBg} flex items-center justify-center`}>
                         {STATUS_ICONS[status]}
                       </div>
-                      <h3 className="font-semibold text-base">{label}</h3>
+                      <h3 className="font-semibold text-base">{label}{dashPeriodSuffix}</h3>
                       {fiches.length > 0 && (
                         <span className={`${badgeBg} text-white text-xs font-bold px-2 py-0.5 rounded-full`}>{fiches.length}</span>
                       )}
@@ -1440,9 +1604,9 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground px-1">{emptyMsg}</p>
                   ) : (
                     <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                      {fiches.map((fiche, idx) => (
+                      <CollapsibleList items={fiches} renderItem={(fiche: FicheListItem, idx: number, total: number) => (
                         <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
-                          <div className={`flex items-center gap-4 px-5 py-4 ${hoverBg} dark:hover:bg-white/5 transition-colors cursor-pointer ${idx < fiches.length - 1 ? "border-b border-border" : ""}`}>
+                          <div className={`flex items-center gap-4 px-5 py-4 ${hoverBg} dark:hover:bg-white/5 transition-colors cursor-pointer ${idx < total - 1 ? "border-b border-border" : ""}`}>
                             <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
                               <span className={iconColor}>{STATUS_ICONS[status]}</span>
                             </div>
@@ -1465,7 +1629,7 @@ export default function DashboardPage() {
                             </div>
                           </div>
                         </Link>
-                      ))}
+                      )} />
                     </div>
                   )}
                 </div>
@@ -1487,7 +1651,7 @@ export default function DashboardPage() {
                       <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
                         <AlertCircle className="w-4 h-4 text-purple-600" />
                       </div>
-                      <h3 className="font-semibold text-base">Attente Validation Client</h3>
+                      <h3 className="font-semibold text-base">Attente Validation Client{dashPeriodSuffix}</h3>
                       {list.length > 0 && <span className="bg-purple-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{list.length}</span>}
                     </div>
                     <Link href="/fiches?status=RETRACTATION"><Button variant="ghost" size="sm" className="text-muted-foreground gap-1">Voir toutes <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
@@ -1496,9 +1660,9 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground px-1">Aucune fiche en attente de validation.</p>
                   ) : (
                     <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                      {list.map((fiche, idx) => (
+                      <CollapsibleList items={list} renderItem={(fiche: FicheAffectee, idx: number, total: number) => (
                         <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
-                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors cursor-pointer ${idx < list.length - 1 ? "border-b border-border" : ""}`}>
+                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors cursor-pointer ${idx < total - 1 ? "border-b border-border" : ""}`}>
                             <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950/40 flex items-center justify-center shrink-0">
                               <AlertCircle className="w-4 h-4 text-purple-500" />
                             </div>
@@ -1509,7 +1673,7 @@ export default function DashboardPage() {
                             <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
                           </div>
                         </Link>
-                      ))}
+                      )} />
                     </div>
                   )}
                 </div>
@@ -1526,7 +1690,7 @@ export default function DashboardPage() {
                       <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                       </div>
-                      <h3 className="font-semibold text-base">Validées par le client</h3>
+                      <h3 className="font-semibold text-base">Validées par le client{dashPeriodSuffix}</h3>
                       {list.length > 0 && <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{list.length}</span>}
                     </div>
                     <Link href="/fiches?status=ACCEPTEE"><Button variant="ghost" size="sm" className="text-muted-foreground gap-1">Voir toutes <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
@@ -1535,9 +1699,9 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground px-1">Aucune fiche validée pour le moment.</p>
                   ) : (
                     <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                      {list.map((fiche, idx) => (
+                      <CollapsibleList items={list} renderItem={(fiche: FicheAffectee, idx: number, total: number) => (
                         <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
-                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer ${idx < list.length - 1 ? "border-b border-border" : ""}`}>
+                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer ${idx < total - 1 ? "border-b border-border" : ""}`}>
                             <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center shrink-0">
                               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                             </div>
@@ -1548,7 +1712,7 @@ export default function DashboardPage() {
                             <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
                           </div>
                         </Link>
-                      ))}
+                      )} />
                     </div>
                   )}
                 </div>
@@ -1565,7 +1729,7 @@ export default function DashboardPage() {
                       <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
                         <XCircle className="w-4 h-4 text-red-500" />
                       </div>
-                      <h3 className="font-semibold text-base">Refusées par le client</h3>
+                      <h3 className="font-semibold text-base">Refusées par le client{dashPeriodSuffix}</h3>
                       {list.length > 0 && <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{list.length}</span>}
                     </div>
                     <Link href="/fiches?status=REFUSEE"><Button variant="ghost" size="sm" className="text-muted-foreground gap-1">Voir toutes <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
@@ -1574,9 +1738,9 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground px-1">Aucune fiche refusée.</p>
                   ) : (
                     <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                      {list.map((fiche, idx) => (
+                      <CollapsibleList items={list} renderItem={(fiche: FicheAffectee, idx: number, total: number) => (
                         <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
-                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-red-50/40 dark:hover:bg-red-950/20 transition-colors cursor-pointer ${idx < list.length - 1 ? "border-b border-border" : ""}`}>
+                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-red-50/40 dark:hover:bg-red-950/20 transition-colors cursor-pointer ${idx < total - 1 ? "border-b border-border" : ""}`}>
                             <div className="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center shrink-0">
                               <XCircle className="w-4 h-4 text-red-500" />
                             </div>
@@ -1587,7 +1751,7 @@ export default function DashboardPage() {
                             <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
                           </div>
                         </Link>
-                      ))}
+                      )} />
                     </div>
                   )}
                 </div>
@@ -1604,7 +1768,7 @@ export default function DashboardPage() {
                       <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800/40 flex items-center justify-center">
                         <Archive className="w-4 h-4 text-slate-500" />
                       </div>
-                      <h3 className="font-semibold text-base">Archivées</h3>
+                      <h3 className="font-semibold text-base">Archivées{dashPeriodSuffix}</h3>
                       {list.length > 0 && <span className="bg-slate-400 text-white text-xs font-bold px-2 py-0.5 rounded-full">{list.length}</span>}
                     </div>
                     <Link href="/fiches?status=ARCHIVEE"><Button variant="ghost" size="sm" className="text-muted-foreground gap-1">Voir toutes <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
@@ -1613,9 +1777,9 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground px-1">Aucune fiche archivée.</p>
                   ) : (
                     <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                      {list.map((fiche, idx) => (
+                      <CollapsibleList items={list} renderItem={(fiche: FicheAffectee, idx: number, total: number) => (
                         <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
-                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/20 transition-colors cursor-pointer ${idx < list.length - 1 ? "border-b border-border" : ""}`}>
+                          <div className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/20 transition-colors cursor-pointer ${idx < total - 1 ? "border-b border-border" : ""}`}>
                             <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800/40 flex items-center justify-center shrink-0">
                               <Archive className="w-4 h-4 text-slate-400" />
                             </div>
@@ -1626,7 +1790,7 @@ export default function DashboardPage() {
                             <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
                           </div>
                         </Link>
-                      ))}
+                      )} />
                     </div>
                   )}
                 </div>

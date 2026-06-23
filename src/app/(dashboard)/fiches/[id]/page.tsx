@@ -156,6 +156,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showAnnulationDialog, setShowAnnulationDialog] = useState(false);
   const [annulationMotif, setAnnulationMotif] = useState("");
+  const [montantHtInput, setMontantHtInput] = useState("");
 
   const { profile } = useProfile();
   const router = useRouter();
@@ -259,7 +260,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       await supabase.from("fiches").update({ motif_refus: motifRefus }).eq("id", fiche.id);
     }
 
-    setFiche({ ...fiche, status: newStatus, ...(motifRefus ? { motif_refus: motifRefus } : {}) });
+    const montantHtValue = newStatus === "ACCEPTEE" && montantHtInput ? parseFloat(montantHtInput) : null;
+    if (newStatus === "ACCEPTEE" && montantHtValue) {
+      await supabase.from("fiches").update({ montant_ht: montantHtValue }).eq("id", fiche.id);
+    }
+
+    setFiche({ ...fiche, status: newStatus, ...(motifRefus ? { motif_refus: motifRefus } : {}), ...(montantHtValue ? { montant_ht: montantHtValue } : {}) });
     toast.success(`Statut changé : ${STATUS_LABELS[newStatus]}`);
     if (newStatus === "ACCEPTEE") {
       confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#1E3A5F", "#F97316", "#10B981", "#F59E0B"] });
@@ -824,6 +830,11 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                       {MOTIF_REFUS_LABELS[fiche.motif_refus]}
                     </span>
                   )}
+                  {fiche.status === "ACCEPTEE" && fiche.montant_ht != null && (
+                    <span className="ml-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2.5 py-0.5 rounded-full">
+                      {Number(fiche.montant_ht).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} HT
+                    </span>
+                  )}
                 </div>
                 <button
                   type="button"
@@ -942,7 +953,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               )}
               {/* Boutons classiques pour le référent */}
-              {availableTransitions.length > 0 && (profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && availableTransitions.map((status) => (
+              {availableTransitions.length > 0 && (profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && fiche.created_by === profile?.id && availableTransitions.map((status) => (
                 <Button key={status}
                   onClick={() => { setPendingStatus(status); setStatusComment(""); }}
                   disabled={transitioning} size="sm"
@@ -1221,6 +1232,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                             type="date"
                             value={rdvDateValue}
                             onChange={(e) => setRdvDateValue(e.target.value)}
+                            onKeyDown={(e) => e.preventDefault()}
                             className="h-9 rounded-lg border border-border bg-card px-3 text-sm"
                           />
                           <Button size="sm" className="rounded-lg h-8 text-xs" onClick={async () => {
@@ -1785,6 +1797,32 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 )}
               </div>
             )}
+            {pendingStatus === "ACCEPTEE" && (
+              <div className="space-y-1.5">
+                <label htmlFor="montant-ht" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Montant HT du contrat (€) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="montant-ht"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Ex : 12500.00"
+                  value={montantHtInput}
+                  onChange={(e) => setMontantHtInput(e.target.value)}
+                  className={`w-full h-10 rounded-lg border bg-card px-3 text-sm transition-colors ${
+                    !montantHtInput || parseFloat(montantHtInput) <= 0
+                      ? "border-red-300 dark:border-red-700 focus-visible:ring-red-400/30"
+                      : "border-emerald-300 dark:border-emerald-700"
+                  }`}
+                />
+                {(!montantHtInput || parseFloat(montantHtInput) <= 0) && (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />Le montant HT est obligatoire pour une acceptation.
+                  </p>
+                )}
+              </div>
+            )}
             <div className="space-y-1.5">
               <label htmlFor="textarea-motif" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Motif <span className="text-red-500">*</span>
@@ -1810,7 +1848,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           </div>
 
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); }}>Annuler</Button>
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); setMontantHtInput(""); }}>Annuler</Button>
             <Button
               onClick={async () => {
                 if (!pendingStatus) return;
@@ -1822,12 +1860,17 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   toast.error("Veuillez sélectionner le type de refus.");
                   return;
                 }
+                if (pendingStatus === "ACCEPTEE" && (!montantHtInput || parseFloat(montantHtInput) <= 0)) {
+                  toast.error("Veuillez saisir le montant HT du contrat.");
+                  return;
+                }
                 await handleStatusChange(pendingStatus, statusComment.trim(), selectedMotifRefus as MotifRefus || undefined);
                 setPendingStatus(null);
                 setStatusComment("");
                 setSelectedMotifRefus("");
+                setMontantHtInput("");
               }}
-              disabled={transitioning || !statusComment.trim() || (pendingStatus === "REFUSEE" && !selectedMotifRefus)}
+              disabled={transitioning || !statusComment.trim() || (pendingStatus === "REFUSEE" && !selectedMotifRefus) || (pendingStatus === "ACCEPTEE" && (!montantHtInput || parseFloat(montantHtInput) <= 0))}
               className={`rounded-xl gap-2 text-white ${
                 pendingStatus === "REFUSEE"
                   ? "bg-red-600 hover:bg-red-700"

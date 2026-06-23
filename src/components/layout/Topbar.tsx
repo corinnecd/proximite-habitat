@@ -2,23 +2,24 @@
 
 import { Bell, Search, FileText, CheckCheck, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getUnreadNotificationCount, getNotifications, markAllNotificationsRead, markNotificationRead } from "@/lib/data/notifications";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { toast } from "sonner";
 import type { Notification } from "@/types/database";
 import { useSearch } from "@/components/layout/SearchProvider";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export function Topbar({ title, actions }: { title?: string; actions?: React.ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [recentNotifs, setRecentNotifs] = useState<Notification[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const { open: openSearch } = useSearch();
   const router = useRouter();
+  const pathname = usePathname();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fetchUnread = useCallback(async (uid: string) => {
@@ -69,6 +70,10 @@ export function Topbar({ title, actions }: { title?: string; actions?: React.Rea
     return () => { channelCleanup?.(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (userId) fetchUnread(userId);
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fermer le dropdown en cliquant en dehors
   useEffect(() => {

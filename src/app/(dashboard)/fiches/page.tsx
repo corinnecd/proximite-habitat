@@ -26,11 +26,11 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
-type PeriodFilter = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER";
+type PeriodFilter = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER" | "SEMESTER" | "YEAR";
 
 const PERIOD_LABELS: Record<PeriodFilter, string> = {
   ALL: "Toutes les dates", TODAY: "Aujourd'hui",
-  WEEK: "Cette semaine", MONTH: "Ce mois", QUARTER: "Ce trimestre",
+  WEEK: "Cette semaine", MONTH: "Ce mois", QUARTER: "Ce trimestre", SEMESTER: "Ce semestre", YEAR: "Cette année",
 };
 
 function getPeriodDates(period: PeriodFilter): { from: string; to: string } | null {
@@ -59,6 +59,13 @@ function getPeriodDates(period: PeriodFilter): { from: string; to: string } | nu
     const from = new Date(now.getFullYear(), q * 3, 1);
     const to   = new Date(now.getFullYear(), q * 3 + 3, 0);
     return { from: fmt(from), to: fmt(to) };
+  }
+  if (period === "SEMESTER") {
+    const sem = now.getMonth() < 6 ? 0 : 1;
+    return { from: fmt(new Date(now.getFullYear(), sem * 6, 1)), to: fmt(new Date(now.getFullYear(), sem * 6 + 6, 0)) };
+  }
+  if (period === "YEAR") {
+    return { from: fmt(new Date(now.getFullYear(), 0, 1)), to: fmt(new Date(now.getFullYear(), 11, 31)) };
   }
   return null;
 }

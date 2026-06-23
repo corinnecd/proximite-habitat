@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export interface FicheStepperProps {
   /** En mode édition : ID de la fiche à reprendre */
   ficheId?: string;
   /** Données initiales pré-remplissant le formulaire */
-  initialData?: Partial<Record<string, unknown>>;
+  initialData?: Partial<FicheFormData>;
   /** Photos déjà persistées (chargées depuis fiche_photos) */
   initialPhotos?: Array<{ id: string; storage_path: string; original_name: string }>;
   /** URL publique de la signature déjà enregistrée (mode édition) */
@@ -69,8 +69,10 @@ const STEPS = [
 
 const DEFAULT_FORM_VALUES = {
   prospect_nom: "", prospect_prenom: "", prospect_adresse: "",
-  prospect_cp: "", prospect_ville: "", prospect_telephone: "",
+  prospect_cp: "", prospect_ville: "", prospect_telephone: "", prospect_email: "",
+  departement_code: null, ville_id: null,
   disponibilites: [] as string[], date_visite: "", heure_visite: "",
+  rdv_date: "", referent_nom: "", referent_telephone: "",
   annee_construction: "", annee_emmenagement: "",
   temperature_confort: "", surface_chauffee: "",
   nb_habitants: null as number | null, maison_en_vente: null as boolean | null,
@@ -105,7 +107,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
 
   const router = useRouter();
   const { profile } = useProfile();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const methods = useForm({
     defaultValues: { ...DEFAULT_FORM_VALUES, ...(initialData ?? {}) },
@@ -125,14 +127,16 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
   useEffect(() => {
     if (!initialPhotos || initialPhotos.length === 0) return;
     async function loadSignedUrls() {
-      const withUrls: UploadedPhoto[] = await Promise.all(
+      const results = await Promise.all(
         (initialPhotos ?? []).map(async (p) => {
           const { data } = await supabase.storage.from("photos").createSignedUrl(p.storage_path, 7200);
-          return { ...p, url: data?.signedUrl ?? "" };
+          const url = data?.signedUrl ?? "";
+          return url ? { ...p, url } : null;
         })
       );
+      // B-08 : exclure les photos dont l'URL signée est invalide
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setUploadedPhotos(withUrls);
+      setUploadedPhotos(results.filter((r): r is UploadedPhoto => r !== null));
     }
     loadSignedUrls();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,27 +156,29 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     return `PHC-${dateStr}-${time}${rand}`;
   }
 
-  /** Upload un lot de fichiers vers storage + insertion dans fiche_photos */
+  /** Upload un lot de fichiers en parallèle vers storage + insertion dans fiche_photos */
   async function uploadPhotoFiles(files: File[], ficheId: string): Promise<UploadedPhoto[]> {
     if (!profile) return [];
-    const result: UploadedPhoto[] = [];
-    for (const file of files) {
+    const results = await Promise.all(files.map(async (file) => {
       const path = `${profile.organization_id}/${ficheId}/${Date.now()}-${file.name}`;
       const { error } = await supabase.storage.from("photos").upload(path, file);
-      if (error) { toast.error(`Erreur upload ${file.name}`); continue; }
+      if (error) { toast.error(`Erreur upload ${file.name}`); return null; }
       const { data: ins } = await supabase
         .from("fiche_photos")
         .insert({ fiche_id: ficheId, organization_id: profile.organization_id, storage_path: path, original_name: file.name, size: file.size })
         .select("id").single();
       const { data: signedData } = await supabase.storage.from("photos").createSignedUrl(path, 7200);
-      result.push({
+      const signedUrl = signedData?.signedUrl ?? "";
+      // B-08 : ne pas ajouter les photos sans URL signée valide
+      if (!signedUrl) return null;
+      return {
         id: ins?.id ?? crypto.randomUUID(),
-        url: signedData?.signedUrl ?? "",
+        url: signedUrl,
         original_name: file.name,
         storage_path: path,
-      });
-    }
-    return result;
+      } satisfies UploadedPhoto;
+    }));
+    return results.filter((r): r is UploadedPhoto => r !== null);
   }
 
   // ── Gestion des photos ─────────────────────────────────────────────────────
@@ -220,9 +226,15 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
       prospect_cp: values.prospect_cp || "",
       prospect_ville: values.prospect_ville || "",
       prospect_telephone: values.prospect_telephone || "",
+      prospect_email: values.prospect_email || null,
+      departement_code: values.departement_code || null,
+      ville_id: values.ville_id || null,
       disponibilites: values.disponibilites || [],
       date_visite: values.date_visite || null,
       heure_visite: values.heure_visite || null,
+      rdv_date: values.rdv_date || null,
+      referent_nom: values.referent_nom || null,
+      referent_telephone: values.referent_telephone || null,
       annee_construction: values.annee_construction ? Number(values.annee_construction) : null,
       annee_emmenagement: values.annee_emmenagement ? Number(values.annee_emmenagement) : null,
       temperature_confort: values.temperature_confort ? Number(values.temperature_confort) : null,
@@ -243,6 +255,17 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
       observations: values.observations || null,
       consentement_rgpd: values.consentement_rgpd || false,
     };
+
+    // Auto-match ville_id if missing but prospect_ville is set
+    if (!cleanData.ville_id && cleanData.prospect_ville) {
+      let q = supabase.from("zones_villes").select("id").ilike("nom", cleanData.prospect_ville.trim());
+      if (cleanData.prospect_cp) q = q.eq("code_postal", cleanData.prospect_cp.trim());
+      const { data: matchedVilles } = await q.limit(1);
+      if (matchedVilles && matchedVilles.length === 1) {
+        cleanData.ville_id = matchedVilles[0].id;
+        methods.setValue("ville_id", matchedVilles[0].id);
+      }
+    }
 
     try {
       if (ficheIdRef.current) {
@@ -473,7 +496,21 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
                 <div key={i} className="flex items-center flex-1 last:flex-none">
                   <button
                     type="button"
-                    onClick={() => { setStepDirection(i > currentStep ? "next" : "prev"); setCurrentStep(i); }}
+                    onClick={async () => {
+                      // U-02 : valider étape 1 avant de sauter en avant
+                      if (i > currentStep && currentStep === 0) {
+                        const result = step1Schema.safeParse(methods.getValues());
+                        if (!result.success) {
+                          result.error.issues.forEach((issue) => {
+                            methods.setError(String(issue.path[0]) as keyof FicheFormData, { type: "manual", message: issue.message });
+                          });
+                          toast.error("Veuillez remplir les champs obligatoires avant de continuer");
+                          return;
+                        }
+                      }
+                      setStepDirection(i > currentStep ? "next" : "prev");
+                      setCurrentStep(i);
+                    }}
                     aria-current={active ? "step" : undefined}
                     className="flex flex-col items-center gap-1.5 group"
                   >

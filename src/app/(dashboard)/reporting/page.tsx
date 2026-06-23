@@ -11,7 +11,7 @@ import type { FicheStatus, MotifRefus } from "@/types/database";
 import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
 import {
   BarChart3, TrendingUp, Users, FileText, Search, ChevronDown, ChevronUp,
-  CheckCircle2, XCircle, Clock, ArrowUp, ArrowDown, Minus,
+  CheckCircle2, XCircle, Clock, ArrowUp, ArrowDown, Minus, Euro,
   Medal, Trophy, RefreshCw, CalendarDays, MapPin, Target,
 } from "lucide-react";
 import {
@@ -22,8 +22,8 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface StatusCount { status: FicheStatus; count: number; }
-interface ReferentRow { name: string; total: number; submitted: number; accepted: number; }
-interface CommercialRow { name: string; assigned: number; accepted: number; refused: number; rate: number; }
+interface ReferentRow { name: string; total: number; submitted: number; accepted: number; ca: number; }
+interface CommercialRow { name: string; assigned: number; accepted: number; refused: number; rate: number; ca: number; }
 interface VilleRow { ville: string; accepted: number; refused: number; total: number; rate: number; }
 interface WeeklyPoint { label: string; soumises: number; acceptees: number; }
 interface DelaiInfo { avg: number; min: number; max: number; count: number; }
@@ -105,11 +105,11 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 
 
 // ── Filtre période de soumission ──────────────────────────────────────────────
-type PeriodFilter = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER";
+type PeriodFilter = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER" | "SEMESTER" | "YEAR";
 
 const PERIOD_LABELS: Record<PeriodFilter, string> = {
   ALL: "Toutes les dates", TODAY: "Aujourd'hui",
-  WEEK: "Cette semaine", MONTH: "Ce mois", QUARTER: "Ce trimestre",
+  WEEK: "Cette semaine", MONTH: "Ce mois", QUARTER: "Ce trimestre", SEMESTER: "Ce semestre", YEAR: "Cette année",
 };
 
 function getPeriodDates(period: PeriodFilter): { from: string; to: string } | null {
@@ -131,6 +131,40 @@ function getPeriodDates(period: PeriodFilter): { from: string; to: string } | nu
     const q = Math.floor(now.getMonth() / 3);
     return { from: fmt(new Date(now.getFullYear(), q * 3, 1)), to: fmt(new Date(now.getFullYear(), q * 3 + 3, 0)) };
   }
+  if (period === "SEMESTER") {
+    const sem = now.getMonth() < 6 ? 0 : 1;
+    return { from: fmt(new Date(now.getFullYear(), sem * 6, 1)), to: fmt(new Date(now.getFullYear(), sem * 6 + 6, 0)) };
+  }
+  if (period === "YEAR") {
+    return { from: fmt(new Date(now.getFullYear(), 0, 1)), to: fmt(new Date(now.getFullYear(), 11, 31)) };
+  }
+  return null;
+}
+function getReportPeriodLabel(period: PeriodFilter): string | null {
+  if (period === "ALL") return null;
+  const now = new Date();
+  const moisNoms = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+  if (period === "TODAY") return `${now.getDate()} ${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
+  if (period === "WEEK") {
+    const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const monday = new Date(now); monday.setDate(now.getDate() - day);
+    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+    return `${monday.getDate()} – ${sunday.getDate()} ${moisNoms[sunday.getMonth()]} ${sunday.getFullYear()}`;
+  }
+  if (period === "MONTH") return `${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
+  if (period === "QUARTER") {
+    const q = Math.floor(now.getMonth() / 3);
+    const from = new Date(now.getFullYear(), q * 3, 1);
+    const to = new Date(now.getFullYear(), q * 3 + 3, 0);
+    return `${from.getDate()} ${moisNoms[from.getMonth()]} – ${to.getDate()} ${moisNoms[to.getMonth()]} ${to.getFullYear()}`;
+  }
+  if (period === "SEMESTER") {
+    const sem = now.getMonth() < 6 ? 0 : 1;
+    const from = new Date(now.getFullYear(), sem * 6, 1);
+    const to = new Date(now.getFullYear(), sem * 6 + 6, 0);
+    return `${from.getDate()} ${moisNoms[from.getMonth()]} – ${to.getDate()} ${moisNoms[to.getMonth()]} ${to.getFullYear()}`;
+  }
+  if (period === "YEAR") return `${now.getFullYear()}`;
   return null;
 }
 
@@ -152,11 +186,13 @@ export default function ReportingPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("ALL");
   const [pieTooltipPos, setPieTooltipPos] = useState<{ x: number; y: number } | undefined>(undefined);
+  const [showAllVilles, setShowAllVilles] = useState(false);
   const [showAllReferents, setShowAllReferents] = useState(false);
   const [showAllCommerciaux, setShowAllCommerciaux] = useState(false);
   const [commSearch, setCommSearch] = useState("");
   const [refSearch, setRefSearch] = useState("");
   const [motifRefusCounts, setMotifRefusCounts] = useState<Record<MotifRefus, number>>({ RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 });
+  const [caTotal, setCaTotal] = useState(0);
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
@@ -184,7 +220,13 @@ export default function ReportingPage() {
         setStatusCounts(statuses.map((s) => ({ status: s, count: 0 })));
         setTotalFiches(0);
         setReferents([]);
-        setCommerciaux([]);
+        // Still load all commercials even with 0 fiches
+        const { data: emptyCommProfiles } = await supabase
+          .from("profiles").select("id, first_name, last_name")
+          .eq("role", "COMMERCIAL").eq("is_active", true);
+        setCommerciaux((emptyCommProfiles ?? []).map((p) => ({
+          name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0,
+        })));
         setVilles([]);
         setWeeklyData([]);
         setDelai({ avg: 0, min: 0, max: 0, count: 0 });
@@ -209,7 +251,7 @@ export default function ReportingPage() {
     // ── Données détaillées des fiches ──
     let fichesQuery = supabase
       .from("fiches")
-      .select("id, created_by, assigned_to, status, motif_refus, prospect_ville, created_at, profiles!created_by(first_name, last_name), assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)")
+      .select("id, created_by, assigned_to, status, motif_refus, montant_ht, prospect_ville, ville_id, created_at, profiles!created_by(first_name, last_name), assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)")
       .neq("status", "BROUILLON");
     if (isComm) fichesQuery = fichesQuery.eq("assigned_to", profileId);
     if (ficheIdsForPeriod) fichesQuery = fichesQuery.in("id", ficheIdsForPeriod);
@@ -217,7 +259,7 @@ export default function ReportingPage() {
 
     type FicheRow = {
       id: string; created_by: string; assigned_to: string | null; status: string;
-      motif_refus: MotifRefus | null; prospect_ville: string | null; created_at: string;
+      montant_ht: number | null; motif_refus: MotifRefus | null; prospect_ville: string | null; ville_id: string | null; created_at: string;
       profiles: { first_name: string; last_name: string } | null;
       assigned_to_profile: { first_name: string; last_name: string } | null;
     };
@@ -239,11 +281,14 @@ export default function ReportingPage() {
         const key = f.created_by;
         if (!refMap[key]) {
           const name = f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Inconnu";
-          refMap[key] = { name, total: 0, submitted: 0, accepted: 0 };
+          refMap[key] = { name, total: 0, submitted: 0, accepted: 0, ca: 0 };
         }
         refMap[key].total++;
         refMap[key].submitted++;
-        if (f.status === "ACCEPTEE") refMap[key].accepted++;
+        if (f.status === "ACCEPTEE") {
+          refMap[key].accepted++;
+          if (f.montant_ht) refMap[key].ca += Number(f.montant_ht);
+        }
       }
       setReferents(Object.values(refMap).sort((a, b) => b.total - a.total));
     }
@@ -251,15 +296,27 @@ export default function ReportingPage() {
     // ── 2. Taux de conversion par commercial ──
     const commMap: Record<string, CommercialRow> = {};
     const COMM_STATUSES = ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+    // Fetch all COMMERCIAL profiles so those with 0 fiches also appear
+    const { data: allCommProfiles } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name")
+      .eq("role", "COMMERCIAL")
+      .eq("is_active", true);
+    for (const p of allCommProfiles ?? []) {
+      commMap[p.id] = { name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
+    }
     for (const f of fiches) {
       if (!f.assigned_to || !COMM_STATUSES.includes(f.status)) continue;
       const key = f.assigned_to;
       if (!commMap[key]) {
         const name = f.assigned_to_profile ? `${f.assigned_to_profile.first_name} ${f.assigned_to_profile.last_name}` : "Inconnu";
-        commMap[key] = { name, assigned: 0, accepted: 0, refused: 0, rate: 0 };
+        commMap[key] = { name, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
       }
       commMap[key].assigned++;
-      if (f.status === "ACCEPTEE") commMap[key].accepted++;
+      if (f.status === "ACCEPTEE") {
+        commMap[key].accepted++;
+        if (f.montant_ht) commMap[key].ca += Number(f.montant_ht);
+      }
       if (f.status === "REFUSEE") commMap[key].refused++;
     }
     const commRows = Object.values(commMap).map((c) => ({
@@ -267,30 +324,53 @@ export default function ReportingPage() {
       rate: c.assigned > 0 ? Math.round((c.accepted / c.assigned) * 100) : 0,
     })).sort((a, b) => b.assigned - a.assigned);
     setCommerciaux(commRows);
+    setCaTotal(commRows.reduce((sum, c) => sum + c.ca, 0));
 
     // ── 3. Répartition géographique (basée sur les villes planifiées) ──
-    const { data: planifRows } = await supabase
+    let planifQuery = supabase
       .from("planification_hebdo")
-      .select("ville_id, zones_villes!inner(nom)");
-    type PlanifRow = { ville_id: string; zones_villes: { nom: string } };
-    const plannedVilleNames = new Set<string>();
-    for (const pr of (planifRows ?? []) as unknown as PlanifRow[]) {
-      plannedVilleNames.add(pr.zones_villes.nom.trim().toUpperCase());
+      .select("ville_id, zones_villes!inner(nom)")
+      .eq("organization_id", profile!.organization_id);
+    if (dates) {
+      const fromDate = new Date(dates.from + "T00:00:00");
+      const fromDay = fromDate.getDay();
+      fromDate.setDate(fromDate.getDate() - (fromDay === 0 ? 6 : fromDay - 1));
+      const mondayOfFrom = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, "0")}-${String(fromDate.getDate()).padStart(2, "0")}`;
+      planifQuery = planifQuery.gte("semaine_du", mondayOfFrom).lte("semaine_du", dates.to);
     }
+    const { data: planifRows } = await planifQuery;
+    type PlanifRow = { ville_id: string; zones_villes: { nom: string } };
+    // Build a map of planned ville_id → ville name
+    const plannedVilleMap = new Map<string, string>();
+    for (const pr of (planifRows ?? []) as unknown as PlanifRow[]) {
+      plannedVilleMap.set(pr.ville_id, pr.zones_villes.nom.trim());
+    }
+    // Initialize all planned villes (even those with 0 fiches)
     const villeMap: Record<string, VilleRow> = {};
+    for (const [vid, vnom] of plannedVilleMap) {
+      villeMap[vid] = { ville: vnom, accepted: 0, refused: 0, total: 0, rate: 0 };
+    }
+    // Match fiches by ville_id first, then fallback to prospect_ville name match
+    const plannedNamesUpper = new Map<string, string>();
+    for (const [vid, vnom] of plannedVilleMap) {
+      plannedNamesUpper.set(vnom.toUpperCase(), vid);
+    }
     for (const f of fiches) {
-      if (!f.prospect_ville) continue;
-      const vKey = f.prospect_ville.trim().toUpperCase();
-      if (!plannedVilleNames.has(vKey)) continue;
-      if (!villeMap[vKey]) villeMap[vKey] = { ville: f.prospect_ville.trim(), accepted: 0, refused: 0, total: 0, rate: 0 };
-      villeMap[vKey].total++;
-      if (f.status === "ACCEPTEE") villeMap[vKey].accepted++;
-      if (f.status === "REFUSEE") villeMap[vKey].refused++;
+      let matchKey: string | null = null;
+      if (f.ville_id && plannedVilleMap.has(f.ville_id)) {
+        matchKey = f.ville_id;
+      } else if (f.prospect_ville) {
+        const nameKey = f.prospect_ville.trim().toUpperCase();
+        if (plannedNamesUpper.has(nameKey)) matchKey = plannedNamesUpper.get(nameKey)!;
+      }
+      if (!matchKey) continue;
+      villeMap[matchKey].total++;
+      if (f.status === "ACCEPTEE") villeMap[matchKey].accepted++;
+      if (f.status === "REFUSEE") villeMap[matchKey].refused++;
     }
     const villeRows = Object.values(villeMap)
       .map((v) => ({ ...v, rate: v.total > 0 ? Math.round((v.accepted / v.total) * 100) : 0 }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 15);
+      .sort((a, b) => b.total - a.total);
     setVilles(villeRows);
 
     // ── 4. Évolution semaine par semaine (8-12 dernières semaines) ──
@@ -381,6 +461,9 @@ export default function ReportingPage() {
   const acceptanceRate = assignedBase > 0 ? Math.round((accepted / assignedBase) * 100) : 0;
   const refusalRate = assignedBase > 0 ? Math.round((refused / assignedBase) * 100) : 0;
   const inProgressRate = totalFiches > 0 ? Math.round((inProgress / totalFiches) * 100) : 0;
+  const _pl = getReportPeriodLabel(periodFilter);
+  const periodSuffix = _pl ? ` (${_pl})` : "";
+  const isAllPeriod = periodFilter === "ALL";
   // Taux de transformation = fiches soumises non encore validées et affectées
   const pendingValidation = soumises + validees;
   const pendingRate = totalFiches > 0 ? Math.round((pendingValidation / totalFiches) * 100) : 0;
@@ -438,7 +521,7 @@ export default function ReportingPage() {
     <>
       <Topbar
         title={isCommercial ? "Mon reporting" : "Reporting direction"}
-        actions={<ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${PERIOD_LABELS[periodFilter]}`} filename="reporting" />}
+        actions={<ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${_pl ? `${PERIOD_LABELS[periodFilter]} (${_pl})` : PERIOD_LABELS[periodFilter]}`} filename="reporting" />}
       />
       <div className="p-6 lg:p-8 space-y-6">
 
@@ -487,136 +570,139 @@ export default function ReportingPage() {
           </div>
         </div>
 
-        {/* ── KPIs (5 indicateurs clés) ────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* ── KPIs (6 indicateurs clés — 2 lignes de 3) ────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <KpiCard
-            label={isCommercial ? "Mes fiches" : "Total fiches"} value={totalFiches}
+            label={(isAllPeriod ? (isCommercial ? "Mes fiches globales" : "Total global fiches") : (isCommercial ? "Mes fiches" : "Total fiches")) + periodSuffix} value={totalFiches}
             Icon={FileText} iconBg="bg-primary/10" iconColor="text-primary"
             border="border-l-primary"
           />
           <KpiCard
-            label="Taux d'acceptation" value={`${acceptanceRate}%`}
-            sub={`${accepted} acceptée${accepted > 1 ? "s" : ""} / ${assignedBase} affectée${assignedBase > 1 ? "s" : ""}`}
-            Icon={CheckCircle2} iconBg="bg-emerald-100 dark:bg-emerald-900/30" iconColor="text-emerald-600"
-            border="border-l-emerald-500"
+            label={(isAllPeriod ? (isCommercial ? "Mon CA global HT" : "CA global HT consolidé") : (isCommercial ? "Mon CA HT" : "CA HT consolidé")) + periodSuffix}
+            value={caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+            sub={`${accepted} contrat${accepted > 1 ? "s" : ""} signé${accepted > 1 ? "s" : ""}`}
+            Icon={Euro} iconBg="bg-amber-100 dark:bg-amber-900/30" iconColor="text-amber-600"
+            border="border-l-amber-500"
           />
           <KpiCard
-            label="Taux de refus" value={`${refusalRate}%`}
+            label={(isAllPeriod ? "Chiffre d'affaires moyen global" : "Chiffre d'affaires moyen") + periodSuffix}
+            value={accepted > 0 ? Math.round(caTotal / accepted).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}
+            sub={accepted > 0 ? `sur ${accepted} contrat${accepted > 1 ? "s" : ""}` : "Aucun contrat"}
+            Icon={BarChart3} iconBg="bg-blue-100 dark:bg-blue-900/30" iconColor="text-blue-600"
+            border="border-l-blue-500"
+          />
+          <KpiCard
+            label={(isAllPeriod ? "Taux global de refus" : "Taux de refus") + periodSuffix} value={`${refusalRate}%`}
             sub={`${refused} refusée${refused > 1 ? "s" : ""} / ${assignedBase} affectée${assignedBase > 1 ? "s" : ""}`}
             Icon={XCircle} iconBg="bg-red-100 dark:bg-red-900/30" iconColor="text-red-500"
             border="border-l-red-500"
           />
           <KpiCard
-            label="Taux en cours" value={`${inProgressRate}%`}
+            label={(isAllPeriod ? "Taux global en cours" : "Taux en cours") + periodSuffix} value={`${inProgressRate}%`}
             sub={`${inProgress} fiche${inProgress > 1 ? "s" : ""} · à valider, validées, affectées, attente client`}
             Icon={Clock} iconBg="bg-orange-100 dark:bg-orange-900/30" iconColor="text-orange-600"
             border="border-l-orange-500"
           />
           <KpiCard
-            label="Taux de transformation" value={`${pendingRate}%`}
-            sub={`${pendingValidation} en attente sur ${totalFiches} fiche${totalFiches > 1 ? "s" : ""}`}
-            Icon={Target} iconBg="bg-primary/10" iconColor="text-primary"
-            border="border-l-primary"
+            label={(isAllPeriod ? (isCommercial ? "Mon taux global de conversion" : "Taux global de conversion") : (isCommercial ? "Mon taux de conversion" : "Taux de conversion global")) + periodSuffix}
+            value={`${acceptanceRate}%`}
+            sub={isCommercial ? "Mes fiches acceptées / affectées" : "Toutes les fiches"}
+            Icon={TrendingUp} iconBg="bg-emerald-100 dark:bg-emerald-900/30" iconColor="text-emerald-600"
+            border="border-l-emerald-500"
           />
         </div>
 
-        {/* ── Analyse des refus par type ──────────────────────────────── */}
-        {refused > 0 && (() => {
-          const MOTIF_COLORS_HEX: Record<MotifRefus, string> = { RDC: "#f97316", ANNULATION: "#f59e0b", REFUS_CLASSIQUE: "#ef4444" };
-          const MOTIF_CARD_COLORS: Record<MotifRefus, { bg: string; text: string; bar: string; icon: string }> = {
-            RDC: { bg: "bg-orange-50 dark:bg-orange-950/20", text: "text-orange-700 dark:text-orange-300", bar: "bg-orange-500", icon: "🚪" },
-            ANNULATION: { bg: "bg-amber-50 dark:bg-amber-950/20", text: "text-amber-700 dark:text-amber-300", bar: "bg-amber-500", icon: "📞" },
-            REFUS_CLASSIQUE: { bg: "bg-red-50 dark:bg-red-950/20", text: "text-red-700 dark:text-red-300", bar: "bg-red-500", icon: "✋" },
-          };
-          const refusChartData = (Object.keys(MOTIF_REFUS_LABELS) as MotifRefus[])
-            .filter((m) => motifRefusCounts[m] > 0)
-            .map((m) => ({ name: MOTIF_REFUS_LABELS[m], value: motifRefusCounts[m], fill: MOTIF_COLORS_HEX[m] }));
-
-          return (
-            <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
-                  <XCircle className="w-4 h-4 text-red-500" />
+        {/* ── Taux de conversion par commercial ──────────────────────────── */}
+        {!isCommercial && commerciaux.length > 0 && (
+          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">Analyse des refus</h3>
-                  <p className="text-[11px] text-muted-foreground">
-                    {refused} refus sur {assignedBase} fiche{assignedBase > 1 ? "s" : ""} affectée{assignedBase > 1 ? "s" : ""} — taux global de {refusalRate}%
-                  </p>
+                  <h3 className="font-semibold text-sm">{isAllPeriod ? "Taux global de conversion" : "Taux de conversion"} par commercial ({commerciaux.length} {commerciaux.length > 1 ? "Commerciaux" : "Commercial"}){periodSuffix}</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Affectées vs Acceptées vs Refusées</p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Donut chart + légende */}
-                <div className="flex flex-col items-center">
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={refusChartData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={45}
-                        outerRadius={75}
-                        paddingAngle={3}
-                        dataKey="value"
-                        labelLine={false}
-                        label={false}
-                      >
-                        {refusChartData.map((entry, i) => (
-                          <Cell key={i} fill={entry.fill} stroke="transparent" />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value: unknown, name: unknown) => [`${value} fiche${Number(value) > 1 ? "s" : ""}`, String(name)]}
-                        contentStyle={{ borderRadius: 12, fontSize: 13, border: "1px solid #e5e7eb" }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-1">
-                    {refusChartData.map((entry) => {
-                      const pct = refused > 0 ? Math.round((entry.value / refused) * 100) : 0;
-                      return (
-                        <div key={entry.name} className="flex items-center gap-1.5 text-xs">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.fill }} />
-                          <span className="text-muted-foreground">{entry.name}</span>
-                          <span className="font-bold">{pct}%</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Détail par type */}
-                <div className="space-y-3">
-                  {(Object.keys(MOTIF_REFUS_LABELS) as MotifRefus[]).map((motif) => {
-                    const count = motifRefusCounts[motif];
-                    const pctRefus = refused > 0 ? Math.round((count / refused) * 100) : 0;
-                    const pctTotal = totalFiches > 0 ? Math.round((count / totalFiches) * 100) : 0;
-                    const c = MOTIF_CARD_COLORS[motif];
-                    return (
-                      <div key={motif} className={`rounded-xl p-4 ${c.bg} border border-transparent hover:border-border/50 transition-all`}>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{c.icon}</span>
-                            <span className="text-sm font-semibold">{MOTIF_REFUS_LABELS[motif]}</span>
-                          </div>
-                          <span className={`text-xl font-bold ${c.text}`}>{count}</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden mb-2">
-                          <div className={`h-full rounded-full ${c.bar} transition-all duration-500`} style={{ width: `${pctRefus}%` }} />
-                        </div>
-                        <div className="flex justify-between text-[11px] text-muted-foreground">
-                          <span><strong className={c.text}>{pctRefus}%</strong> des refus</span>
-                          <span><strong>{pctTotal}%</strong> du total fiches</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Rechercher un commercial…"
+                  value={commSearch}
+                  onChange={(e) => setCommSearch(e.target.value)}
+                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 w-52"
+                />
               </div>
             </div>
-          );
-        })()}
+            {/* Détail par commercial avec CA */}
+            <div className="mt-5">
+              <div className="grid grid-cols-[1fr_50px_50px_50px_50px_80px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+                <span>Commercial</span>
+                <span className="text-right">Affect.</span>
+                <span className="text-right text-emerald-600">Accept.</span>
+                <span className="text-right text-red-500">Refus.</span>
+                <span className="text-right">Conv.</span>
+                <span className="text-right">CA HT</span>
+              </div>
+              <div className={`space-y-0 overflow-y-auto ${showAllCommerciaux || commSearch ? "max-h-[400px]" : "max-h-[250px]"}`}>
+                {(commSearch ? filteredCommerciaux : (showAllCommerciaux ? commerciaux : commerciaux.slice(0, 5))).map((c) => (
+                  <div key={c.name} className="grid grid-cols-[1fr_50px_50px_50px_50px_80px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
+                    <span className="text-sm font-medium truncate">{c.name}</span>
+                    <span className="text-sm text-right tabular-nums text-muted-foreground">{c.assigned}</span>
+                    <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{c.accepted}</span>
+                    <span className="text-sm text-right tabular-nums text-red-500 font-medium">{c.refused}</span>
+                    <span className={`text-sm text-right tabular-nums font-bold ${c.rate >= 50 ? "text-emerald-600" : c.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{c.rate}%</span>
+                    <span className={`text-sm text-right tabular-nums font-bold ${c.ca > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
+                      {c.ca > 0 ? c.ca.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€" : "—"}
+                    </span>
+                  </div>
+                ))}
+                {commSearch && filteredCommerciaux.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-3">Aucun commercial trouvé</p>
+                )}
+              </div>
+              {commerciaux.length > 0 && !commSearch && (
+                <div className="grid grid-cols-[1fr_50px_50px_50px_50px_80px] gap-2 pt-3 mt-1 border-t border-border px-1">
+                  <span className="text-sm font-bold">Total</span>
+                  <span className="text-sm font-bold text-right tabular-nums">{commerciaux.reduce((s, c) => s + c.assigned, 0)}</span>
+                  <span className="text-sm font-bold text-right tabular-nums text-emerald-600">{commerciaux.reduce((s, c) => s + c.accepted, 0)}</span>
+                  <span className="text-sm font-bold text-right tabular-nums text-red-500">{commerciaux.reduce((s, c) => s + c.refused, 0)}</span>
+                  <span />
+                  <span className="text-sm font-bold text-right tabular-nums text-amber-600">{caTotal.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€</span>
+                </div>
+              )}
+            </div>
+            {!commSearch && commerciaux.length > 5 && (
+              <button
+                type="button"
+                onClick={() => setShowAllCommerciaux(!showAllCommerciaux)}
+                className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 py-2 rounded-lg hover:bg-primary/5 transition-colors"
+              >
+                {showAllCommerciaux ? <><ChevronUp className="w-3.5 h-3.5" />Voir moins</> : <><ChevronDown className="w-3.5 h-3.5" />Voir plus ({commerciaux.length - 5} restant{commerciaux.length - 5 > 1 ? "s" : ""})</>}
+              </button>
+            )}
+            <div className="mt-5">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={commChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f1f5f9", radius: 6 }} />
+                  <Bar dataKey="Affectées" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+                  <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+                  <Bar dataKey="Refusées" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-500 inline-block" />Affectées</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" />Refusées</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Ligne 2 : Pie chart + Référents ──────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -627,7 +713,7 @@ export default function ReportingPage() {
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <BarChart3 className="w-4 h-4 text-primary" />
               </div>
-              <h3 className="font-semibold text-sm">Répartition par statut</h3>
+              <h3 className="font-semibold text-sm">{isAllPeriod ? "Répartition globale par statut" : "Répartition par statut"}{periodSuffix}</h3>
             </div>
             {pieData.length === 0 ? (
               <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
@@ -745,10 +831,7 @@ export default function ReportingPage() {
                   <Trophy className="w-4 h-4 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">{isCommercial ? "Ma performance" : "Productivité référents"}</h3>
-                  {!isCommercial && referents.length > 0 && (
-                    <p className="text-[11px] text-muted-foreground">{referents.length} référent{referents.length > 1 ? "s" : ""}</p>
-                  )}
+                  <h3 className="font-semibold text-sm">{isCommercial ? (isAllPeriod ? "Ma performance globale" : "Ma performance") : `${isAllPeriod ? "Ventes globales" : "Ventes"} par référent (${referents.length} Référent${referents.length > 1 ? "s" : ""})`}{periodSuffix}</h3>
                 </div>
               </div>
             </div>
@@ -784,31 +867,27 @@ export default function ReportingPage() {
                     className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
-                <div className={`space-y-3 overflow-y-auto ${showAllReferents || refSearch ? "max-h-[400px]" : "max-h-[280px]"}`}>
-                  {filteredReferents.map((p, i) => {
+                <div className="mb-3">
+                  <div className="grid grid-cols-[1fr_50px_50px_50px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+                    <span>Référent</span>
+                    <span className="text-right">Fiches</span>
+                    <span className="text-right text-emerald-600">Accept.</span>
+                    <span className="text-right">Conv.</span>
+                  </div>
+                </div>
+                <div className="space-y-0">
+                  {(refSearch ? filteredReferents : (showAllReferents ? referents : referents.slice(0, 5))).map((p, i) => {
                     const origIndex = referents.indexOf(p);
-                    const medalColor = origIndex === 0 ? "text-amber-500" : origIndex === 1 ? "text-slate-400" : origIndex === 2 ? "text-amber-700" : "text-muted-foreground";
                     const convRate = p.total > 0 ? Math.round((p.accepted / p.total) * 100) : 0;
                     return (
-                      <div key={p.name} className="flex items-center gap-3">
-                        <div className="w-7 flex items-center justify-center shrink-0">
-                          {origIndex < 3
-                            ? <Medal className={`w-5 h-5 ${medalColor}`} />
-                            : <span className="text-sm font-bold text-muted-foreground tabular-nums">{origIndex + 1}</span>}
+                      <div key={p.name} className="grid grid-cols-[1fr_50px_50px_50px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-5 text-center text-xs font-bold text-muted-foreground shrink-0">{origIndex + 1}</span>
+                          <span className="text-sm font-medium truncate">{p.name}</span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium truncate">{p.name}</p>
-                            <div className="flex items-center gap-2 text-xs shrink-0 ml-2">
-                              {p.accepted > 0 && <span className="text-emerald-600 font-medium">✓ {p.accepted}</span>}
-                              <span className="text-muted-foreground">{p.total} fiche{p.total > 1 ? "s" : ""}</span>
-                              <span className={`font-medium ${convRate >= 50 ? "text-emerald-600" : convRate >= 25 ? "text-orange-500" : "text-muted-foreground"}`}>
-                                {convRate}%
-                              </span>
-                            </div>
-                          </div>
-                          <Bar2 value={p.total} max={maxReferent} colorClass="bg-primary/70" />
-                        </div>
+                        <span className="text-sm text-right tabular-nums text-muted-foreground">{p.total}</span>
+                        <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{p.accepted}</span>
+                        <span className={`text-sm text-right tabular-nums font-medium ${convRate >= 50 ? "text-emerald-600" : convRate >= 25 ? "text-orange-500" : "text-muted-foreground"}`}>{convRate}%</span>
                       </div>
                     );
                   })}
@@ -816,13 +895,21 @@ export default function ReportingPage() {
                     <p className="text-sm text-muted-foreground text-center py-3">Aucun référent trouvé</p>
                   )}
                 </div>
-                {!refSearch && referents.length > 8 && (
+                {referents.length > 0 && !refSearch && (
+                  <div className="grid grid-cols-[1fr_50px_50px_50px] gap-2 pt-3 mt-1 border-t border-border px-1">
+                    <span className="text-sm font-bold">Total</span>
+                    <span className="text-sm font-bold text-right tabular-nums">{referents.reduce((s, r) => s + r.total, 0)}</span>
+                    <span className="text-sm font-bold text-right tabular-nums text-emerald-600">{referents.reduce((s, r) => s + r.accepted, 0)}</span>
+                    <span />
+                  </div>
+                )}
+                {!refSearch && referents.length > 5 && (
                   <button
                     type="button"
                     onClick={() => setShowAllReferents(!showAllReferents)}
                     className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 py-2 rounded-lg hover:bg-primary/5 transition-colors"
                   >
-                    {showAllReferents ? <><ChevronUp className="w-3.5 h-3.5" />Réduire</> : <><ChevronDown className="w-3.5 h-3.5" />Voir les {referents.length} référents</>}
+                    {showAllReferents ? <><ChevronUp className="w-3.5 h-3.5" />Voir moins</> : <><ChevronDown className="w-3.5 h-3.5" />Voir plus ({referents.length - 5} restant{referents.length - 5 > 1 ? "s" : ""})</>}
                   </button>
                 )}
               </>
@@ -830,6 +917,103 @@ export default function ReportingPage() {
           </div>
         </div>
 
+        {/* ── Analyse des refus par type ──────────────────────────────── */}
+        {refused > 0 && (() => {
+          const MOTIF_COLORS_HEX: Record<MotifRefus, string> = { RDC: "#f97316", ANNULATION: "#f59e0b", REFUS_CLASSIQUE: "#ef4444" };
+          const MOTIF_CARD_COLORS: Record<MotifRefus, { bg: string; text: string; bar: string; icon: string }> = {
+            RDC: { bg: "bg-orange-50 dark:bg-orange-950/20", text: "text-orange-700 dark:text-orange-300", bar: "bg-orange-500", icon: "🚪" },
+            ANNULATION: { bg: "bg-amber-50 dark:bg-amber-950/20", text: "text-amber-700 dark:text-amber-300", bar: "bg-amber-500", icon: "📞" },
+            REFUS_CLASSIQUE: { bg: "bg-red-50 dark:bg-red-950/20", text: "text-red-700 dark:text-red-300", bar: "bg-red-500", icon: "✋" },
+          };
+          const refusChartData = (Object.keys(MOTIF_REFUS_LABELS) as MotifRefus[])
+            .filter((m) => motifRefusCounts[m] > 0)
+            .map((m) => ({ name: MOTIF_REFUS_LABELS[m], value: motifRefusCounts[m], fill: MOTIF_COLORS_HEX[m] }));
+
+          return (
+            <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                  <XCircle className="w-4 h-4 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">{isAllPeriod ? "Analyse globale des refus" : "Analyse des refus"}{periodSuffix}</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    {refused} refus sur {assignedBase} fiche{assignedBase > 1 ? "s" : ""} affectée{assignedBase > 1 ? "s" : ""} — taux global de {refusalRate}%
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Donut chart + légende */}
+                <div className="flex flex-col items-center">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={refusChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={3}
+                        dataKey="value"
+                        labelLine={false}
+                        label={false}
+                      >
+                        {refusChartData.map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} stroke="transparent" />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: unknown, name: unknown) => [`${value} fiche${Number(value) > 1 ? "s" : ""}`, String(name)]}
+                        contentStyle={{ borderRadius: 12, fontSize: 13, border: "1px solid #e5e7eb" }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-1">
+                    {refusChartData.map((entry) => {
+                      const pct = refused > 0 ? Math.round((entry.value / refused) * 100) : 0;
+                      return (
+                        <div key={entry.name} className="flex items-center gap-1.5 text-xs">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.fill }} />
+                          <span className="text-muted-foreground">{entry.name}</span>
+                          <span className="font-bold">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Détail par type */}
+                <div className="space-y-3">
+                  {(Object.keys(MOTIF_REFUS_LABELS) as MotifRefus[]).map((motif) => {
+                    const count = motifRefusCounts[motif];
+                    const pctRefus = refused > 0 ? Math.round((count / refused) * 100) : 0;
+                    const pctTotal = totalFiches > 0 ? Math.round((count / totalFiches) * 100) : 0;
+                    const c = MOTIF_CARD_COLORS[motif];
+                    return (
+                      <div key={motif} className={`rounded-xl p-4 ${c.bg} border border-transparent hover:border-border/50 transition-all`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{c.icon}</span>
+                            <span className="text-sm font-semibold">{MOTIF_REFUS_LABELS[motif]}</span>
+                          </div>
+                          <span className={`text-xl font-bold ${c.text}`}>{count}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden mb-2">
+                          <div className={`h-full rounded-full ${c.bar} transition-all duration-500`} style={{ width: `${pctRefus}%` }} />
+                        </div>
+                        <div className="flex justify-between text-[11px] text-muted-foreground">
+                          <span><strong className={c.text}>{pctRefus}%</strong> des refus</span>
+                          <span><strong>{pctTotal}%</strong> du total fiches</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── Évolution semaine par semaine (courbe 12 semaines) ──────────── */}
         <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
@@ -838,7 +1022,7 @@ export default function ReportingPage() {
               <TrendingUp className="w-4 h-4 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm">Tendance hebdomadaire</h3>
+              <h3 className="font-semibold text-sm">{isAllPeriod ? "Tendance globale hebdomadaire" : "Tendance hebdomadaire"}{periodSuffix}</h3>
               <p className="text-[11px] text-muted-foreground mt-0.5">Volume soumis et accepté sur les 12 dernières semaines</p>
             </div>
           </div>
@@ -872,79 +1056,6 @@ export default function ReportingPage() {
           </div>
         </div>
 
-        {/* ── Taux de conversion par commercial ──────────────────────────── */}
-        {!isCommercial && commerciaux.length > 0 && (
-          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Taux de conversion par commercial</h3>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{commerciaux.length} commercial{commerciaux.length > 1 ? "aux" : ""} · Affectées vs Acceptées vs Refusées</p>
-                </div>
-              </div>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Rechercher un commercial…"
-                  value={commSearch}
-                  onChange={(e) => setCommSearch(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 w-52"
-                />
-              </div>
-            </div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={commChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f1f5f9", radius: 6 }} />
-                <Bar dataKey="Affectées" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-                <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-                <Bar dataKey="Refusées" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-              </BarChart>
-            </ResponsiveContainer>
-            <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-500 inline-block" />Affectées</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
-              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" />Refusées</span>
-            </div>
-            {/* Détail par commercial */}
-            <div className={`mt-5 space-y-2 overflow-y-auto ${showAllCommerciaux || commSearch ? "max-h-[400px]" : "max-h-[200px]"}`}>
-              {(commSearch ? filteredCommerciaux : (showAllCommerciaux ? commerciaux : commerciaux.slice(0, 5))).map((c) => (
-                <div key={c.name} className="flex items-center gap-3 text-sm">
-                  <span className="w-32 truncate font-medium">{c.name}</span>
-                  <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden flex">
-                    {c.assigned > 0 && (
-                      <>
-                        <div className="h-full bg-emerald-500 rounded-l-full" style={{ width: `${(c.accepted / c.assigned) * 100}%` }} />
-                        <div className="h-full bg-red-500" style={{ width: `${(c.refused / c.assigned) * 100}%` }} />
-                      </>
-                    )}
-                  </div>
-                  <span className={`w-12 text-right font-bold tabular-nums ${c.rate >= 50 ? "text-emerald-600" : c.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{c.rate}%</span>
-                  <span className="text-xs text-muted-foreground w-20 text-right">{c.assigned} fiche{c.assigned > 1 ? "s" : ""}</span>
-                </div>
-              ))}
-              {commSearch && filteredCommerciaux.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-3">Aucun commercial trouvé</p>
-              )}
-            </div>
-            {!commSearch && commerciaux.length > 5 && (
-              <button
-                type="button"
-                onClick={() => setShowAllCommerciaux(!showAllCommerciaux)}
-                className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 py-2 rounded-lg hover:bg-primary/5 transition-colors"
-              >
-                {showAllCommerciaux ? <><ChevronUp className="w-3.5 h-3.5" />Réduire</> : <><ChevronDown className="w-3.5 h-3.5" />Voir les {commerciaux.length} commerciaux</>}
-              </button>
-            )}
-          </div>
-        )}
-
         {/* ── Répartition géographique ────────────────────────────────────── */}
         {!isCommercial && (
           <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
@@ -953,8 +1064,8 @@ export default function ReportingPage() {
                 <MapPin className="w-4 h-4 text-purple-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-sm">Villes planifiées — résultats</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Performance des fiches dans les villes issues de la planification</p>
+                <h3 className="font-semibold text-sm">{isAllPeriod ? "Villes planifiées — résultats globaux" : "Villes planifiées — résultats"}{periodSuffix} <span className="text-muted-foreground font-normal">({villes.length})</span></h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{villes.length} ville{villes.length > 1 ? "s" : ""} planifiée{villes.length > 1 ? "s" : ""}{periodSuffix}</p>
               </div>
             </div>
             {villes.length > 0 ? (
@@ -966,7 +1077,10 @@ export default function ReportingPage() {
                   <span className="text-right text-red-500">Refus.</span>
                   <span className="text-right">Taux</span>
                 </div>
-                {villes.map((v) => (
+                {(() => {
+                  const sorted = [...villes].sort((a, b) => b.rate !== a.rate ? b.rate - a.rate : b.total - a.total);
+                  return (showAllVilles ? sorted : sorted.slice(0, 5));
+                })().map((v) => (
                   <div key={v.ville} className="grid grid-cols-[1fr_60px_60px_60px_50px] gap-2 items-center text-sm">
                     <span className="font-medium truncate">{v.ville}</span>
                     <span className="text-right tabular-nums text-muted-foreground">{v.total}</span>
@@ -975,6 +1089,14 @@ export default function ReportingPage() {
                     <span className={`text-right tabular-nums font-bold ${v.rate >= 50 ? "text-emerald-600" : v.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{v.rate}%</span>
                   </div>
                 ))}
+                {villes.length > 5 && (
+                  <button
+                    onClick={() => setShowAllVilles(!showAllVilles)}
+                    className="w-full text-center py-2 text-sm font-medium text-[#F97316] hover:text-[#F97316]/80 transition-colors"
+                  >
+                    {showAllVilles ? "Voir moins ▲" : `Voir plus (${villes.length - 5} villes) ▼`}
+                  </button>
+                )}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">Aucune fiche ne correspond aux villes planifiées</p>

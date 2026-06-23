@@ -8,10 +8,22 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        // Photos et signatures stockées dans Supabase Storage
+        // Buckets publics Supabase Storage
         protocol: "https",
         hostname: "*.supabase.co",
         pathname: "/storage/v1/object/public/**",
+      },
+      {
+        // Buckets privés Supabase Storage (signed URLs)
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/sign/**",
+      },
+      {
+        // Signed URLs via le proxy authentifié
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/authenticated/**",
       },
     ],
   },

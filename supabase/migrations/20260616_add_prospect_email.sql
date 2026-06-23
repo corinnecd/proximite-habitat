@@ -1,0 +1,2 @@
+ALTER TABLE fiches
+  ADD COLUMN IF NOT EXISTS prospect_email TEXT;

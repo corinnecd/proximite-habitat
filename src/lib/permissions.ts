@@ -4,8 +4,8 @@ const STATUS_TRANSITIONS: Record<FicheStatus, { to: FicheStatus[]; roles: UserRo
   BROUILLON: [{ to: ["SOUMISE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE", "COMMERCIAL", "ADMIN"] }],
   SOUMISE: [{ to: ["VALIDEE"], roles: ["ADMIN"] }, { to: ["BROUILLON"], roles: ["ADMIN", "PROSPECTEUR", "CHEF_EQUIPE"] }],
   VALIDEE: [{ to: ["AFFECTEE"], roles: ["ADMIN"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
-  AFFECTEE: [{ to: ["RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
-  RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
+  AFFECTEE: [{ to: ["RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
+  RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
   ACCEPTEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }],
   REFUSEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
   ARCHIVEE: [],
@@ -34,7 +34,7 @@ export function canEditFiche(
   if (role === "COMMERCIAL") return ficheCreatedBy === userId || ficheAssignedTo === userId;
   if (role === "PROSPECTEUR" || role === "CHEF_EQUIPE") {
     if (ficheCreatedBy !== userId) return false;
-    return ["BROUILLON", "SOUMISE"].includes(status);
+    return !["ACCEPTEE", "ARCHIVEE"].includes(status);
   }
   return false;
 }

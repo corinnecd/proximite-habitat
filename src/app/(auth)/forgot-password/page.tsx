@@ -34,8 +34,8 @@ export default function ForgotPasswordPage() {
       {/* ── Panneau gauche — identique à la page login ───────────────────── */}
       <div className="hidden lg:flex lg:w-1/2 bg-[#1E3A5F] relative overflow-hidden flex-col justify-end pb-16 px-16">
         <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full border-[70px] border-[#F97316]/20 pointer-events-none" />
-        <div className="absolute top-16 right-16 w-56 h-56 rounded-full border-[35px] border-[#FB923C]/25 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#F97316] via-[#FB923C] to-transparent pointer-events-none" />
+        <div className="absolute top-16 right-16 w-56 h-56 rounded-full border-[35px] border-[#F97316]/25 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#F97316] via-[#F97316] to-transparent pointer-events-none" />
 
         <div className="absolute top-12 left-16 flex items-center gap-3 z-10">
           <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
         <div className="relative z-10">
           <h1 className="font-heading text-[52px] leading-[1.1] text-white mb-5">
             Votre rénovation<br />
-            <em className="not-italic text-[#FB923C]">clé en main</em>
+            <em className="not-italic text-[#F97316]">clé en main</em>
           </h1>
           <p className="text-white/60 text-base leading-relaxed max-w-sm mb-12">
             Gérez vos pré-visites, suivez vos fiches et pilotez votre activité
@@ -58,15 +58,15 @@ export default function ForgotPasswordPage() {
           </p>
           <div className="flex gap-0">
             <div className="pr-7 border-r border-white/15">
-              <p className="text-2xl font-bold text-[#FB923C]">500+</p>
+              <p className="text-2xl font-bold text-[#F97316]">500+</p>
               <p className="text-xs text-white/40 mt-1">Fiches traitées</p>
             </div>
             <div className="px-7 border-r border-white/15">
-              <p className="text-2xl font-bold text-[#FB923C]">98%</p>
+              <p className="text-2xl font-bold text-[#F97316]">98%</p>
               <p className="text-xs text-white/40 mt-1">Satisfaction</p>
             </div>
             <div className="pl-7">
-              <p className="text-2xl font-bold text-[#FB923C]">30+</p>
+              <p className="text-2xl font-bold text-[#F97316]">30+</p>
               <p className="text-xs text-white/40 mt-1">Experts</p>
             </div>
           </div>

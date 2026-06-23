@@ -9,11 +9,24 @@ export async function POST(request: NextRequest) {
   const { data: caller } = await supabase.from("profiles").select("role, organization_id").eq("id", user.id).single();
   if (!caller || caller.role !== "ADMIN") return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
 
-  const { email, password, first_name, last_name, role, phone, organization_id } = await request.json();
+  const body = await request.json();
+  const { email, password, first_name, last_name, role, phone, organization_id } = body;
+
+  if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return NextResponse.json({ error: "Email invalide" }, { status: 400 });
+  if (!password || typeof password !== "string" || password.length < 8)
+    return NextResponse.json({ error: "Mot de passe requis (8 caractères minimum)" }, { status: 400 });
+  if (!first_name || typeof first_name !== "string" || first_name.trim().length === 0)
+    return NextResponse.json({ error: "Prénom requis" }, { status: 400 });
+  if (!last_name || typeof last_name !== "string" || last_name.trim().length === 0)
+    return NextResponse.json({ error: "Nom requis" }, { status: 400 });
+  const validRoles = ["ADMIN", "COMMERCIAL", "PROSPECTEUR", "CHEF_EQUIPE"];
+  if (!role || !validRoles.includes(role))
+    return NextResponse.json({ error: "Rôle invalide" }, { status: 400 });
   if (organization_id !== caller.organization_id) return NextResponse.json({ error: "Organisation invalide" }, { status: 403 });
 
   const svc = await createServiceClient();
-  const { data: authUser, error: authError } = await svc.auth.admin.createUser({ email, password, email_confirm: true });
+  const { data: authUser, error: authError } = await svc.auth.admin.createUser({ email: email.trim().toLowerCase(), password, email_confirm: true });
   if (authError || !authUser.user) return NextResponse.json({ error: authError?.message || "Erreur" }, { status: 400 });
 
   const { data: profile, error: profileError } = await svc.from("profiles").insert({ id: authUser.user.id, organization_id, email, first_name, last_name, role, phone: phone || null }).select().single();

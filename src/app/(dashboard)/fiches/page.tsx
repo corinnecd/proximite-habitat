@@ -19,56 +19,14 @@ import { STATUS_LABELS } from "@/lib/permissions";
 import type { FicheStatus } from "@/types/database";
 import { toast } from "sonner";
 import {
-  Search, FilePlus, FileText, Filter, Loader2, Download, Send,
+  Search, FilePlus, Filter, Loader2, Download, Send,
   UserCheck, CheckCircle2, XCircle, Archive, Clock, CalendarRange, CalendarDays, X, AlertCircle,
   ChevronDown, ChevronUp,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
-type PeriodFilter = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER" | "SEMESTER" | "YEAR";
-
-const PERIOD_LABELS: Record<PeriodFilter, string> = {
-  ALL: "Toutes les dates", TODAY: "Aujourd'hui",
-  WEEK: "Cette semaine", MONTH: "Ce mois", QUARTER: "Ce trimestre", SEMESTER: "Ce semestre", YEAR: "Cette année",
-};
-
-function getPeriodDates(period: PeriodFilter): { from: string; to: string } | null {
-  if (period === "ALL") return null;
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-  if (period === "TODAY") {
-    const today = fmt(now);
-    return { from: today, to: today };
-  }
-  if (period === "WEEK") {
-    const day = now.getDay() === 0 ? 6 : now.getDay() - 1; // lundi=0
-    const monday = new Date(now); monday.setDate(now.getDate() - day);
-    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-    return { from: fmt(monday), to: fmt(sunday) };
-  }
-  if (period === "MONTH") {
-    const from = new Date(now.getFullYear(), now.getMonth(), 1);
-    const to   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    return { from: fmt(from), to: fmt(to) };
-  }
-  if (period === "QUARTER") {
-    const q = Math.floor(now.getMonth() / 3);
-    const from = new Date(now.getFullYear(), q * 3, 1);
-    const to   = new Date(now.getFullYear(), q * 3 + 3, 0);
-    return { from: fmt(from), to: fmt(to) };
-  }
-  if (period === "SEMESTER") {
-    const sem = now.getMonth() < 6 ? 0 : 1;
-    return { from: fmt(new Date(now.getFullYear(), sem * 6, 1)), to: fmt(new Date(now.getFullYear(), sem * 6 + 6, 0)) };
-  }
-  if (period === "YEAR") {
-    return { from: fmt(new Date(now.getFullYear(), 0, 1)), to: fmt(new Date(now.getFullYear(), 11, 31)) };
-  }
-  return null;
-}
+import { type PeriodFilter, PERIOD_LABELS, getPeriodDates } from "@/lib/periods";
 
 type FicheCsvRow = {
   reference: string; statut: string; nom: string; prenom: string;

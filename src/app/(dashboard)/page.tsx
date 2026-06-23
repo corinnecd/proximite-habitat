@@ -19,9 +19,9 @@ import { useProfile } from "@/lib/hooks/use-profile";
 import type { FicheStatus } from "@/types/database";
 import {
   FileText, FilePlus, Clock, CheckCircle2, XCircle, Send,
-  UserCheck, Archive, History, Trash2, AlertCircle, ArrowRight,
-  CalendarDays, User, Trophy, Medal, TrendingUp, Star, Activity,
-  ChevronDown, ChevronUp, Loader2, DollarSign, Euro, BarChart3,
+  UserCheck, Archive, Trash2, AlertCircle, ArrowRight,
+  CalendarDays, User, Trophy, TrendingUp, Star,
+  ChevronDown, ChevronUp, Loader2, Euro, BarChart3,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -35,72 +35,7 @@ import { toast } from "sonner";
 import { createNotifications } from "@/lib/data/notifications";
 
 // ── Filtre période dashboard ──────────────────────────────────────────────────
-type DashPeriod = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER" | "SEMESTER" | "YEAR";
-const DASH_PERIOD_LABELS: Record<DashPeriod, string> = {
-  ALL: "Toutes les dates", TODAY: "Aujourd'hui",
-  WEEK: "Cette semaine", MONTH: "Ce mois", QUARTER: "Ce trimestre", SEMESTER: "Ce semestre", YEAR: "Cette année",
-};
-function getDashPeriodDates(period: DashPeriod): { from: string; to: string } | null {
-  if (period === "ALL") return null;
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  if (period === "TODAY") { const t = fmt(now); return { from: t, to: t }; }
-  if (period === "WEEK") {
-    const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
-    const monday = new Date(now); monday.setDate(now.getDate() - day);
-    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-    return { from: fmt(monday), to: fmt(sunday) };
-  }
-  if (period === "MONTH") {
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    return { from: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, to: fmt(lastDay) };
-  }
-  if (period === "QUARTER") {
-    const q = Math.floor(now.getMonth() / 3);
-    const lastDay = new Date(now.getFullYear(), q * 3 + 3, 0);
-    return { from: `${now.getFullYear()}-${pad(q * 3 + 1)}-01`, to: fmt(lastDay) };
-  }
-  if (period === "SEMESTER") {
-    const sem = now.getMonth() < 6 ? 0 : 1;
-    return { from: `${now.getFullYear()}-${pad(sem * 6 + 1)}-01`, to: fmt(new Date(now.getFullYear(), sem * 6 + 6, 0)) };
-  }
-  if (period === "YEAR") {
-    return { from: `${now.getFullYear()}-01-01`, to: `${now.getFullYear()}-12-31` };
-  }
-  return null;
-}
-function getPeriodLabel(period: DashPeriod): string | null {
-  if (period === "ALL") return null;
-  const now = new Date();
-  const moisNoms = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
-  if (period === "TODAY") {
-    return `${now.getDate()} ${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
-  }
-  if (period === "WEEK") {
-    const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
-    const monday = new Date(now); monday.setDate(now.getDate() - day);
-    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-    return `${monday.getDate()} – ${sunday.getDate()} ${moisNoms[sunday.getMonth()]} ${sunday.getFullYear()}`;
-  }
-  if (period === "MONTH") {
-    return `${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
-  }
-  if (period === "QUARTER") {
-    const q = Math.floor(now.getMonth() / 3);
-    const from = new Date(now.getFullYear(), q * 3, 1);
-    const to = new Date(now.getFullYear(), q * 3 + 3, 0);
-    return `${from.getDate()} ${moisNoms[from.getMonth()]} – ${to.getDate()} ${moisNoms[to.getMonth()]} ${to.getFullYear()}`;
-  }
-  if (period === "SEMESTER") {
-    const sem = now.getMonth() < 6 ? 0 : 1;
-    const from = new Date(now.getFullYear(), sem * 6, 1);
-    const to = new Date(now.getFullYear(), sem * 6 + 6, 0);
-    return `${from.getDate()} ${moisNoms[from.getMonth()]} – ${to.getDate()} ${moisNoms[to.getMonth()]} ${to.getFullYear()}`;
-  }
-  if (period === "YEAR") return `${now.getFullYear()}`;
-  return null;
-}
+import { type PeriodFilter as DashPeriod, PERIOD_LABELS as DASH_PERIOD_LABELS, getPeriodDates as getDashPeriodDates, getPeriodLabel } from "@/lib/periods";
 
 // ── Styles compteurs ──────────────────────────────────────────────────────────
 

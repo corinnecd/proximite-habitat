@@ -9,10 +9,11 @@ import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import type { FicheStatus, MotifRefus } from "@/types/database";
 import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
+import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel as getReportPeriodLabel } from "@/lib/periods";
 import {
   BarChart3, TrendingUp, Users, FileText, Search, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, Clock, ArrowUp, ArrowDown, Minus, Euro,
-  Medal, Trophy, RefreshCw, CalendarDays, MapPin, Target,
+  Trophy, RefreshCw, CalendarDays, MapPin,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -103,70 +104,6 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   );
 }
 
-
-// ── Filtre période de soumission ──────────────────────────────────────────────
-type PeriodFilter = "ALL" | "TODAY" | "WEEK" | "MONTH" | "QUARTER" | "SEMESTER" | "YEAR";
-
-const PERIOD_LABELS: Record<PeriodFilter, string> = {
-  ALL: "Toutes les dates", TODAY: "Aujourd'hui",
-  WEEK: "Cette semaine", MONTH: "Ce mois", QUARTER: "Ce trimestre", SEMESTER: "Ce semestre", YEAR: "Cette année",
-};
-
-function getPeriodDates(period: PeriodFilter): { from: string; to: string } | null {
-  if (period === "ALL") return null;
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  if (period === "TODAY") { const t = fmt(now); return { from: t, to: t }; }
-  if (period === "WEEK") {
-    const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
-    const mon = new Date(now); mon.setDate(now.getDate() - day);
-    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-    return { from: fmt(mon), to: fmt(sun) };
-  }
-  if (period === "MONTH") {
-    return { from: fmt(new Date(now.getFullYear(), now.getMonth(), 1)), to: fmt(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
-  }
-  if (period === "QUARTER") {
-    const q = Math.floor(now.getMonth() / 3);
-    return { from: fmt(new Date(now.getFullYear(), q * 3, 1)), to: fmt(new Date(now.getFullYear(), q * 3 + 3, 0)) };
-  }
-  if (period === "SEMESTER") {
-    const sem = now.getMonth() < 6 ? 0 : 1;
-    return { from: fmt(new Date(now.getFullYear(), sem * 6, 1)), to: fmt(new Date(now.getFullYear(), sem * 6 + 6, 0)) };
-  }
-  if (period === "YEAR") {
-    return { from: fmt(new Date(now.getFullYear(), 0, 1)), to: fmt(new Date(now.getFullYear(), 11, 31)) };
-  }
-  return null;
-}
-function getReportPeriodLabel(period: PeriodFilter): string | null {
-  if (period === "ALL") return null;
-  const now = new Date();
-  const moisNoms = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
-  if (period === "TODAY") return `${now.getDate()} ${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
-  if (period === "WEEK") {
-    const day = now.getDay() === 0 ? 6 : now.getDay() - 1;
-    const monday = new Date(now); monday.setDate(now.getDate() - day);
-    const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-    return `${monday.getDate()} – ${sunday.getDate()} ${moisNoms[sunday.getMonth()]} ${sunday.getFullYear()}`;
-  }
-  if (period === "MONTH") return `${moisNoms[now.getMonth()]} ${now.getFullYear()}`;
-  if (period === "QUARTER") {
-    const q = Math.floor(now.getMonth() / 3);
-    const from = new Date(now.getFullYear(), q * 3, 1);
-    const to = new Date(now.getFullYear(), q * 3 + 3, 0);
-    return `${from.getDate()} ${moisNoms[from.getMonth()]} – ${to.getDate()} ${moisNoms[to.getMonth()]} ${to.getFullYear()}`;
-  }
-  if (period === "SEMESTER") {
-    const sem = now.getMonth() < 6 ? 0 : 1;
-    const from = new Date(now.getFullYear(), sem * 6, 1);
-    const to = new Date(now.getFullYear(), sem * 6 + 6, 0);
-    return `${from.getDate()} ${moisNoms[from.getMonth()]} – ${to.getDate()} ${moisNoms[to.getMonth()]} ${to.getFullYear()}`;
-  }
-  if (period === "YEAR") return `${now.getFullYear()}`;
-  return null;
-}
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 

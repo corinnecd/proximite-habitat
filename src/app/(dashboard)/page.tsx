@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -662,6 +663,28 @@ export default function DashboardPage() {
   const dashPeriodSuffix = _dashPl ? ` (${_dashPl})` : "";
   const isAllPeriod = dashPeriod === "ALL";
 
+  const getDashboardCsvData = useCallback(() => {
+    if (isAdmin && referentsStats.length > 0) {
+      return {
+        columns: [
+          { key: "nom", label: "Référent" },
+          { key: "ventes", label: "Ventes" },
+          { key: "bonus", label: "Ventes en +" },
+          { key: "ca", label: "CA HT (€)" },
+        ] as { key: keyof { nom: string; ventes: number; bonus: number; ca: number }; label: string }[],
+        rows: referentsStats.map((r) => ({ nom: r.nom, ventes: r.ventes, bonus: Math.max(0, r.ventes - 3), ca: r.ca })),
+      };
+    }
+    return {
+      columns: [{ key: "info", label: "Info" }, { key: "valeur", label: "Valeur" }] as { key: keyof { info: string; valeur: string }; label: string }[],
+      rows: [
+        { info: "CA Total HT", valeur: String(caTotal) },
+        { info: "Ventes totales", valeur: String(totalVentes) },
+        { info: "Période", valeur: DASH_PERIOD_LABELS[dashPeriod] },
+      ],
+    };
+  }, [isAdmin, referentsStats, caTotal, totalVentes, dashPeriod]);
+
   const visibleStatuses: FicheStatus[] = isReferent
     ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
     : isCommercial
@@ -672,7 +695,7 @@ export default function DashboardPage() {
   if (profileLoading || loading) {
     return (
       <>
-        <Topbar title="Tableau de bord" actions={<ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" />} />
+        <Topbar title="Tableau de bord" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" /><ExportCsvButton filename="dashboard" getData={getDashboardCsvData} /></div>} />
         <div className="p-6 lg:p-8 space-y-8 animate-pulse">
           {/* Greeting */}
           <div className="flex items-center justify-between">
@@ -798,7 +821,7 @@ export default function DashboardPage() {
   if (fetchError) {
     return (
       <>
-        <Topbar title="Tableau de bord" actions={<ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" />} />
+        <Topbar title="Tableau de bord" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" /><ExportCsvButton filename="dashboard" getData={getDashboardCsvData} /></div>} />
         <div className="p-6 lg:p-8 flex items-center justify-center min-h-[40vh]">
           <div className="text-center space-y-3">
             <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
@@ -881,7 +904,7 @@ export default function DashboardPage() {
       </Dialog>
 
       {deleteDialog}
-      <Topbar title="Tableau de bord" actions={<ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" />} />
+      <Topbar title="Tableau de bord" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" /><ExportCsvButton filename="dashboard" getData={getDashboardCsvData} /></div>} />
       <div className="p-6 lg:p-8 space-y-8">
 
         {/* En-tête */}
@@ -1063,7 +1086,17 @@ export default function DashboardPage() {
               const totalAll = Object.values(counts).reduce((a, b) => a + b, 0);
               const inProgressRate = totalAll > 0 ? Math.round((inProgress / totalAll) * 100) : 0;
               return (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      </div>
+                    </div>
+                    <p className="text-3xl font-bold tabular-nums">{assignedBase > 0 ? Math.round((counts.ACCEPTEE / assignedBase) * 100) : 0}%</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global d'acceptation" : <>Taux d&apos;acceptation<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{counts.ACCEPTEE} acceptée{counts.ACCEPTEE > 1 ? "s" : ""} / {assignedBase} affectée{assignedBase > 1 ? "s" : ""}</p>
+                  </div>
                   <div className="bg-card border border-border border-l-4 border-l-red-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
                     <div className="flex items-center justify-between mb-3">
                       <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
@@ -1097,7 +1130,7 @@ export default function DashboardPage() {
                     <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
                       <Trophy className="w-4 h-4 text-amber-600" />
                     </div>
-                    <h3 className="font-semibold text-sm">Ventes par référent ({referentsStats.length} Référent{referentsStats.length > 1 ? "s" : ""})</h3>
+                    <h3 className="font-semibold text-sm">Objectif mensuel de prime (3 ventes) · {referentsStats.length} Référent{referentsStats.length > 1 ? "s" : ""}</h3>
                   </div>
                 </div>
                 {referentsStats.length === 0 ? (
@@ -1107,19 +1140,19 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-[1fr_60px_70px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                       <span>Référent</span>
                       <span className="text-right">Ventes</span>
-                      <span className="text-right">Ce mois</span>
+                      <span className="text-right">En +</span>
                     </div>
                     <CollapsibleList items={referentsStats} renderItem={(p: typeof referentsStats[0], idx: number) => {
-                      const primeCeMois = p.ventesMoisCourant >= 3;
+                      const bonus = Math.max(0, p.ventes - 3);
                       return (
                         <div key={p.id} className="grid grid-cols-[1fr_60px_70px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="w-4 text-center text-xs font-bold text-muted-foreground shrink-0">{idx+1}</span>
                             <span className="text-sm font-medium truncate">{p.nom}</span>
-                            {primeCeMois && <Star className="w-3 h-3 text-amber-500 shrink-0" />}
+                            {p.ventes >= 3 && <Star className="w-3 h-3 text-amber-500 shrink-0" />}
                           </div>
                           <span className="text-sm font-bold text-right tabular-nums">{p.ventes}</span>
-                          <span className={`text-xs text-right tabular-nums ${primeCeMois ? "text-amber-600 font-bold" : "text-muted-foreground"}`}>{p.ventesMoisCourant}/3</span>
+                          <span className={`text-xs text-right tabular-nums ${bonus > 0 ? "text-emerald-600 font-bold" : "text-muted-foreground"}`}>{bonus > 0 ? `+${bonus}` : "—"}</span>
                         </div>
                       );
                     }} />
@@ -1127,7 +1160,7 @@ export default function DashboardPage() {
                       <div className="grid grid-cols-[1fr_60px_70px] gap-2 pt-3 border-t border-border">
                         <span className="text-sm font-bold">Total</span>
                         <span className="text-sm font-bold text-right tabular-nums">{referentsStats.reduce((s, r) => s + r.ventes, 0)}</span>
-                        <span />
+                        <span className="text-sm font-bold text-right tabular-nums text-emerald-600">+{referentsStats.reduce((s, r) => s + Math.max(0, r.ventes - 3), 0)}</span>
                       </div>
                     )}
                   </div>
@@ -1152,7 +1185,7 @@ export default function DashboardPage() {
                       <span>Commercial</span>
                       <span className="text-right">Ventes</span>
                       <span className="text-right">CA HT</span>
-                      <span className="text-right">Conv.</span>
+                      <span className="text-right">CA moy.</span>
                     </div>
                     <CollapsibleList items={commerciauxStats} renderItem={(c: typeof commerciauxStats[0], idx: number) => {
                       const rate = c.ventes > 0 ? Math.round((c.ventes / (commerciauxStats[0]?.ventes ?? 1)) * 100) : 0;

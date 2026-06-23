@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -681,7 +682,24 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <>
-      <Topbar title={fiche.reference} actions={<ExportPdfButton title={fiche.reference} subtitle={`Statut : ${STATUS_LABELS[fiche.status]}`} filename={`fiche-${fiche.reference}`} printLayout="3col" />} />
+      <Topbar title={fiche.reference} actions={<div className="flex items-center gap-2"><ExportPdfButton title={fiche.reference} subtitle={`Statut : ${STATUS_LABELS[fiche.status]}`} filename={`fiche-${fiche.reference}`} printLayout="3col" /><ExportCsvButton filename={`fiche-${fiche.reference}`} getData={() => ({
+        columns: [
+          { key: "champ", label: "Champ" },
+          { key: "valeur", label: "Valeur" },
+        ] as { key: keyof { champ: string; valeur: string }; label: string }[],
+        rows: [
+          { champ: "Référence", valeur: fiche.reference },
+          { champ: "Statut", valeur: STATUS_LABELS[fiche.status] },
+          { champ: "Nom", valeur: fiche.prospect_nom || "" },
+          { champ: "Prénom", valeur: fiche.prospect_prenom || "" },
+          { champ: "Téléphone", valeur: fiche.prospect_telephone || "" },
+          { champ: "Email", valeur: fiche.prospect_email || "" },
+          { champ: "Adresse", valeur: fiche.prospect_adresse || "" },
+          { champ: "Ville", valeur: fiche.prospect_ville || "" },
+          { champ: "Code postal", valeur: fiche.prospect_cp || "" },
+          { champ: "Montant HT", valeur: fiche.montant_ht ? String(fiche.montant_ht) : "" },
+        ],
+      })} /></div>} />
       <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* ── Bannière "Fiche à valider" — visible direction uniquement ──── */}

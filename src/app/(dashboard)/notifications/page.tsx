@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { createClient } from "@/lib/supabase/client";
 import {
   getNotifications,
@@ -479,7 +480,15 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <Topbar title="Notifications" actions={<ExportPdfButton title="Notifications" filename="notifications" />} />
+      <Topbar title="Notifications" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Notifications" filename="notifications" /><ExportCsvButton filename="notifications" getData={() => ({
+        columns: [
+          { key: "date", label: "Date" },
+          { key: "titre", label: "Titre" },
+          { key: "message", label: "Message" },
+          { key: "lu", label: "Lu" },
+        ] as { key: keyof { date: string; titre: string; message: string; lu: string }; label: string }[],
+        rows: notifications.map((n) => ({ date: n.created_at?.slice(0, 10) || "", titre: n.title, message: n.message || "", lu: n.read ? "Oui" : "Non" })),
+      })} /></div>} />
       <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-4">
 
         {/* ── Bloc filtres ──────────────────────────────────────────────── */}

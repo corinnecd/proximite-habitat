@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
@@ -26,7 +27,7 @@ interface StatusCount { status: FicheStatus; count: number; }
 interface ReferentRow { name: string; total: number; submitted: number; accepted: number; ca: number; }
 interface CommercialRow { name: string; assigned: number; accepted: number; refused: number; rate: number; ca: number; }
 interface VilleRow { ville: string; accepted: number; refused: number; total: number; rate: number; }
-interface WeeklyPoint { label: string; soumises: number; acceptees: number; }
+interface WeeklyPoint { label: string; creees: number; acceptees: number; }
 interface DelaiInfo { avg: number; min: number; max: number; count: number; }
 
 // ── Palette statuts ───────────────────────────────────────────────────────────
@@ -230,7 +231,7 @@ export default function ReportingPage() {
       setReferents(Object.values(refMap).sort((a, b) => b.total - a.total));
     }
 
-    // ── 2. Taux de conversion par commercial ──
+    // ── 2. Taux d'acceptation par commercial ──
     const commMap: Record<string, CommercialRow> = {};
     const COMM_STATUSES = ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
     // Fetch all COMMERCIAL profiles so those with 0 fiches also appear
@@ -326,15 +327,15 @@ export default function ReportingPage() {
       sun.setDate(sun.getDate() + 6);
       const fmtD = (d: Date) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
       const label = `${fmtD(ws)} - ${fmtD(sun)}`;
-      let soumises = 0, acceptees = 0;
+      let creees = 0, acceptees = 0;
       for (const f of fiches) {
         const d = new Date(f.created_at);
         if (d >= ws && d < end) {
-          soumises++;
+          creees++;
           if (f.status === "ACCEPTEE") acceptees++;
         }
       }
-      return { label, soumises, acceptees };
+      return { label, creees, acceptees };
     });
     setWeeklyData(weekBuckets);
 
@@ -424,11 +425,11 @@ export default function ReportingPage() {
   const referentChartData = referents.slice(0, 6).map((p) => ({
     name: p.name.split(" ")[0],
     fullName: p.name,
-    Soumises: p.total,
+    "Fiches créées": p.total,
     Acceptées: p.accepted,
   }));
 
-  const commChartData = commerciaux.slice(0, 8).map((c) => ({
+  const commChartData = commerciaux.map((c) => ({
     name: c.name.split(" ")[0],
     fullName: c.name,
     Affectées: c.assigned,
@@ -461,7 +462,21 @@ export default function ReportingPage() {
     <>
       <Topbar
         title={isCommercial ? "Mon reporting" : "Reporting direction"}
-        actions={<ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${_pl ? `${PERIOD_LABELS[periodFilter]} (${_pl})` : PERIOD_LABELS[periodFilter]}`} filename="reporting" />}
+        actions={<div className="flex items-center gap-2"><ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${_pl ? `${PERIOD_LABELS[periodFilter]} (${_pl})` : PERIOD_LABELS[periodFilter]}`} filename="reporting" /><ExportCsvButton filename="reporting" getData={() => ({
+          columns: [
+            { key: "indicateur", label: "Indicateur" },
+            { key: "valeur", label: "Valeur" },
+          ] as { key: keyof { indicateur: string; valeur: string }; label: string }[],
+          rows: [
+            { indicateur: "Fiches totales", valeur: String(statusCounts.reduce((s, c) => s + c.count, 0)) },
+            { indicateur: "Acceptées", valeur: String(statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0) },
+            { indicateur: "Refusées", valeur: String(statusCounts.find((s) => s.status === "REFUSEE")?.count ?? 0) },
+            { indicateur: "CA Total HT", valeur: String(caTotal) },
+            { indicateur: "Période", valeur: PERIOD_LABELS[periodFilter] },
+            ...commerciaux.map((c) => ({ indicateur: `Commercial: ${c.name}`, valeur: `${c.accepted} acceptées, ${c.refused} refusées, ${c.ca}€ CA` })),
+            ...villes.map((v) => ({ indicateur: `Ville: ${v.ville}`, valeur: `${v.total} fiches, ${v.rate}% taux` })),
+          ],
+        })} /></div>}
       />
       <div className="p-6 lg:p-8 space-y-6">
 
@@ -544,7 +559,7 @@ export default function ReportingPage() {
             border="border-l-orange-500"
           />
           <KpiCard
-            label={(isAllPeriod ? (isCommercial ? "Mon taux global de conversion" : "Taux global de conversion") : (isCommercial ? "Mon taux de conversion" : "Taux de conversion global")) + periodSuffix}
+            label={(isAllPeriod ? (isCommercial ? "Mon taux global d'acceptation" : "Taux global d'acceptation") : (isCommercial ? "Mon taux d'acceptation" : "Taux d'acceptation global")) + periodSuffix}
             value={`${acceptanceRate}%`}
             sub={isCommercial ? "Mes fiches acceptées / affectées" : "Toutes les fiches"}
             Icon={TrendingUp} iconBg="bg-emerald-100 dark:bg-emerald-900/30" iconColor="text-emerald-600"
@@ -552,7 +567,7 @@ export default function ReportingPage() {
           />
         </div>
 
-        {/* ── Taux de conversion par commercial ──────────────────────────── */}
+        {/* ── Taux d'acceptation par commercial ──────────────────────────── */}
         {!isCommercial && commerciaux.length > 0 && (
           <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
@@ -561,7 +576,7 @@ export default function ReportingPage() {
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">{isAllPeriod ? "Taux global de conversion" : "Taux de conversion"} par commercial ({commerciaux.length} {commerciaux.length > 1 ? "Commerciaux" : "Commercial"}){periodSuffix}</h3>
+                  <h3 className="font-semibold text-sm">{isAllPeriod ? "Taux global d'acceptation" : "Taux d'acceptation"} par commercial ({commerciaux.length} {commerciaux.length > 1 ? "Commerciaux" : "Commercial"}){periodSuffix}</h3>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Affectées vs Acceptées vs Refusées</p>
                 </div>
               </div>
@@ -623,18 +638,20 @@ export default function ReportingPage() {
                 {showAllCommerciaux ? <><ChevronUp className="w-3.5 h-3.5" />Voir moins</> : <><ChevronDown className="w-3.5 h-3.5" />Voir plus ({commerciaux.length - 5} restant{commerciaux.length - 5 > 1 ? "s" : ""})</>}
               </button>
             )}
-            <div className="mt-5">
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={commChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f1f5f9", radius: 6 }} />
-                  <Bar dataKey="Affectées" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-                  <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-                  <Bar dataKey="Refusées" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="mt-5 overflow-x-auto">
+              <div style={{ minWidth: Math.max(400, commChartData.length * 120) }}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={commChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f1f5f9", radius: 6 }} />
+                    <Bar dataKey="Affectées" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+                    <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+                    <Bar dataKey="Refusées" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
               <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-500 inline-block" />Affectées</span>
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
@@ -963,7 +980,7 @@ export default function ReportingPage() {
             </div>
             <div>
               <h3 className="font-semibold text-sm">{isAllPeriod ? "Tendance globale hebdomadaire" : "Tendance hebdomadaire"}{periodSuffix}</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Volume soumis et accepté sur les 12 dernières semaines</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Fiches créées et acceptées sur les 12 dernières semaines</p>
             </div>
           </div>
           {weeklyData.length === 0 ? (
@@ -972,7 +989,7 @@ export default function ReportingPage() {
             <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={weeklyData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="gradSoumises" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="gradCreees" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                   </linearGradient>
@@ -985,13 +1002,13 @@ export default function ReportingPage() {
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="soumises" name="Soumises" stroke="#3b82f6" strokeWidth={2} fill="url(#gradSoumises)" animationDuration={700} />
+                <Area type="monotone" dataKey="creees" name="Fiches créées" stroke="#3b82f6" strokeWidth={2} fill="url(#gradCreees)" animationDuration={700} />
                 <Area type="monotone" dataKey="acceptees" name="Acceptées" stroke="#10b981" strokeWidth={2} fill="url(#gradAcceptees)" animationDuration={700} />
               </AreaChart>
             </ResponsiveContainer>
           )}
           <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-500 inline-block" />Soumises</span>
+            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-500 inline-block" />Fiches créées</span>
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
           </div>
         </div>
@@ -1023,10 +1040,14 @@ export default function ReportingPage() {
                 })().map((v) => (
                   <div key={v.ville} className="grid grid-cols-[1fr_60px_60px_60px_50px] gap-2 items-center text-sm">
                     <span className="font-medium truncate">{v.ville}</span>
-                    <span className="text-right tabular-nums text-muted-foreground">{v.total}</span>
-                    <span className="text-right tabular-nums text-emerald-600 font-medium">{v.accepted}</span>
-                    <span className="text-right tabular-nums text-red-500 font-medium">{v.refused}</span>
-                    <span className={`text-right tabular-nums font-bold ${v.rate >= 50 ? "text-emerald-600" : v.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{v.rate}%</span>
+                    {v.total === 0 ? (
+                      <span className="col-span-4 text-xs text-muted-foreground italic text-center">Pas encore prospectée</span>
+                    ) : (<>
+                      <span className="text-right tabular-nums text-muted-foreground">{v.total}</span>
+                      <span className="text-right tabular-nums text-emerald-600 font-medium">{v.accepted}</span>
+                      <span className="text-right tabular-nums text-red-500 font-medium">{v.refused}</span>
+                      <span className={`text-right tabular-nums font-bold ${v.rate >= 50 ? "text-emerald-600" : v.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{v.rate}%</span>
+                    </>)}
                   </div>
                 ))}
                 {villes.length > 5 && (

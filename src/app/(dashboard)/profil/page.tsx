@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { ROLE_LABELS } from "@/lib/permissions";
@@ -149,7 +150,18 @@ export default function ProfilPage() {
   if (loading || !profile) {
     return (
       <>
-        <Topbar title="Mon profil" actions={<ExportPdfButton title="Mon profil" filename="profil" />} />
+        <Topbar title="Mon profil" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Mon profil" filename="profil" /><ExportCsvButton filename="profil" getData={() => ({
+          columns: [
+            { key: "champ", label: "Champ" },
+            { key: "valeur", label: "Valeur" },
+          ] as { key: keyof { champ: string; valeur: string }; label: string }[],
+          rows: [
+            { champ: "Nom", valeur: profile?.last_name || "" },
+            { champ: "Prénom", valeur: profile?.first_name || "" },
+            { champ: "Email", valeur: profile?.email || "" },
+            { champ: "Rôle", valeur: profile ? ROLE_LABELS[profile.role] || profile.role : "" },
+          ],
+        })} /></div>} />
         <div className="p-6 lg:p-8 max-w-2xl mx-auto animate-pulse space-y-4">
           <div className="h-36 bg-card rounded-2xl border border-border" />
           <div className="h-64 bg-card rounded-2xl border border-border" />
@@ -167,7 +179,18 @@ export default function ProfilPage() {
 
   return (
     <>
-      <Topbar title="Mon profil" actions={<ExportPdfButton title="Mon profil" filename="profil" />} />
+      <Topbar title="Mon profil" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Mon profil" filename="profil" /><ExportCsvButton filename="profil" getData={() => ({
+          columns: [
+            { key: "champ", label: "Champ" },
+            { key: "valeur", label: "Valeur" },
+          ] as { key: keyof { champ: string; valeur: string }; label: string }[],
+          rows: [
+            { champ: "Nom", valeur: profile?.last_name || "" },
+            { champ: "Prénom", valeur: profile?.first_name || "" },
+            { champ: "Email", valeur: profile?.email || "" },
+            { champ: "Rôle", valeur: profile ? ROLE_LABELS[profile.role] || profile.role : "" },
+          ],
+        })} /></div>} />
       <div className="p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
 
         {/* ── Hero card ─────────────────────────────────────────────────── */}

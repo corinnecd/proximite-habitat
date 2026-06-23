@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import { getFichesForExport } from "@/lib/data/fiches";
@@ -387,7 +388,17 @@ export default function FichesPage() {
 
   return (
     <>
-      <Topbar title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} actions={<ExportPdfButton title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} filename={isValidationMode ? "fiches-a-valider" : "fiches-preview"} />} />
+      <Topbar title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} actions={<div className="flex items-center gap-2"><ExportPdfButton title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} filename={isValidationMode ? "fiches-a-valider" : "fiches-preview"} /><ExportCsvButton filename="fiches" getData={() => ({
+        columns: [
+          { key: "reference", label: "Référence" },
+          { key: "nom", label: "Nom" },
+          { key: "prenom", label: "Prénom" },
+          { key: "ville", label: "Ville" },
+          { key: "status", label: "Statut" },
+          { key: "date", label: "Date" },
+        ] as { key: keyof { reference: string; nom: string; prenom: string; ville: string; status: string; date: string }; label: string }[],
+        rows: fiches.map((f) => ({ reference: f.reference, nom: f.prospect_nom, prenom: f.prospect_prenom, ville: f.prospect_ville || "", status: f.status, date: f.created_at?.slice(0, 10) || "" })),
+      })} /></div>} />
       <div className="p-6 lg:p-8 space-y-4">
 
         {/* Barre principale : recherche + export + nouvelle fiche */}

@@ -431,25 +431,31 @@ export default function PlanificationPage() {
                             ? <span className="text-[#F97316] font-medium">{entry.chefEquipe.first_name} {entry.chefEquipe.last_name}</span>
                             : <span className="text-muted-foreground">Toute l&apos;équipe</span>}
                         </td>
-                        <td className="py-2.5 px-3 text-center font-medium">{s?.total || 0}</td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={s?.soumise ? "text-blue-600 font-medium" : "text-muted-foreground/40"}>{s?.soumise || 0}</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={s?.affectee ? "text-purple-600 font-medium" : "text-muted-foreground/40"}>{s?.affectee || 0}</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={s?.acceptee ? "text-green-600 font-medium" : "text-muted-foreground/40"}>{s?.acceptee || 0}</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                            rate >= 50 ? "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400"
-                            : rate > 0 ? "bg-[#F97316]/10 text-[#F97316]"
-                            : "bg-secondary text-muted-foreground"
-                          }`}>
-                            {rate}%
-                          </span>
-                        </td>
+                        {(!s || s.total === 0) ? (
+                          <td colSpan={5} className="py-2.5 px-3 text-center">
+                            <span className="text-xs text-muted-foreground italic">Pas encore prospectée</span>
+                          </td>
+                        ) : (<>
+                          <td className="py-2.5 px-3 text-center font-medium">{s.total}</td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={s.soumise ? "text-blue-600 font-medium" : "text-muted-foreground/40"}>{s.soumise}</span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={s.affectee ? "text-purple-600 font-medium" : "text-muted-foreground/40"}>{s.affectee}</span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={s.acceptee ? "text-green-600 font-medium" : "text-muted-foreground/40"}>{s.acceptee}</span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                              rate >= 50 ? "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400"
+                              : rate > 0 ? "bg-[#F97316]/10 text-[#F97316]"
+                              : "bg-secondary text-muted-foreground"
+                            }`}>
+                              {rate}%
+                            </span>
+                          </td>
+                        </>)}
                       </tr>
                     );
                   })}

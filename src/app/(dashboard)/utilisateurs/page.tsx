@@ -12,6 +12,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { createClient } from "@/lib/supabase/client";
 import { getAllProfiles, setProfileActive } from "@/lib/data/profiles";
@@ -169,7 +170,16 @@ export default function UtilisateursPage() {
 
   return (
     <>
-      <Topbar title="Gestion des utilisateurs" actions={<ExportPdfButton title="Utilisateurs" filename="utilisateurs" />} />
+      <Topbar title="Gestion des utilisateurs" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Utilisateurs" filename="utilisateurs" /><ExportCsvButton filename="utilisateurs" getData={() => ({
+        columns: [
+          { key: "nom", label: "Nom" },
+          { key: "prenom", label: "Prénom" },
+          { key: "email", label: "Email" },
+          { key: "role", label: "Rôle" },
+          { key: "actif", label: "Actif" },
+        ] as { key: keyof { nom: string; prenom: string; email: string; role: string; actif: string }; label: string }[],
+        rows: users.map((u) => ({ nom: u.last_name, prenom: u.first_name, email: u.email, role: ROLE_LABELS[u.role] || u.role, actif: u.is_active ? "Oui" : "Non" })),
+      })} /></div>} />
       <div className="p-6 lg:p-8 space-y-6">
 
         {/* ── KPIs ────────────────────────────────────────────────────────── */}

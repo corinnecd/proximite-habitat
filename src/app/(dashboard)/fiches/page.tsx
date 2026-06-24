@@ -50,6 +50,12 @@ const CSV_COLUMNS: CsvColumn<FicheCsvRow>[] = [
 const PAGE_SIZE = 100;
 const VISIBLE_INIT = 6;
 
+const STATUS_LABELS_PLURAL: Record<FicheStatus, string> = {
+  BROUILLON: "brouillons", SOUMISE: "à valider", VALIDEE: "validées",
+  AFFECTEE: "validées et affectées", ACCEPTEE: "acceptées",
+  RETRACTATION: "en attente acceptation client", REFUSEE: "refusées", ARCHIVEE: "archivées",
+};
+
 const STATUS_CARD_STYLES: Record<FicheStatus, { border: string; icon: string; iconBg: string; Icon: React.ElementType }> = {
   BROUILLON:    { border: "border-l-slate-400",   icon: "text-slate-500",   iconBg: "bg-slate-100 dark:bg-slate-800",         Icon: Clock },
   SOUMISE:      { border: "border-l-blue-500",    icon: "text-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",         Icon: Send },
@@ -121,22 +127,25 @@ export default function FichesPage() {
   };
 
   // Chargement des listes de referents et commerciaux pour les filtres admin
+  const _branchFilterForUsers = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdminOrDG) return;
     async function loadUsers() {
-      const { data } = await supabase
+      let q = supabase
         .from("profiles")
         .select("id, first_name, last_name, role")
         .in("role", ["PROSPECTEUR", "CHEF_EQUIPE", "COMMERCIAL"])
         .eq("is_active", true)
         .order("last_name");
+      if (_branchFilterForUsers) q = q.eq("organization_id", _branchFilterForUsers);
+      const { data } = await q;
       if (data) {
         setReferents(data.filter((u) => u.role === "PROSPECTEUR"));
         setCommercials(data.filter((u) => u.role === "COMMERCIAL"));
       }
     }
     loadUsers();
-  }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAdminOrDG, _branchFilterForUsers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchFiches = useCallback(async (pageToLoad = 0, append = false) => {
     if (append) setLoadingMore(true); else setLoading(true);
@@ -156,9 +165,10 @@ export default function FichesPage() {
       )
       .order("created_at", { ascending: false });
 
-    // Filtre statut
-    if (statusFilter !== "ALL") {
-      query = query.eq("status", statusFilter);
+    // Filtre statut — en mode validation, toujours forcer SOUMISE
+    const effectiveStatus = isValidationMode ? "SOUMISE" : statusFilter;
+    if (effectiveStatus !== "ALL") {
+      query = query.eq("status", effectiveStatus);
     } else if (!_isReferent) {
       query = query.neq("status", "BROUILLON");
     }
@@ -422,15 +432,27 @@ export default function FichesPage() {
             <Button variant="outline" onClick={handleExport} disabled={exporting} className="rounded-xl gap-2" aria-label="Exporter les fiches au format CSV">
               {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}Exporter CSV
             </Button>
-            <Link href="/fiches/nouvelle">
-              <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2">
-                <FilePlus className="w-4 h-4" />Nouvelle fiche
-              </Button>
-            </Link>
+            {profile && !isDG && (
+              <Link href="/fiches/nouvelle">
+                <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2">
+                  <FilePlus className="w-4 h-4" />Nouvelle fiche
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
         {/* Filtres direction / période */}
+        {!profile && (
+          <div className="space-y-4 animate-pulse">
+            <div className="bg-card border border-border rounded-2xl p-4 h-[72px]" />
+            <div className="flex gap-2">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="h-10 rounded-xl bg-card border border-border" style={{ width: `${80 + (i % 3) * 30}px` }} />
+              ))}
+            </div>
+          </div>
+        )}
         {isAdminOrDG && (
           <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
             {!isValidationMode && (
@@ -451,45 +473,91 @@ export default function FichesPage() {
                 )}
               </div>
             )}
-            <div className={isValidationMode ? "space-y-1" : "grid grid-cols-2 lg:grid-cols-4 gap-3"}>
-              {/* Période */}
-              <div className={isValidationMode ? "" : "col-span-2 space-y-1"}>
+            <div className={isValidationMode ? "space-y-1" : "space-y-3"}>
+              {/* Ligne unique : Période + Antérieures + Référents + Commerciaux */}
+              <div className={isValidationMode ? "" : "space-y-1"}>
                 <label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
                   <CalendarDays className="w-3 h-3" />{isValidationMode ? "Période d'activité" : "Période de soumission"}
                 </label>
-                <div className="flex gap-2 flex-wrap">
-                  {(Object.keys(PERIOD_LABELS) as PeriodFilter[])
-                    .filter((p) => !isValidationMode || (p !== "QUARTER"))
-                    .map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPeriodFilter(p)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-                        periodFilter === p
-                          ? "bg-primary text-white border-primary"
-                          : "bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                      }`}
-                    >
-                      {PERIOD_LABELS[p]}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap flex-1">
+                    {(Object.keys(PERIOD_LABELS) as PeriodFilter[])
+                      .filter((p) => !isValidationMode || (p !== "QUARTER"))
+                      .map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPeriodFilter(p)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                          periodFilter === p
+                            ? "bg-primary text-white border-primary"
+                            : "bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                        }`}
+                      >
+                        {PERIOD_LABELS[p]}
+                      </button>
+                    ))}
+                    {!isValidationMode && (
+                      <button
+                        type="button"
+                        onClick={() => { setPeriodFilter("ALL"); setStatusFilter("ARCHIVEE"); }}
+                        className="relative group px-3 py-1.5 rounded-xl text-xs font-medium border transition-all bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-foreground inline-flex items-center gap-1.5"
+                      >
+                        <Archive className="w-3.5 h-3.5" />
+                        Antérieures
+                        {anterieures.length > 0 && (
+                          <span className="bg-primary/10 text-primary text-xs font-bold px-1.5 py-0.5 rounded-full">{anterieures.length}</span>
+                        )}
+                        <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max max-w-xs px-3 py-2 rounded-lg bg-foreground text-background text-xs leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
+                          {anterieures.length} fiche{anterieures.length > 1 ? "s" : ""} archivée{anterieures.length > 1 ? "s" : ""} au cours du trimestre en cours.
+                          <br />Cliquer pour les visualiser.
+                        </span>
+                      </button>
+                    )}
+                  </div>
                   {!isValidationMode && (
-                    <button
-                      type="button"
-                      onClick={() => { setPeriodFilter("ALL"); setStatusFilter("ARCHIVEE"); }}
-                      className="relative group px-3 py-1.5 rounded-xl text-xs font-medium border transition-all bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-foreground inline-flex items-center gap-1.5"
-                    >
-                      <Archive className="w-3.5 h-3.5" />
-                      Antérieures
-                      {anterieures.length > 0 && (
-                        <span className="bg-primary/10 text-primary text-xs font-bold px-1.5 py-0.5 rounded-full">{anterieures.length}</span>
-                      )}
-                      <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max max-w-xs px-3 py-2 rounded-lg bg-foreground text-background text-xs leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
-                        {anterieures.length} fiche{anterieures.length > 1 ? "s" : ""} archivée{anterieures.length > 1 ? "s" : ""} au cours du trimestre en cours.
-                        <br />Cliquer pour les visualiser.
-                      </span>
-                    </button>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Référents</label>
+                        <Select value={referentFilter} onValueChange={(v) => setReferentFilter(v ?? "ALL")}>
+                          <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
+                            <SelectValue>
+                              {referentFilter === "ALL"
+                                ? "Tous"
+                                : (() => { const p = referents.find((x) => x.id === referentFilter); return p ? `${p.first_name} ${p.last_name}` : "Tous"; })()}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ALL">Tous les référents</SelectItem>
+                            {referents.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.first_name} {p.last_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Commerciaux</label>
+                        <Select value={commercialFilter} onValueChange={(v) => setCommercialFilter(v ?? "ALL")}>
+                          <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
+                            <SelectValue>
+                              {commercialFilter === "ALL"
+                                ? "Tous"
+                                : (() => { const c = commercials.find((x) => x.id === commercialFilter); return c ? `${c.first_name} ${c.last_name}` : "Tous"; })()}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ALL">Tous les commerciaux</SelectItem>
+                            {commercials.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.first_name} {c.last_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   )}
                 </div>
                 {periodFilter !== "ALL" && (
@@ -498,56 +566,12 @@ export default function FichesPage() {
                   </p>
                 )}
               </div>
-              {!isValidationMode && (<>
-              {/* Filtre référent */}
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground uppercase tracking-wide">Référents</label>
-                <Select value={referentFilter} onValueChange={(v) => setReferentFilter(v ?? "ALL")}>
-                  <SelectTrigger className="h-10 bg-background rounded-xl text-sm">
-                    <SelectValue>
-                      {referentFilter === "ALL"
-                        ? "Tous"
-                        : (() => { const p = referents.find((x) => x.id === referentFilter); return p ? `${p.first_name} ${p.last_name}` : "Tous"; })()}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Tous les referents</SelectItem>
-                    {referents.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.first_name} {p.last_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Filtre commercial */}
-              <div className="space-y-1">
-                <label className="text-xs text-muted-foreground uppercase tracking-wide">Commerciaux</label>
-                <Select value={commercialFilter} onValueChange={(v) => setCommercialFilter(v ?? "ALL")}>
-                  <SelectTrigger className="h-10 bg-background rounded-xl text-sm">
-                    <SelectValue>
-                      {commercialFilter === "ALL"
-                        ? "Tous"
-                        : (() => { const c = commercials.find((x) => x.id === commercialFilter); return c ? `${c.first_name} ${c.last_name}` : "Tous"; })()}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Tous les commerciaux</SelectItem>
-                    {commercials.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.first_name} {c.last_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              </>)}
             </div>
           </div>
         )}
 
         {/* Filtres par statut */}
-        {!isValidationMode && (<div className="flex gap-2 overflow-x-auto overflow-y-visible pb-12">
+        {!isValidationMode && profile && (<div className="flex gap-2 overflow-x-auto overflow-y-visible pb-12">
           <button
             onClick={() => setStatusFilter("ALL")}
             aria-pressed={statusFilter === "ALL"}
@@ -557,7 +581,7 @@ export default function FichesPage() {
           >
             <Filter className="w-4 h-4 inline mr-1" />Toutes
             {statusCounts["ALL"] != null && (
-              <span className="pointer-events-none absolute left-0 top-full mt-2 w-max px-3 py-1.5 rounded-lg bg-[#9B2335] text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
+              <span className="pointer-events-none absolute left-0 top-full mt-2 w-max px-3 py-1.5 rounded-lg bg-muted text-foreground text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
                 {statusCounts["ALL"]} fiche{statusCounts["ALL"] > 1 ? "s" : ""} au total
               </span>
             )}
@@ -573,8 +597,8 @@ export default function FichesPage() {
             >
               {statusLabel(s)}
               {statusCounts[s] != null && (
-                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-3 py-1.5 rounded-lg bg-[#9B2335] text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
-                  {statusCounts[s]} fiche{statusCounts[s] > 1 ? "s" : ""} {statusLabel(s).toLowerCase()}
+                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max px-3 py-1.5 rounded-lg bg-muted text-foreground text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
+                  {statusCounts[s]} fiche{statusCounts[s] > 1 ? "s" : ""} {statusCounts[s] > 1 ? STATUS_LABELS_PLURAL[s] : statusLabel(s).toLowerCase()}
                 </span>
               )}
             </button>
@@ -632,7 +656,7 @@ export default function FichesPage() {
                   : "Commencez par créer votre première fiche de pré-visite"
               }
               action={
-                !isValidationMode && !search && statusFilter === "ALL" ? (
+                !isValidationMode && !search && statusFilter === "ALL" && !isDG ? (
                   <Link href="/fiches/nouvelle" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-medium transition-colors">
                     <FilePlus className="w-4 h-4" />Nouvelle fiche
                   </Link>

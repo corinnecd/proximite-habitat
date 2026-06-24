@@ -124,40 +124,44 @@ export default function PlanificationPage() {
     fetchPlan();
   }, [profileLoading, profile, fetchPlan]);
 
-  // Fetch fiche stats per planned ville for the current week
+  // Fetch fiche stats per planned ville (fiches créées pendant la semaine)
   useEffect(() => {
     if (!profile || planEntries.length === 0) { setVilleStats(new Map()); return; }
     const villeIds = [...new Set(planEntries.map((e) => e.ville_id))];
+    const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
+    const orgFilter = branchFilter ?? (isDG ? null : profile.organization_id);
 
-    supabase
+    let q = supabase
       .from("fiches")
       .select("ville_id, status")
-      .eq("organization_id", profile.organization_id)
       .in("ville_id", villeIds)
       .neq("status", "BROUILLON")
       .gte("created_at", mondayStr + "T00:00:00")
-      .lte("created_at", sundayStr + "T23:59:59")
-      .then(({ data }) => {
+      .lte("created_at", sundayStr + "T23:59:59");
+    if (orgFilter) q = q.eq("organization_id", orgFilter);
+    q.then(({ data }) => {
         const map = new Map<string, VilleStats>();
         for (const vid of villeIds) {
           map.set(vid, { ville_id: vid, total: 0, brouillon: 0, soumise: 0, affectee: 0, acceptee: 0, refusee: 0 });
         }
         if (data) {
+          const passedSoumise = new Set(["SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]);
+          const passedAffectee = new Set(["AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]);
           for (const f of data) {
             if (!f.ville_id) continue;
             const s = map.get(f.ville_id);
             if (!s) continue;
             s.total++;
-            if (f.status === "BROUILLON") s.brouillon++;
-            else if (f.status === "SOUMISE") s.soumise++;
-            else if (f.status === "AFFECTEE") s.affectee++;
-            else if (f.status === "ACCEPTEE") s.acceptee++;
-            else if (f.status === "REFUSEE") s.refusee++;
+            if (passedSoumise.has(f.status)) s.soumise++;
+            if (passedAffectee.has(f.status)) s.affectee++;
+            if (f.status === "ACCEPTEE") s.acceptee++;
+            if (f.status === "REFUSEE") s.refusee++;
           }
         }
         setVilleStats(map);
       });
-  }, [profile, planEntries, mondayStr, sundayStr, supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, planEntries, supabase, isDG, selectedBranchId, mondayStr, sundayStr]);
 
   useEffect(() => {
     if (!selectedDept) { setVilles([]); return; }
@@ -365,10 +369,15 @@ export default function PlanificationPage() {
         {/* Tableau récapitulatif des performances */}
         {planEntries.length > 0 && (
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="font-bold flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-[#F97316]" />
-              Performances de la semaine
-            </h2>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h2 className="font-bold flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-[#F97316]" />
+                Performances de la semaine
+              </h2>
+              <span className="text-sm text-muted-foreground font-medium">
+                {formatDateFr(currentMonday)} — {formatDateFr(sunday)}
+              </span>
+            </div>
 
             {/* KPI globaux */}
             {(() => {

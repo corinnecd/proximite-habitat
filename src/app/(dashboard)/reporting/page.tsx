@@ -270,10 +270,11 @@ export default function ReportingPage() {
     setCaTotal(commRows.reduce((sum, c) => sum + c.ca, 0));
 
     // ── 3. Répartition géographique (basée sur les villes planifiées) ──
+    const _planifOrg = _branchFilter ?? profile!.organization_id;
     let planifQuery = supabase
       .from("planification_hebdo")
       .select("ville_id, zones_villes!inner(nom)")
-      .eq("organization_id", profile!.organization_id);
+      .eq("organization_id", _planifOrg);
     if (dates) {
       const fromDate = new Date(dates.from + "T00:00:00");
       const fromDay = fromDate.getDay();

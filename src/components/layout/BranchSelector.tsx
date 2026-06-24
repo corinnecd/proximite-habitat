@@ -4,7 +4,7 @@ import { useBranch } from "@/lib/context/branch-context";
 import { Building2, ChevronDown } from "lucide-react";
 
 export function BranchSelector() {
-  const { isDG, branches, selectedBranchId, setSelectedBranchId, loading } = useBranch();
+  const { isDG, branches, selectedBranchId, setSelectedBranchId, loading, selectedBranchName } = useBranch();
 
   if (!isDG || loading) return null;
 

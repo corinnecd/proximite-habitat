@@ -23,7 +23,7 @@ import {
   FileText, FilePlus, Clock, CheckCircle2, XCircle, Send,
   UserCheck, Archive, Trash2, AlertCircle, ArrowRight,
   CalendarDays, User, Trophy, TrendingUp, Star,
-  ChevronDown, ChevronUp, Loader2, Euro, BarChart3,
+  ChevronDown, ChevronUp, Loader2, Euro, BarChart3, Building2, X,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -313,7 +313,7 @@ function CollapsibleList({ items, renderItem, limit = 5 }: { items: { id: string
 
 export default function DashboardPage() {
   const { profile, loading: profileLoading } = useProfile();
-  const { selectedBranchId, isDG } = useBranch();
+  const { selectedBranchId, isDG, selectedBranchName, setSelectedBranchId, branches } = useBranch();
   const [counts, setCounts] = useState<Record<FicheStatus, number>>({
     BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
   });
@@ -363,164 +363,93 @@ export default function DashboardPage() {
     const isAdmin       = profile.role === "ADMIN" || profile.role === "DIRECTION_GENERALE";
     const isCommercial  = profile.role === "COMMERCIAL";
     const branchFilter  = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
+    const periodDates = getDashPeriodDates(period);
+    const bq = (q: any) => branchFilter ? q.eq("organization_id", branchFilter) : q;
 
-    // ── Compteurs (filtrés par période) ────────────────────────────────────
+    // ── Toutes les requêtes lancées en parallèle ──────────────────────────
+    const promises: PromiseLike<any>[] = [];
+    const keys: string[] = [];
+
+    // [0..N] Compteurs par statut
     const statusesToCount: FicheStatus[] = isReferent
       ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
       : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
-
-    const periodDates = getDashPeriodDates(period);
-    const results = await Promise.all(
-      statusesToCount.map(async (s) => {
-        let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
-        if (isReferent) q = q.eq("created_by", profile.id);
-        if (isCommercial) q = q.eq("assigned_to", profile.id);
-        if (branchFilter) q = q.eq("organization_id", branchFilter);
-        if (periodDates) {
-          q = q.gte("created_at", `${periodDates.from}T00:00:00Z`).lte("created_at", `${periodDates.to}T23:59:59Z`);
-        }
-        const { count } = await q;
-        return [s, count ?? 0] as const;
-      })
-    );
-    const allCounts: Record<FicheStatus, number> = {
-      BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
-    };
-    results.forEach(([s, c]) => { allCounts[s] = c; });
-    setCounts(allCounts);
-
-    // ── Commerciaux disponibles pour affectation (ADMIN) ────────────────────
-    if (isAdmin) {
-      const commercialsList = await getActiveCommercialsAndAdmins(supabase);
-      setCommercials(commercialsList);
+    for (const s of statusesToCount) {
+      let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
+      if (isReferent) q = q.eq("created_by", profile.id);
+      if (isCommercial) q = q.eq("assigned_to", profile.id);
+      if (branchFilter) q = q.eq("organization_id", branchFilter);
+      if (periodDates) q = q.gte("created_at", `${periodDates.from}T00:00:00Z`).lte("created_at", `${periodDates.to}T23:59:59Z`);
+      keys.push(`count_${s}`);
+      promises.push(q);
     }
 
-    // ── Fiches par statut (ADMIN uniquement) ────────────────────────────────
-    if (isAdmin) {
-      const ficheAdminCols =
-        "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, created_at, updated_at, created_by, " +
-        "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name), " +
-        "fiche_history(action, old_status, new_status, comment, created_at, user:profiles!fiche_history_user_id_fkey(first_name, last_name))";
+    // Admin/DG : fiches par statut (sans fiche_history pour aller vite, limité à 20)
+    const ficheAdminCols =
+      "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, created_at, updated_at, created_by, montant_ht, " +
+      "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name), " +
+      "fiche_history(action, old_status, new_status, comment, created_at, user:profiles!fiche_history_user_id_fkey(first_name, last_name))";
+    const ficheAdminColsLight =
+      "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, created_at, updated_at, created_by, montant_ht, " +
+      "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name)";
 
-      const bq = (q: any) => branchFilter ? q.eq("organization_id", branchFilter) : q;
-      const [pendingRes, affecteesRes, accepteesRes, refuseesRes, archiveesRes] = await Promise.all([
-        bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "SOUMISE")).order("created_at", { ascending: false }),
-        bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "AFFECTEE")).order("updated_at", { ascending: false }).limit(100),
-        bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "ACCEPTEE")).order("updated_at", { ascending: false }).limit(100),
-        bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "REFUSEE")).order("updated_at", { ascending: false }).limit(100),
-        bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "ARCHIVEE")).order("updated_at", { ascending: false }).limit(100),
-      ]);
-      setFichesPending((pendingRes.data as unknown as FicheEnAttente[]) ?? []);
-      setFichesAffecteesAdmin((affecteesRes.data as unknown as FicheAffectee[]) ?? []);
-      setFichesAcceptees((accepteesRes.data as unknown as FicheAffectee[]) ?? []);
-      setFichesRefusees((refuseesRes.data as unknown as FicheAffectee[]) ?? []);
-      setFichesArchivees((archiveesRes.data as unknown as FicheAffectee[]) ?? []);
+    if (isAdmin) {
+      keys.push("commercials");
+      promises.push(getActiveCommercialsAndAdmins(supabase));
+
+      keys.push("pending");
+      promises.push(bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "SOUMISE")).order("created_at", { ascending: false }).limit(30));
+      keys.push("affecteesAdmin");
+      promises.push(bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "AFFECTEE")).order("updated_at", { ascending: false }).limit(30));
+      keys.push("acceptees");
+      promises.push(bq(supabase.from("fiches").select(ficheAdminColsLight).eq("status", "ACCEPTEE")).order("updated_at", { ascending: false }).limit(30));
+      keys.push("refusees");
+      promises.push(bq(supabase.from("fiches").select(ficheAdminColsLight).eq("status", "REFUSEE")).order("updated_at", { ascending: false }).limit(30));
+      keys.push("archivees");
+      promises.push(bq(supabase.from("fiches").select(ficheAdminColsLight).eq("status", "ARCHIVEE")).order("updated_at", { ascending: false }).limit(30));
     }
 
-    // ── Stats ventes (ADMIN + COMMERCIAL) ────────────────────────────────────
+    // Ventes (ADMIN + COMMERCIAL)
     if (isAdmin || isCommercial) {
-      let ventesQuery = supabase
-        .from("fiches")
-        .select(
-          "id, created_by, assigned_to, updated_at, montant_ht, " +
-          "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name), " +
-          "assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)"
-        )
-        .eq("status", "ACCEPTEE");
-
-      if (isCommercial) ventesQuery = ventesQuery.eq("assigned_to", profile.id);
-      if (branchFilter) ventesQuery = ventesQuery.eq("organization_id", branchFilter);
-      if (periodDates) {
-        ventesQuery = ventesQuery.gte("updated_at", `${periodDates.from}T00:00:00`).lte("updated_at", `${periodDates.to}T23:59:59`);
-      }
-
-      const { data: ventes } = await ventesQuery;
-      const rows = (ventes as unknown as VenteRow[]) ?? [];
-      setTotalVentes(rows.length);
-      setCaTotal(rows.reduce((sum, r) => sum + (r.montant_ht ? Number(r.montant_ht) : 0), 0));
-      if (isCommercial) setMesVentes(rows.length);
-
-      if (isAdmin) {
-        // Tous les référents actifs (même ceux sans vente)
-        const { data: allReferents } = await supabase
-          .from("profiles")
-          .select("id, first_name, last_name")
-          .eq("role", "PROSPECTEUR")
-          .eq("is_active", true);
-
-        const now = new Date();
-        const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
-        const pMap = new Map<string, { id: string; nom: string; ventes: number; ventesMoisCourant: number; ventesParMois: Map<string, number>; ca: number }>();
-        for (const p of (allReferents ?? [])) {
-          pMap.set(p.id, { id: p.id, nom: `${p.first_name} ${p.last_name}`, ventes: 0, ventesMoisCourant: 0, ventesParMois: new Map(), ca: 0 });
-        }
-        for (const r of rows) {
-          if (!r.created_by) continue;
-          if (!pMap.has(r.created_by) && r.created_by_profile) {
-            pMap.set(r.created_by, { id: r.created_by, nom: `${r.created_by_profile.first_name} ${r.created_by_profile.last_name}`, ventes: 0, ventesMoisCourant: 0, ventesParMois: new Map(), ca: 0 });
-          }
-          const entry = pMap.get(r.created_by);
-          if (!entry) continue;
-          entry.ventes++;
-          entry.ca += r.montant_ht ? Number(r.montant_ht) : 0;
-          const d = new Date(r.updated_at);
-          const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          entry.ventesParMois.set(ym, (entry.ventesParMois.get(ym) ?? 0) + 1);
-          if (ym === currentYM) entry.ventesMoisCourant++;
-        }
-        const pStats: ReferentStat[] = Array.from(pMap.values()).map((p) => {
-          const primes = Array.from(p.ventesParMois.values()).filter((v) => v >= 3).length;
-          const ventesCeMois = p.ventesMoisCourant;
-          const prochainPalier = ventesCeMois >= 3 ? 0 : 3 - ventesCeMois;
-          return { id: p.id, nom: p.nom, ventes: p.ventes, ventesMoisCourant: ventesCeMois, primes, prochainPalier, ca: p.ca };
-        }).sort((a, b) => b.ventes - a.ventes);
-        setReferentsStats(pStats);
-
-        // Agrégation par commercial — include all active commercials even with 0 sales
-        const cMap = new Map<string, CommercialStat>();
-        const { data: allCommProfiles } = await supabase
-          .from("profiles")
-          .select("id, first_name, last_name")
-          .eq("role", "COMMERCIAL")
-          .eq("is_active", true);
-        for (const p of allCommProfiles ?? []) {
-          cMap.set(p.id, { id: p.id, nom: `${p.first_name} ${p.last_name}`, ventes: 0, ca: 0 });
-        }
-        for (const r of rows) {
-          if (!r.assigned_to) continue;
-          const existing = cMap.get(r.assigned_to);
-          const mt = r.montant_ht ? Number(r.montant_ht) : 0;
-          if (existing) { existing.ventes++; existing.ca += mt; }
-          else {
-            const nom = r.assigned_to_profile ? `${r.assigned_to_profile.first_name} ${r.assigned_to_profile.last_name}` : "Inconnu";
-            cMap.set(r.assigned_to, { id: r.assigned_to, nom, ventes: 1, ca: mt });
-          }
-        }
-        setCommerciauxStats(Array.from(cMap.values()).sort((a, b) => b.ventes - a.ventes));
-      }
+      let vq = supabase.from("fiches").select(
+        "id, created_by, assigned_to, updated_at, montant_ht, " +
+        "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name), " +
+        "assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)"
+      ).eq("status", "ACCEPTEE");
+      if (isCommercial) vq = vq.eq("assigned_to", profile.id);
+      if (branchFilter) vq = vq.eq("organization_id", branchFilter);
+      if (periodDates) vq = vq.gte("updated_at", `${periodDates.from}T00:00:00`).lte("updated_at", `${periodDates.to}T23:59:59`);
+      keys.push("ventes");
+      promises.push(vq);
     }
 
-    // ── Fiches du commercial connecté ───────────────────────────────────────
+    if (isAdmin) {
+      keys.push("allReferents");
+      { let rq = supabase.from("profiles").select("id, first_name, last_name").eq("role", "PROSPECTEUR").eq("is_active", true);
+        if (branchFilter) rq = rq.eq("organization_id", branchFilter);
+        promises.push(rq); }
+      keys.push("allCommerciaux");
+      { let cq = supabase.from("profiles").select("id, first_name, last_name").eq("role", "COMMERCIAL").eq("is_active", true);
+        if (branchFilter) cq = cq.eq("organization_id", branchFilter);
+        promises.push(cq); }
+    }
+
+    // Commercial : ses fiches
     if (isCommercial) {
       const commCols =
         "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, updated_at, created_by, montant_ht, " +
         "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name)";
-      const [affecteesRes, retractRes, accepteesRes, refuseesRes, archiveesRes] = await Promise.all([
+      keys.push("commAffectees", "commRetract", "commAcceptees", "commRefusees", "commArchivees");
+      promises.push(
         supabase.from("fiches").select(commCols).eq("status", "AFFECTEE").eq("assigned_to", profile.id).order("updated_at", { ascending: true }),
         supabase.from("fiches").select(commCols).eq("status", "RETRACTATION").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
         supabase.from("fiches").select(commCols).eq("status", "ACCEPTEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
         supabase.from("fiches").select(commCols).eq("status", "REFUSEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
         supabase.from("fiches").select(commCols).eq("status", "ARCHIVEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
-      ]);
-      setFichesAffectees((affecteesRes.data as unknown as FicheAffectee[]) ?? []);
-      setFichesRetractationComm((retractRes.data as unknown as FicheAffectee[]) ?? []);
-      setFichesAcceptees((accepteesRes.data as unknown as FicheAffectee[]) ?? []);
-      setFichesRefusees((refuseesRes.data as unknown as FicheAffectee[]) ?? []);
-      setFichesArchivees((archiveesRes.data as unknown as FicheAffectee[]) ?? []);
+      );
     }
 
-    // ── Fiches antérieures (avant le trimestre en cours) ────────────────────
+    // Antérieures
     if (!isReferent) {
       const pad2 = (n: number) => String(n).padStart(2, "0");
       const now2 = new Date();
@@ -531,43 +460,121 @@ export default function DashboardPage() {
       if (isCommercial) aq = aq.eq("assigned_to", profile.id);
       else aq = aq.neq("status", "BROUILLON");
       aq = aq.lt("updated_at", `${qFrom}T00:00:00Z`).order("updated_at", { ascending: false }).limit(50);
-      const { data: antData } = await aq;
-      setAnterieures((antData as typeof anterieures) ?? []);
+      keys.push("anterieures");
+      promises.push(aq);
     }
 
-    // ── Fiches référent par statut ────────────────────────────────────────
+    // Référent : fiches par statut
     if (isReferent) {
-      const [bRes, sRes, affRes, retRes, accRes, refRes, arcRes] = await Promise.all([
-        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "BROUILLON").order("created_at", { ascending: false }),
-        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "SOUMISE").order("created_at", { ascending: false }),
-        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "AFFECTEE").order("created_at", { ascending: false }),
-        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "RETRACTATION").order("created_at", { ascending: false }),
-        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "ACCEPTEE").order("created_at", { ascending: false }),
-        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "REFUSEE").order("created_at", { ascending: false }),
-        supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", "ARCHIVEE").order("created_at", { ascending: false }),
-      ]);
-      setProspBrouillons((bRes.data as FicheListItem[]) ?? []);
-      setProspSoumises((sRes.data as FicheListItem[]) ?? []);
-      setProspAffectees((affRes.data as FicheListItem[]) ?? []);
-      setProspRetractees((retRes.data as FicheListItem[]) ?? []);
-      setProspAcceptees((accRes.data as FicheListItem[]) ?? []);
-      setProspRefusees((refRes.data as FicheListItem[]) ?? []);
-      setProspArchivees((arcRes.data as FicheListItem[]) ?? []);
+      const statuses: FicheStatus[] = ["BROUILLON", "SOUMISE", "AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+      for (const s of statuses) {
+        keys.push(`prosp_${s}`);
+        promises.push(supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", s).order("created_at", { ascending: false }));
+      }
     }
 
-    // ── Journal d'activité global (ADMIN uniquement) ─────────────────────────
+    // Journal d'activité
     if (isAdmin) {
-      const { data: logs } = await supabase
-        .from("fiche_history")
-        .select(
-          "id, action, old_status, new_status, comment, created_at, " +
-          "fiche:fiches!fiche_history_fiche_id_fkey(id, reference, prospect_nom, prospect_prenom), " +
-          "author:profiles!fiche_history_user_id_fkey(first_name, last_name, role)"
-        )
-        .order("created_at", { ascending: false })
-        .limit(30);
-      setActivityLog((logs as unknown as ActivityEntry[]) ?? []);
+      keys.push("activityLog");
+      promises.push(supabase.from("fiche_history").select(
+        "id, action, old_status, new_status, comment, created_at, " +
+        "fiche:fiches!fiche_history_fiche_id_fkey(id, reference, prospect_nom, prospect_prenom), " +
+        "author:profiles!fiche_history_user_id_fkey(first_name, last_name, role)"
+      ).order("created_at", { ascending: false }).limit(30));
     }
+
+    // ── Exécution parallèle ───────────────────────────────────────────────
+    const settled = await Promise.all(promises);
+    const r = new Map<string, any>();
+    keys.forEach((k, i) => r.set(k, settled[i]));
+
+    // ── Dispatch des résultats ────────────────────────────────────────────
+    const allCounts: Record<FicheStatus, number> = {
+      BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
+    };
+    for (const s of statusesToCount) allCounts[s] = r.get(`count_${s}`)?.count ?? 0;
+    setCounts(allCounts);
+
+    if (isAdmin) {
+      setCommercials(r.get("commercials") ?? []);
+      setFichesPending((r.get("pending")?.data as unknown as FicheEnAttente[]) ?? []);
+      setFichesAffecteesAdmin((r.get("affecteesAdmin")?.data as unknown as FicheAffectee[]) ?? []);
+      setFichesAcceptees((r.get("acceptees")?.data as unknown as FicheAffectee[]) ?? []);
+      setFichesRefusees((r.get("refusees")?.data as unknown as FicheAffectee[]) ?? []);
+      setFichesArchivees((r.get("archivees")?.data as unknown as FicheAffectee[]) ?? []);
+    }
+
+    if (isAdmin || isCommercial) {
+      const rows = ((r.get("ventes")?.data ?? r.get("ventes")) as unknown as VenteRow[]) ?? [];
+      setTotalVentes(rows.length);
+      setCaTotal(rows.reduce((sum, v) => sum + (v.montant_ht ? Number(v.montant_ht) : 0), 0));
+      if (isCommercial) setMesVentes(rows.length);
+
+      if (isAdmin) {
+        const now = new Date();
+        const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        const pMap = new Map<string, { id: string; nom: string; ventes: number; ventesMoisCourant: number; ventesParMois: Map<string, number>; ca: number }>();
+        for (const p of (r.get("allReferents")?.data ?? [])) {
+          pMap.set(p.id, { id: p.id, nom: `${p.first_name} ${p.last_name}`, ventes: 0, ventesMoisCourant: 0, ventesParMois: new Map(), ca: 0 });
+        }
+        for (const v of rows) {
+          if (!v.created_by) continue;
+          if (!pMap.has(v.created_by) && v.created_by_profile) {
+            pMap.set(v.created_by, { id: v.created_by, nom: `${v.created_by_profile.first_name} ${v.created_by_profile.last_name}`, ventes: 0, ventesMoisCourant: 0, ventesParMois: new Map(), ca: 0 });
+          }
+          const entry = pMap.get(v.created_by);
+          if (!entry) continue;
+          entry.ventes++;
+          entry.ca += v.montant_ht ? Number(v.montant_ht) : 0;
+          const d = new Date(v.updated_at);
+          const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          entry.ventesParMois.set(ym, (entry.ventesParMois.get(ym) ?? 0) + 1);
+          if (ym === currentYM) entry.ventesMoisCourant++;
+        }
+        setReferentsStats(Array.from(pMap.values()).map((p) => {
+          const primes = Array.from(p.ventesParMois.values()).filter((x) => x >= 3).length;
+          return { id: p.id, nom: p.nom, ventes: p.ventes, ventesMoisCourant: p.ventesMoisCourant, primes, prochainPalier: Math.max(0, 3 - p.ventesMoisCourant), ca: p.ca };
+        }).sort((a, b) => b.ventes - a.ventes));
+
+        const cMap = new Map<string, CommercialStat>();
+        for (const p of (r.get("allCommerciaux")?.data ?? [])) {
+          cMap.set(p.id, { id: p.id, nom: `${p.first_name} ${p.last_name}`, ventes: 0, ca: 0 });
+        }
+        for (const v of rows) {
+          if (!v.assigned_to) continue;
+          const existing = cMap.get(v.assigned_to);
+          const mt = v.montant_ht ? Number(v.montant_ht) : 0;
+          if (existing) { existing.ventes++; existing.ca += mt; }
+          else {
+            const nom = v.assigned_to_profile ? `${v.assigned_to_profile.first_name} ${v.assigned_to_profile.last_name}` : "Inconnu";
+            cMap.set(v.assigned_to, { id: v.assigned_to, nom, ventes: 1, ca: mt });
+          }
+        }
+        setCommerciauxStats(Array.from(cMap.values()).sort((a, b) => b.ventes - a.ventes));
+      }
+    }
+
+    if (isCommercial) {
+      setFichesAffectees((r.get("commAffectees")?.data as unknown as FicheAffectee[]) ?? []);
+      setFichesRetractationComm((r.get("commRetract")?.data as unknown as FicheAffectee[]) ?? []);
+      setFichesAcceptees((r.get("commAcceptees")?.data as unknown as FicheAffectee[]) ?? []);
+      setFichesRefusees((r.get("commRefusees")?.data as unknown as FicheAffectee[]) ?? []);
+      setFichesArchivees((r.get("commArchivees")?.data as unknown as FicheAffectee[]) ?? []);
+    }
+
+    if (!isReferent) setAnterieures((r.get("anterieures")?.data as typeof anterieures) ?? []);
+
+    if (isReferent) {
+      setProspBrouillons((r.get("prosp_BROUILLON")?.data as FicheListItem[]) ?? []);
+      setProspSoumises((r.get("prosp_SOUMISE")?.data as FicheListItem[]) ?? []);
+      setProspAffectees((r.get("prosp_AFFECTEE")?.data as FicheListItem[]) ?? []);
+      setProspRetractees((r.get("prosp_RETRACTATION")?.data as FicheListItem[]) ?? []);
+      setProspAcceptees((r.get("prosp_ACCEPTEE")?.data as FicheListItem[]) ?? []);
+      setProspRefusees((r.get("prosp_REFUSEE")?.data as FicheListItem[]) ?? []);
+      setProspArchivees((r.get("prosp_ARCHIVEE")?.data as FicheListItem[]) ?? []);
+    }
+
+    if (isAdmin) setActivityLog((r.get("activityLog")?.data as unknown as ActivityEntry[]) ?? []);
 
     setLoading(false);
     } catch (err) {
@@ -915,6 +922,40 @@ export default function DashboardPage() {
       {deleteDialog}
       <Topbar title="Tableau de bord" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" /><ExportCsvButton filename="dashboard" getData={getDashboardCsvData} /></div>} />
       <div className="p-6 lg:p-8 space-y-8">
+
+        {/* Bandeau succursale (DG — toujours visible) */}
+        {isDG && (
+          <div className="flex items-center justify-between bg-gradient-to-r from-rose-50 to-orange-50 dark:from-rose-950/30 dark:to-orange-950/20 border border-rose-200 dark:border-rose-800/40 rounded-2xl px-5 py-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center">
+                <Building2 className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" />
+              </div>
+              <div>
+                <p className="text-lg font-extrabold text-rose-700 dark:text-rose-300">
+                  {selectedBranchName ?? "Toutes les succursales"}
+                </p>
+                <p className="text-xs text-rose-500/70 dark:text-rose-400/60">
+                  {selectedBranchName ? "Tableau de bord filtré sur cette succursale" : "Vue consolidée de toutes les succursales"}
+                </p>
+              </div>
+            </div>
+            <div className="relative">
+              <select
+                value={selectedBranchId}
+                onChange={(e) => setSelectedBranchId(e.target.value)}
+                className="appearance-none bg-white dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-sm font-medium pl-3 pr-8 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-rose-400/50"
+              >
+                <option value="all">Toutes les succursales</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}{b.is_hq ? " (Siège)" : ""}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-rose-400 pointer-events-none" />
+            </div>
+          </div>
+        )}
 
         {/* En-tête */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

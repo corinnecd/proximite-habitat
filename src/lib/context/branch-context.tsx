@@ -11,6 +11,7 @@ interface BranchContextValue {
   branches: Organization[];
   loading: boolean;
   isDG: boolean;
+  selectedBranchName: string | null;
 }
 
 const BranchContext = createContext<BranchContextValue>({
@@ -19,12 +20,20 @@ const BranchContext = createContext<BranchContextValue>({
   branches: [],
   loading: true,
   isDG: false,
+  selectedBranchName: null,
 });
 
 export function BranchProvider({ children }: { children: React.ReactNode }) {
   const { profile } = useProfile();
   const [branches, setBranches] = useState<Organization[]>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState<string | "all">("all");
+  const [selectedBranchId, setSelectedBranchIdRaw] = useState<string | "all">(() => {
+    if (typeof window === "undefined") return "all";
+    return (localStorage.getItem("selectedBranchId") as string) || "all";
+  });
+  const setSelectedBranchId = useCallback((id: string | "all") => {
+    setSelectedBranchIdRaw(id);
+    if (typeof window !== "undefined") localStorage.setItem("selectedBranchId", id);
+  }, []);
   const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
 
@@ -47,9 +56,13 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     fetchBranches();
   }, [fetchBranches]);
 
+  const selectedBranchName = selectedBranchId !== "all"
+    ? branches.find((b) => b.id === selectedBranchId)?.name ?? null
+    : null;
+
   const value = useMemo(
-    () => ({ selectedBranchId, setSelectedBranchId, branches, loading, isDG }),
-    [selectedBranchId, branches, loading, isDG],
+    () => ({ selectedBranchId, setSelectedBranchId, branches, loading, isDG, selectedBranchName }),
+    [selectedBranchId, branches, loading, isDG, selectedBranchName],
   );
 
   return (

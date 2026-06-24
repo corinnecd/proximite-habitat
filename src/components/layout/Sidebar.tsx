@@ -13,6 +13,7 @@ import { ROLE_LABELS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { BranchSelector } from "@/components/layout/BranchSelector";
+import { useBranch } from "@/lib/context/branch-context";
 
 const mainNav = [
   { name: "Tableau de bord", href: "/",               icon: LayoutDashboard },
@@ -99,6 +100,7 @@ export function Sidebar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { profile, loading: profileLoading } = useProfile();
+  const { isDG, selectedBranchName } = useBranch();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [badges, setBadges] = useState<Record<BadgeKey, number>>({ fiches: 0, notifs: 0, soumises: 0 });
   const supabase = createClient();
@@ -176,6 +178,11 @@ export function Sidebar() {
             <p className="text-[10px] font-semibold text-white/50 tracking-widest">CONSEIL</p>
           </div>
         </Link>
+        {isDG && selectedBranchName && (
+          <div className="mt-2 px-2 py-1.5 rounded-lg bg-[#F97316]/15 border border-[#F97316]/25">
+            <p className="text-xs font-bold text-[#F97316] truncate">{selectedBranchName}</p>
+          </div>
+        )}
       </div>
 
       {/* Sélecteur de succursale (DG uniquement) */}
@@ -183,101 +190,104 @@ export function Sidebar() {
 
       {/* Navigation principale */}
       <nav className="flex-1 px-3 pt-3 pb-2 overflow-y-auto">
-        <div className="space-y-0.5">
-          {/* Tableau de bord */}
-          <NavItem
-            item={mainNav[0]}
-            isActive={isActive(mainNav[0].href)}
-            onClick={close}
-          />
-          {/* Fiches à valider (admin + DG) — au-dessus de Statut des Fiches */}
-          {(profile?.role === "ADMIN" || profile?.role === "DIRECTION_GENERALE") && (
-            <NavItem
-              item={{ name: "Fiches à valider", href: "/fiches?status=SOUMISE", icon: ClipboardCheck }}
-              isActive={pathname === "/fiches" && searchParams.get("status") === "SOUMISE"}
-              badgeRed={badges.soumises}
-              onClick={close}
-            />
-          )}
-          {/* Placeholder pendant chargement pour réserver l'espace */}
-          {profileLoading && (
-            <div className="px-4 py-2.5"><div className="h-4 w-32 bg-white/10 rounded animate-pulse" /></div>
-          )}
-          {/* Statut des Fiches */}
-          <NavItem
-            item={mainNav[1]}
-            isActive={isActive(mainNav[1].href) && searchParams.get("status") !== "SOUMISE"}
-            onClick={close}
-          />
-          {/* Nouvelle fiche — Référent et Chef d'équipe (pas DG) */}
-          {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && (
-            <NavItem
-              item={mainNav[2]}
-              isActive={isActive(mainNav[2].href)}
-              onClick={close}
-            />
-          )}
-        </div>
-
-        <SectionLabel label="Suivi" />
-        <div className="space-y-0.5">
-          {suivisNav
-            // Le DG (lecture seule, supervision) ne reçoit pas de notifications : on masque l'entrée.
-            .filter((item) => !(profile?.role === "DIRECTION_GENERALE" && item.href === "/notifications"))
-            .map((item) => (
-            <NavItem
-              key={item.href}
-              item={item}
-              isActive={isActive(item.href)}
-              badge={badgeFor((item as { badge?: string }).badge)}
-              onClick={close}
-            />
-          ))}
-        </div>
-
-        <SectionLabel label="Planning" />
-        <div className="space-y-0.5">
-          {planningNav.map((item) => (
-            <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
-          ))}
-        </div>
-
-        {(profile?.role === "ADMIN" || profile?.role === "DIRECTION_GENERALE") && (
-          <>
-            <SectionLabel label="Administration" />
-            <div className="space-y-0.5">
-              {adminNav.map((item) => (
-                <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
-              ))}
-            </div>
-          </>
-        )}
-        {profile?.role === "DIRECTION_GENERALE" && (
-          <>
-            <SectionLabel label="Direction Générale" />
-            <div className="space-y-0.5">
-              {dgNav.map((item) => (
-                <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
-              ))}
-            </div>
-          </>
-        )}
-        {profile?.role === "COMMERCIAL" && (
-          <>
-            <SectionLabel label="Statistiques" />
-            <div className="space-y-0.5">
-              {commercialNav.map((item) => (
-                <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
-              ))}
-            </div>
-          </>
-        )}
-        {profileLoading && (
-          <div className="px-3 pt-5 space-y-2">
-            <div className="h-2 w-20 bg-white/10 rounded animate-pulse ml-1" />
-            <div className="px-4 py-2.5"><div className="h-4 w-28 bg-white/10 rounded animate-pulse" /></div>
-            <div className="px-4 py-2.5"><div className="h-4 w-24 bg-white/10 rounded animate-pulse" /></div>
+        {profileLoading ? (
+          /* Skeleton complet pendant le chargement du profil — évite les secousses */
+          <div className="space-y-1 animate-pulse">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="px-4 py-2.5"><div className="h-4 rounded bg-white/10" style={{ width: `${60 + (i % 3) * 20}%` }} /></div>
+            ))}
+            <div className="px-4 pt-4 pb-1"><div className="h-2 w-20 rounded bg-white/10" /></div>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={`b${i}`} className="px-4 py-2.5"><div className="h-4 rounded bg-white/10" style={{ width: `${50 + (i % 2) * 25}%` }} /></div>
+            ))}
           </div>
+        ) : (
+          <>
+            <div className="space-y-0.5">
+              {/* Tableau de bord */}
+              <NavItem
+                item={mainNav[0]}
+                isActive={isActive(mainNav[0].href)}
+                onClick={close}
+              />
+              {/* Fiches à valider (admin + DG) — au-dessus de Statut des Fiches */}
+              {(profile?.role === "ADMIN" || profile?.role === "DIRECTION_GENERALE") && (
+                <NavItem
+                  item={{ name: "Fiches à valider", href: "/fiches?status=SOUMISE", icon: ClipboardCheck }}
+                  isActive={pathname === "/fiches" && searchParams.get("status") === "SOUMISE"}
+                  badgeRed={badges.soumises}
+                  onClick={close}
+                />
+              )}
+              {/* Statut des Fiches */}
+              <NavItem
+                item={mainNav[1]}
+                isActive={isActive(mainNav[1].href) && searchParams.get("status") !== "SOUMISE"}
+                onClick={close}
+              />
+              {/* Nouvelle fiche — Référent et Chef d'équipe (pas DG) */}
+              {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && (
+                <NavItem
+                  item={mainNav[2]}
+                  isActive={isActive(mainNav[2].href)}
+                  onClick={close}
+                />
+              )}
+            </div>
+
+            <SectionLabel label="Suivi" />
+            <div className="space-y-0.5">
+              {suivisNav
+                .filter((item) => !(profile?.role === "DIRECTION_GENERALE" && item.href === "/notifications"))
+                .map((item) => (
+                <NavItem
+                  key={item.href}
+                  item={item}
+                  isActive={isActive(item.href)}
+                  badge={badgeFor((item as { badge?: string }).badge)}
+                  onClick={close}
+                />
+              ))}
+            </div>
+
+            <SectionLabel label="Planning" />
+            <div className="space-y-0.5">
+              {planningNav.map((item) => (
+                <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
+              ))}
+            </div>
+
+            {(profile?.role === "ADMIN" || profile?.role === "DIRECTION_GENERALE") && (
+              <>
+                <SectionLabel label="Administration" />
+                <div className="space-y-0.5">
+                  {adminNav.map((item) => (
+                    <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
+                  ))}
+                </div>
+              </>
+            )}
+            {profile?.role === "DIRECTION_GENERALE" && (
+              <>
+                <SectionLabel label="Direction Générale" />
+                <div className="space-y-0.5">
+                  {dgNav.map((item) => (
+                    <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
+                  ))}
+                </div>
+              </>
+            )}
+            {profile?.role === "COMMERCIAL" && (
+              <>
+                <SectionLabel label="Statistiques" />
+                <div className="space-y-0.5">
+                  {commercialNav.map((item) => (
+                    <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
+                  ))}
+                </div>
+              </>
+            )}
+          </>
         )}
       </nav>
 

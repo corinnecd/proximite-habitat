@@ -14,13 +14,17 @@ import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import type { Organization } from "@/types/database";
 import { toast } from "sonner";
-import { Building2, Loader2, Plus, Shield, Users, Star } from "lucide-react";
+import { Building2, Loader2, Plus, Shield, Users, Star, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useBranch } from "@/lib/context/branch-context";
 
 type BranchWithCount = Organization & { userCount: number };
 
 export default function SuccursalesPage() {
   const { profile, loading: profileLoading } = useProfile();
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+  const { setSelectedBranchId } = useBranch();
 
   const [branches, setBranches] = useState<BranchWithCount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,19 +151,27 @@ export default function SuccursalesPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {branches.map((b) => (
-              <div
+              <button
                 key={b.id}
-                className="bg-card border border-border border-l-4 border-l-rose-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200"
+                type="button"
+                onClick={() => {
+                  setSelectedBranchId(b.id);
+                  router.push("/");
+                }}
+                className="text-left bg-card border border-border border-l-4 border-l-rose-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-200 cursor-pointer group"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="w-11 h-11 rounded-xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center shrink-0">
                     <Building2 className="w-5 h-5 text-rose-600 dark:text-rose-400" />
                   </div>
-                  {b.is_hq && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
-                      <Star className="w-3 h-3" />Siège
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {b.is_hq && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                        <Star className="w-3 h-3" />Siège
+                      </span>
+                    )}
+                    <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                 </div>
                 <h3 className="font-semibold text-base mt-3 truncate">{b.name}</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">{b.slug}</p>
@@ -167,7 +179,7 @@ export default function SuccursalesPage() {
                   <Users className="w-4 h-4" />
                   {b.userCount} utilisateur{b.userCount > 1 ? "s" : ""}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Topbar } from "@/components/layout/Topbar";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { useBranch } from "@/lib/context/branch-context";
 import { toast } from "sonner";
 import {
   Calendar, ChevronLeft, ChevronRight, MapPin, Check, Copy,
@@ -46,6 +47,7 @@ function formatDateFr(date: Date): string {
 
 export default function PlanificationPage() {
   const { profile, loading: profileLoading } = useProfile();
+  const { selectedBranchId, isDG } = useBranch();
   const supabase = useMemo(() => createClient(), []);
 
   const [currentMonday, setCurrentMonday] = useState(() => getMondayOfWeek(new Date()));
@@ -73,9 +75,16 @@ export default function PlanificationPage() {
     setLoading(true);
 
     // Tout charger en parallèle
+    const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
+    let planQuery = supabase.from("planification_hebdo").select("id, ville_id, chef_equipe_id").eq("semaine_du", mondayStr);
+    if (_branchFilter) {
+      planQuery = planQuery.eq("organization_id", _branchFilter);
+    } else if (!isDG) {
+      planQuery = planQuery.eq("organization_id", profile.organization_id);
+    }
     const [deptRes, planRes, chefsRes] = await Promise.all([
       supabase.from("zones_departements").select("*").order("code"),
-      supabase.from("planification_hebdo").select("id, ville_id, chef_equipe_id").eq("organization_id", profile.organization_id).eq("semaine_du", mondayStr),
+      planQuery,
       isAdmin
         ? supabase.from("profiles").select("id, first_name, last_name").eq("role", "CHEF_EQUIPE").eq("is_active", true)
         : Promise.resolve({ data: null }),
@@ -108,7 +117,7 @@ export default function PlanificationPage() {
       setPlanEntries([]);
     }
     setLoading(false);
-  }, [profile, mondayStr, isAdmin, supabase]);
+  }, [profile, mondayStr, isAdmin, supabase, isDG, selectedBranchId]);
 
   useEffect(() => {
     if (profileLoading || !profile) return;

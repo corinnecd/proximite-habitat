@@ -1,7 +1,7 @@
 // Types de la base de données — reflètent le schéma de `supabase/migrations/0001_initial_schema.sql`.
 // À terme, régénérer avec : `supabase gen types typescript --project-id <ref> > src/types/database.types.ts`.
 
-export type UserRole = "ADMIN" | "COMMERCIAL" | "PROSPECTEUR" | "CHEF_EQUIPE";
+export type UserRole = "ADMIN" | "COMMERCIAL" | "PROSPECTEUR" | "CHEF_EQUIPE" | "DIRECTION_GENERALE";
 export type MotifRefus = "RDC" | "ANNULATION" | "REFUS_CLASSIQUE";
 export type FicheStatus =
   | "BROUILLON"
@@ -16,7 +16,7 @@ export type FicheStatus =
 export interface Database {
   public: {
     Tables: {
-      organizations: {
+      companies: {
         Row: {
           id: string;
           name: string;
@@ -27,6 +27,26 @@ export interface Database {
           id?: string;
           name: string;
           slug: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["companies"]["Insert"]>;
+        Relationships: [];
+      };
+      organizations: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          company_id: string | null;
+          is_hq: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          company_id?: string | null;
+          is_hq?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["organizations"]["Insert"]>;
@@ -314,6 +334,7 @@ export interface Database {
 // ── Raccourcis pratiques ──────────────────────────────────────────────────────
 type Tables = Database["public"]["Tables"];
 
+export type Company = Tables["companies"]["Row"];
 export type Organization = Tables["organizations"]["Row"];
 export type Profile = Tables["profiles"]["Row"];
 export type Fiche = Tables["fiches"]["Row"];

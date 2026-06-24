@@ -6,6 +6,7 @@ export type {
   UserRole,
   FicheStatus,
   MotifRefus,
+  Company,
   Organization,
   Profile,
   Fiche,

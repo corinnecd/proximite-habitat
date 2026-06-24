@@ -19,8 +19,9 @@ export function getAvailableTransitions(role: UserRole, currentStatus: FicheStat
   return STATUS_TRANSITIONS[currentStatus].filter((t) => t.roles.includes(role)).flatMap((t) => t.to);
 }
 
-export function canManageUsers(role: UserRole): boolean { return role === "ADMIN"; }
+export function canManageUsers(role: UserRole): boolean { return role === "ADMIN" || role === "DIRECTION_GENERALE"; }
 export function canAssignFiche(role: UserRole): boolean { return role === "ADMIN"; }
+export function isDirectionGenerale(role: UserRole): boolean { return role === "DIRECTION_GENERALE"; }
 
 export function canEditFiche(
   role: UserRole,
@@ -30,6 +31,7 @@ export function canEditFiche(
   status: FicheStatus,
 ): boolean {
   if (status === "ARCHIVEE") return false;
+  if (role === "DIRECTION_GENERALE") return false;
   if (role === "ADMIN") return true;
   if (role === "COMMERCIAL") return ficheCreatedBy === userId || ficheAssignedTo === userId;
   if (role === "PROSPECTEUR" || role === "CHEF_EQUIPE") {
@@ -47,6 +49,7 @@ export function canEditRdvDate(
   status: FicheStatus,
 ): boolean {
   if (status === "ARCHIVEE") return false;
+  if (role === "DIRECTION_GENERALE") return false;
   if (role === "ADMIN") return true;
   if (role === "COMMERCIAL") return ficheAssignedTo === userId;
   if (role === "PROSPECTEUR" || role === "CHEF_EQUIPE") return ficheCreatedBy === userId;
@@ -67,7 +70,7 @@ export const STATUS_COLORS: Record<FicheStatus, string> = {
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  ADMIN: "Direction", COMMERCIAL: "Commercial", PROSPECTEUR: "Référent", CHEF_EQUIPE: "Chef d'équipe",
+  DIRECTION_GENERALE: "Direction Générale", ADMIN: "Direction", COMMERCIAL: "Commercial", PROSPECTEUR: "Référent", CHEF_EQUIPE: "Chef d'équipe",
 };
 
 export const MOTIF_REFUS_LABELS: Record<MotifRefus, string> = {

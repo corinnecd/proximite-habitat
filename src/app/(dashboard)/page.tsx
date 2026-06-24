@@ -17,6 +17,7 @@ import {
   type FicheListItem,
 } from "@/lib/data/fiches";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { useBranch } from "@/lib/context/branch-context";
 import type { FicheStatus } from "@/types/database";
 import {
   FileText, FilePlus, Clock, CheckCircle2, XCircle, Send,
@@ -312,6 +313,7 @@ function CollapsibleList({ items, renderItem, limit = 5 }: { items: { id: string
 
 export default function DashboardPage() {
   const { profile, loading: profileLoading } = useProfile();
+  const { selectedBranchId, isDG } = useBranch();
   const [counts, setCounts] = useState<Record<FicheStatus, number>>({
     BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
   });
@@ -358,8 +360,9 @@ export default function DashboardPage() {
     if (!profile) return;
     const isReferent = profile.role === "PROSPECTEUR";
     try {
-    const isAdmin       = profile.role === "ADMIN";
+    const isAdmin       = profile.role === "ADMIN" || profile.role === "DIRECTION_GENERALE";
     const isCommercial  = profile.role === "COMMERCIAL";
+    const branchFilter  = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
 
     // ── Compteurs (filtrés par période) ────────────────────────────────────
     const statusesToCount: FicheStatus[] = isReferent
@@ -372,6 +375,7 @@ export default function DashboardPage() {
         let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
         if (isReferent) q = q.eq("created_by", profile.id);
         if (isCommercial) q = q.eq("assigned_to", profile.id);
+        if (branchFilter) q = q.eq("organization_id", branchFilter);
         if (periodDates) {
           q = q.gte("created_at", `${periodDates.from}T00:00:00Z`).lte("created_at", `${periodDates.to}T23:59:59Z`);
         }
@@ -398,12 +402,13 @@ export default function DashboardPage() {
         "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name), " +
         "fiche_history(action, old_status, new_status, comment, created_at, user:profiles!fiche_history_user_id_fkey(first_name, last_name))";
 
+      const bq = (q: any) => branchFilter ? q.eq("organization_id", branchFilter) : q;
       const [pendingRes, affecteesRes, accepteesRes, refuseesRes, archiveesRes] = await Promise.all([
-        supabase.from("fiches").select(ficheAdminCols).eq("status", "SOUMISE").order("created_at", { ascending: false }),
-        supabase.from("fiches").select(ficheAdminCols).eq("status", "AFFECTEE").order("updated_at", { ascending: false }).limit(100),
-        supabase.from("fiches").select(ficheAdminCols).eq("status", "ACCEPTEE").order("updated_at", { ascending: false }).limit(100),
-        supabase.from("fiches").select(ficheAdminCols).eq("status", "REFUSEE").order("updated_at", { ascending: false }).limit(100),
-        supabase.from("fiches").select(ficheAdminCols).eq("status", "ARCHIVEE").order("updated_at", { ascending: false }).limit(100),
+        bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "SOUMISE")).order("created_at", { ascending: false }),
+        bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "AFFECTEE")).order("updated_at", { ascending: false }).limit(100),
+        bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "ACCEPTEE")).order("updated_at", { ascending: false }).limit(100),
+        bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "REFUSEE")).order("updated_at", { ascending: false }).limit(100),
+        bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "ARCHIVEE")).order("updated_at", { ascending: false }).limit(100),
       ]);
       setFichesPending((pendingRes.data as unknown as FicheEnAttente[]) ?? []);
       setFichesAffecteesAdmin((affecteesRes.data as unknown as FicheAffectee[]) ?? []);
@@ -424,6 +429,7 @@ export default function DashboardPage() {
         .eq("status", "ACCEPTEE");
 
       if (isCommercial) ventesQuery = ventesQuery.eq("assigned_to", profile.id);
+      if (branchFilter) ventesQuery = ventesQuery.eq("organization_id", branchFilter);
       if (periodDates) {
         ventesQuery = ventesQuery.gte("updated_at", `${periodDates.from}T00:00:00`).lte("updated_at", `${periodDates.to}T23:59:59`);
       }
@@ -569,7 +575,7 @@ export default function DashboardPage() {
       setFetchError("Erreur lors du chargement des données. Veuillez recharger la page.");
       setLoading(false);
     }
-  }, [profile, supabase]);
+  }, [profile, supabase, isDG, selectedBranchId]);
 
   useEffect(() => {
     if (profileLoading || !profile) return;
@@ -584,7 +590,7 @@ export default function DashboardPage() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [profile, profileLoading, supabase, fetchData, dashPeriod]);
+  }, [profile, profileLoading, supabase, fetchData, dashPeriod, selectedBranchId]);
 
   // ── Affectation rapide ───────────────────────────────────────────────────────
   async function handleQuickAssign() {
@@ -657,6 +663,7 @@ export default function DashboardPage() {
   const totalFiches   = Object.values(counts).reduce((a, b) => a + b, 0);
   const isReferent = profile?.role === "PROSPECTEUR";
   const isAdmin       = profile?.role === "ADMIN";
+  const isAdminOrDG   = isAdmin || profile?.role === "DIRECTION_GENERALE";
   const isCommercial  = profile?.role === "COMMERCIAL";
 
   const _dashPl = getPeriodLabel(dashPeriod);
@@ -664,7 +671,7 @@ export default function DashboardPage() {
   const isAllPeriod = dashPeriod === "ALL";
 
   const getDashboardCsvData = useCallback(() => {
-    if (isAdmin && referentsStats.length > 0) {
+    if (isAdminOrDG && referentsStats.length > 0) {
       return {
         columns: [
           { key: "nom", label: "Référent" },
@@ -683,12 +690,14 @@ export default function DashboardPage() {
         { info: "Période", valeur: DASH_PERIOD_LABELS[dashPeriod] },
       ],
     };
-  }, [isAdmin, referentsStats, caTotal, totalVentes, dashPeriod]);
+  }, [isAdminOrDG, referentsStats, caTotal, totalVentes, dashPeriod]);
 
   const visibleStatuses: FicheStatus[] = isReferent
     ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
     : isCommercial
     ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
+    : isAdminOrDG
+    ? ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
     : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
   // ── Skeleton ─────────────────────────────────────────────────────────────
@@ -917,11 +926,13 @@ export default function DashboardPage() {
                 : `${totalFiches} fiche${totalFiches > 1 ? "s" : ""} au total`}
             </p>
           </div>
-          <Link href="/fiches/nouvelle">
-            <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2">
-              <FilePlus className="w-4 h-4" />Nouvelle fiche
-            </Button>
-          </Link>
+          {profile?.role !== "DIRECTION_GENERALE" && (
+            <Link href="/fiches/nouvelle">
+              <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2">
+                <FilePlus className="w-4 h-4" />Nouvelle fiche
+              </Button>
+            </Link>
+          )}
         </div>
 
         {/* Filtre période — direction uniquement */}
@@ -1043,8 +1054,8 @@ export default function DashboardPage() {
           );
         })()}
 
-        {/* ── Section ADMIN : KPI CA consolidé ──────────────────────────────── */}
-        {isAdmin && (
+        {/* ── Section ADMIN/DG : KPI CA consolidé ────────────────────────────── */}
+        {isAdminOrDG && (
           <div className="space-y-6">
             {/* KPI Cards CA */}
             <div className="grid grid-cols-3 gap-4">
@@ -1226,8 +1237,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── Section ADMIN : fiches en attente (priorité haute) ──────────── */}
-        {isAdmin && (
+        {/* ── Section ADMIN/DG : fiches en attente (priorité haute) ──────────── */}
+        {isAdminOrDG && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1289,6 +1300,7 @@ export default function DashboardPage() {
                             {new Date(fiche.created_at).toLocaleDateString("fr-FR")}
                           </div>
                           <UrgencyBadge days={days} />
+                          {isAdmin && (
                           <Button
                             size="sm"
                             className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl text-xs gap-1.5 h-8"
@@ -1301,6 +1313,7 @@ export default function DashboardPage() {
                           >
                             <UserCheck className="w-3.5 h-3.5" />Affecter
                           </Button>
+                          )}
                         </div>
                       </div>
                     </Link>
@@ -1311,8 +1324,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── Section ADMIN : 4 blocs statut (sans À valider, déjà au-dessus) ─ */}
-        {isAdmin && (
+        {/* ── Section ADMIN/DG : 4 blocs statut (sans À valider, déjà au-dessus) ─ */}
+        {isAdminOrDG && (
           <div className="space-y-8">
             <StatusBlock
               title={`Affectées${dashPeriodSuffix}`}

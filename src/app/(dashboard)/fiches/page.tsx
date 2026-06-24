@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getFichesForExport } from "@/lib/data/fiches";
 import { toCsv, downloadCsv, type CsvColumn } from "@/lib/csv";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { useBranch } from "@/lib/context/branch-context";
 import { STATUS_LABELS } from "@/lib/permissions";
 import type { FicheStatus } from "@/types/database";
 import { toast } from "sonner";
@@ -76,8 +77,10 @@ export default function FichesPage() {
   const isValidationMode = initialStatus === "SOUMISE";
   const highlightIds = useMemo(() => new Set((searchParams.get("highlight") ?? "").split(",").filter(Boolean)), [searchParams]);
   const { profile } = useProfile();
+  const { selectedBranchId, isDG } = useBranch();
   const isReferent = profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE";
   const isAdmin       = profile?.role === "ADMIN";
+  const isAdminOrDG   = isAdmin || profile?.role === "DIRECTION_GENERALE";
   const isCommercial  = profile?.role === "COMMERCIAL";
 
   const [fiches, setFiches] = useState<FicheRow[]>([]);
@@ -140,8 +143,9 @@ export default function FichesPage() {
 
     // Calculé ici pour éviter les closures périmées
     const role = profile?.role;
-    const _isAdmin       = role === "ADMIN";
+    const _isAdmin       = role === "ADMIN" || role === "DIRECTION_GENERALE";
     const _isReferent = role === "PROSPECTEUR" || role === "CHEF_EQUIPE";
+    const _branchFilter  = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
 
     let query = supabase
       .from("fiches")
@@ -181,6 +185,8 @@ export default function FichesPage() {
       if (commercialFilter  !== "ALL") query = query.eq("assigned_to", commercialFilter);
     }
 
+    if (_branchFilter) query = query.eq("organization_id", _branchFilter);
+
     if (search) {
       query = query.or(
         `prospect_nom.ilike.%${search}%,prospect_prenom.ilike.%${search}%,reference.ilike.%${search}%,prospect_ville.ilike.%${search}%`
@@ -205,7 +211,7 @@ export default function FichesPage() {
       if (append) setLoadingMore(false); else setLoading(false);
     }
   // supabase est stable (useMemo), pas besoin dans les deps
-  }, [statusFilter, search, profile, periodFilter, referentFilter, commercialFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [statusFilter, search, profile, periodFilter, referentFilter, commercialFilter, selectedBranchId, isDG]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fiches antérieures au trimestre (toujours chargées)
   useEffect(() => {
@@ -379,7 +385,7 @@ export default function FichesPage() {
     return () => { supabase.removeChannel(channel); };
   }, [fetchFiches]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasAdminFilters = isAdmin && (periodFilter !== "ALL" || referentFilter !== "ALL" || commercialFilter !== "ALL");
+  const hasAdminFilters = isAdminOrDG && (periodFilter !== "ALL" || referentFilter !== "ALL" || commercialFilter !== "ALL");
 
   function resetAdminFilters() {
     setPeriodFilter("ALL");
@@ -425,7 +431,7 @@ export default function FichesPage() {
         </div>
 
         {/* Filtres direction / période */}
-        {isAdmin && (
+        {isAdminOrDG && (
           <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
             {!isValidationMode && (
               <div className="flex items-center justify-between">
@@ -661,7 +667,7 @@ export default function FichesPage() {
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
                         {fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville} ${fiche.prospect_cp ?? ""}` : ""}
                       </p>
-                      {isAdmin && fiche.created_by_profile && (
+                      {isAdminOrDG && fiche.created_by_profile && (
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">
                           Saisi par{" "}
                           <span className="font-medium text-foreground/70">

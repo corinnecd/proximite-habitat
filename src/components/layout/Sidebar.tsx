@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard, FileText, FilePlus, Users, Bell,
-  Building2, LogOut, Menu, X, UserCircle, BarChart3, ClipboardCheck, CalendarDays,
+  Building2, Building, LogOut, Menu, X, UserCircle, BarChart3, ClipboardCheck, CalendarDays,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -12,6 +12,7 @@ import { useProfile } from "@/lib/hooks/use-profile";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/ui/BrandLogo";
+import { BranchSelector } from "@/components/layout/BranchSelector";
 
 const mainNav = [
   { name: "Tableau de bord", href: "/",               icon: LayoutDashboard },
@@ -31,6 +32,12 @@ const planningNav = [
 const adminNav = [
   { name: "Utilisateurs",  href: "/utilisateurs",  icon: Users },
   { name: "Reporting",     href: "/reporting",     icon: BarChart3 },
+];
+
+// Réservé à la Direction Générale
+const dgNav = [
+  { name: "Société",      href: "/admin/societe",      icon: Building },
+  { name: "Succursales",  href: "/admin/succursales",  icon: Building2 },
 ];
 
 const commercialNav = [
@@ -171,6 +178,9 @@ export function Sidebar() {
         </Link>
       </div>
 
+      {/* Sélecteur de succursale (DG uniquement) */}
+      <BranchSelector />
+
       {/* Navigation principale */}
       <nav className="flex-1 px-3 pt-3 pb-2 overflow-y-auto">
         <div className="space-y-0.5">
@@ -180,8 +190,8 @@ export function Sidebar() {
             isActive={isActive(mainNav[0].href)}
             onClick={close}
           />
-          {/* Fiches à valider (admin) — au-dessus de Statut des Fiches */}
-          {profile?.role === "ADMIN" && (
+          {/* Fiches à valider (admin + DG) — au-dessus de Statut des Fiches */}
+          {(profile?.role === "ADMIN" || profile?.role === "DIRECTION_GENERALE") && (
             <NavItem
               item={{ name: "Fiches à valider", href: "/fiches?status=SOUMISE", icon: ClipboardCheck }}
               isActive={pathname === "/fiches" && searchParams.get("status") === "SOUMISE"}
@@ -199,7 +209,7 @@ export function Sidebar() {
             isActive={isActive(mainNav[1].href) && searchParams.get("status") !== "SOUMISE"}
             onClick={close}
           />
-          {/* Nouvelle fiche — Référent et Chef d'équipe */}
+          {/* Nouvelle fiche — Référent et Chef d'équipe (pas DG) */}
           {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && (
             <NavItem
               item={mainNav[2]}
@@ -211,7 +221,10 @@ export function Sidebar() {
 
         <SectionLabel label="Suivi" />
         <div className="space-y-0.5">
-          {suivisNav.map((item) => (
+          {suivisNav
+            // Le DG (lecture seule, supervision) ne reçoit pas de notifications : on masque l'entrée.
+            .filter((item) => !(profile?.role === "DIRECTION_GENERALE" && item.href === "/notifications"))
+            .map((item) => (
             <NavItem
               key={item.href}
               item={item}
@@ -229,11 +242,21 @@ export function Sidebar() {
           ))}
         </div>
 
-        {profile?.role === "ADMIN" && (
+        {(profile?.role === "ADMIN" || profile?.role === "DIRECTION_GENERALE") && (
           <>
             <SectionLabel label="Administration" />
             <div className="space-y-0.5">
               {adminNav.map((item) => (
+                <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
+              ))}
+            </div>
+          </>
+        )}
+        {profile?.role === "DIRECTION_GENERALE" && (
+          <>
+            <SectionLabel label="Direction Générale" />
+            <div className="space-y-0.5">
+              {dgNav.map((item) => (
                 <NavItem key={item.href} item={item} isActive={isActive(item.href)} onClick={close} />
               ))}
             </div>

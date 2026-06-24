@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { createClient } from "@/lib/supabase/client";
 import { getAllProfiles, setProfileActive } from "@/lib/data/profiles";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { useBranch } from "@/lib/context/branch-context";
 import { ROLE_LABELS } from "@/lib/permissions";
 import type { UserRole, Profile } from "@/types/database";
 import { toast } from "sonner";
@@ -32,10 +33,12 @@ const ROLE_STYLE: Record<UserRole, { border: string; avatarBg: string; avatarTex
   COMMERCIAL:  { border: "border-l-blue-500",   avatarBg: "bg-blue-100 dark:bg-blue-900/40",    avatarText: "text-blue-700 dark:text-blue-300",    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
   PROSPECTEUR: { border: "border-l-emerald-500",avatarBg: "bg-emerald-100 dark:bg-emerald-900/40", avatarText: "text-emerald-700 dark:text-emerald-300", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
   CHEF_EQUIPE: { border: "border-l-amber-500", avatarBg: "bg-amber-100 dark:bg-amber-900/40", avatarText: "text-amber-700 dark:text-amber-300", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
+  DIRECTION_GENERALE: { border: "border-l-rose-500", avatarBg: "bg-rose-100 dark:bg-rose-900/40", avatarText: "text-rose-700 dark:text-rose-300", badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" },
 };
 
 const ROLE_FILTERS: Array<{ value: UserRole | "ALL"; label: string }> = [
   { value: "ALL", label: "Tous" },
+  { value: "DIRECTION_GENERALE", label: "Direction Générale" },
   { value: "ADMIN", label: "Direction" },
   { value: "COMMERCIAL", label: "Commerciaux" },
   { value: "PROSPECTEUR", label: "Référents" },
@@ -60,15 +63,25 @@ export default function UtilisateursPage() {
     email: "", password: "", first_name: "", last_name: "",
     role: "PROSPECTEUR" as UserRole, phone: "",
   });
+  const [targetOrgId, setTargetOrgId] = useState<string>("");
   const { profile } = useProfile();
+  const { isDG, branches, selectedBranchId } = useBranch();
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     getAllProfiles(supabase).then((data) => { setUsers(data); setLoading(false); });
   }, [supabase]);
 
+  // Pour le DG : restreindre à la succursale sélectionnée (cohérent avec dashboard/reporting).
+  const branchScopedUsers = useMemo(() => {
+    if (isDG && selectedBranchId !== "all") {
+      return users.filter((u) => u.organization_id === selectedBranchId);
+    }
+    return users;
+  }, [users, isDG, selectedBranchId]);
+
   const filtered = useMemo(() => {
-    return users.filter((u) => {
+    return branchScopedUsers.filter((u) => {
       const matchRole = roleFilter === "ALL" || u.role === roleFilter;
       const q = search.toLowerCase();
       const matchSearch = !q ||
@@ -77,26 +90,27 @@ export default function UtilisateursPage() {
         u.email.toLowerCase().includes(q);
       return matchRole && matchSearch;
     });
-  }, [users, roleFilter, search]);
+  }, [branchScopedUsers, roleFilter, search]);
 
   const stats = useMemo(() => ({
-    total: users.length,
-    active: users.filter((u) => u.is_active).length,
-    admins: users.filter((u) => u.role === "ADMIN").length,
-    commercials: users.filter((u) => u.role === "COMMERCIAL").length,
-    référents: users.filter((u) => u.role === "PROSPECTEUR").length,
-    chefsEquipe: users.filter((u) => u.role === "CHEF_EQUIPE").length,
-  }), [users]);
+    total: branchScopedUsers.length,
+    active: branchScopedUsers.filter((u) => u.is_active).length,
+    admins: branchScopedUsers.filter((u) => u.role === "ADMIN").length,
+    commercials: branchScopedUsers.filter((u) => u.role === "COMMERCIAL").length,
+    référents: branchScopedUsers.filter((u) => u.role === "PROSPECTEUR").length,
+    chefsEquipe: branchScopedUsers.filter((u) => u.role === "CHEF_EQUIPE").length,
+  }), [branchScopedUsers]);
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
     if (!profile) return;
+    const orgId = isDG ? (targetOrgId || profile.organization_id) : profile.organization_id;
     setCreating(true);
     try {
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...newUser, organization_id: profile.organization_id }),
+        body: JSON.stringify({ ...newUser, organization_id: orgId }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
       const created = await res.json();
@@ -151,7 +165,7 @@ export default function UtilisateursPage() {
   }
 
   // Accès refusé
-  if (profile?.role !== "ADMIN") {
+  if (profile?.role !== "ADMIN" && profile?.role !== "DIRECTION_GENERALE") {
     return (
       <>
         <Topbar title="Utilisateurs" />
@@ -270,6 +284,7 @@ export default function UtilisateursPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="DIRECTION_GENERALE">Direction Générale</SelectItem>
                       <SelectItem value="ADMIN">Direction</SelectItem>
                       <SelectItem value="COMMERCIAL">Commercial</SelectItem>
                       <SelectItem value="CHEF_EQUIPE">Chef d&apos;équipe</SelectItem>
@@ -277,6 +292,26 @@ export default function UtilisateursPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {isDG && (
+                  <div className="space-y-2">
+                    <Label>Succursale *</Label>
+                    <Select
+                      value={targetOrgId || profile?.organization_id || ""}
+                      onValueChange={(v) => v && setTargetOrgId(v)}
+                    >
+                      <SelectTrigger className="bg-card rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {branches.map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name}{b.is_hq ? " (Siège)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <Button type="submit" disabled={creating} className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2">
                   {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                   Créer l&apos;utilisateur
@@ -419,6 +454,7 @@ export default function UtilisateursPage() {
               <Select value={editForm.role} onValueChange={(v) => v && setEditForm({ ...editForm, role: v as UserRole })}>
                 <SelectTrigger className="bg-card rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="DIRECTION_GENERALE">Direction Générale</SelectItem>
                   <SelectItem value="ADMIN">Direction</SelectItem>
                   <SelectItem value="COMMERCIAL">Commercial</SelectItem>
                   <SelectItem value="CHEF_EQUIPE">Chef d&apos;équipe</SelectItem>

@@ -12,9 +12,14 @@ describe("canTransition", () => {
     expect(canTransition("PROSPECTEUR", "BROUILLON", "SOUMISE")).toBe(true);
   });
 
-  it("interdit à un commercial d'affecter une fiche soumise (réservé ADMIN)", () => {
-    expect(canTransition("COMMERCIAL", "SOUMISE", "AFFECTEE")).toBe(false);
-    expect(canTransition("ADMIN", "SOUMISE", "AFFECTEE")).toBe(true);
+  it("seul l'admin peut valider une fiche soumise", () => {
+    expect(canTransition("COMMERCIAL", "SOUMISE", "VALIDEE")).toBe(false);
+    expect(canTransition("ADMIN", "SOUMISE", "VALIDEE")).toBe(true);
+  });
+
+  it("seul l'admin peut affecter une fiche validée", () => {
+    expect(canTransition("ADMIN", "VALIDEE", "AFFECTEE")).toBe(true);
+    expect(canTransition("COMMERCIAL", "VALIDEE", "AFFECTEE")).toBe(false);
   });
 
   it("autorise commercial et admin à accepter/refuser une fiche affectée", () => {
@@ -44,17 +49,25 @@ describe("getAvailableTransitions", () => {
     );
   });
 
-  it("ne renvoie rien pour un référent sur une fiche soumise", () => {
-    expect(getAvailableTransitions("PROSPECTEUR", "SOUMISE")).toEqual([]);
+  it("le référent peut retourner une fiche soumise en brouillon", () => {
+    expect(getAvailableTransitions("PROSPECTEUR", "SOUMISE")).toEqual(["BROUILLON"]);
+  });
+
+  it("DIRECTION_GENERALE n'a aucune transition disponible", () => {
+    expect(getAvailableTransitions("DIRECTION_GENERALE", "SOUMISE")).toEqual([]);
+    expect(getAvailableTransitions("DIRECTION_GENERALE", "BROUILLON")).toEqual([]);
+    expect(getAvailableTransitions("DIRECTION_GENERALE", "AFFECTEE")).toEqual([]);
   });
 });
 
 describe("helpers de rôle", () => {
-  it("seul l'ADMIN gère les utilisateurs et affecte les fiches", () => {
+  it("ADMIN et DIRECTION_GENERALE gèrent les utilisateurs, seul ADMIN affecte les fiches", () => {
     expect(canManageUsers("ADMIN")).toBe(true);
+    expect(canManageUsers("DIRECTION_GENERALE")).toBe(true);
     expect(canManageUsers("COMMERCIAL")).toBe(false);
     expect(canManageUsers("PROSPECTEUR")).toBe(false);
     expect(canAssignFiche("ADMIN")).toBe(true);
+    expect(canAssignFiche("DIRECTION_GENERALE")).toBe(false);
     expect(canAssignFiche("COMMERCIAL")).toBe(false);
   });
 });
@@ -76,6 +89,11 @@ describe("canEditFiche", () => {
   it("le référent n'édite que ses propres fiches", () => {
     expect(canEditFiche("PROSPECTEUR", me, me, null, "BROUILLON")).toBe(true);
     expect(canEditFiche("PROSPECTEUR", me, other, me, "BROUILLON")).toBe(false);
+  });
+
+  it("DIRECTION_GENERALE ne peut jamais éditer une fiche", () => {
+    expect(canEditFiche("DIRECTION_GENERALE", me, me, null, "BROUILLON")).toBe(false);
+    expect(canEditFiche("DIRECTION_GENERALE", me, me, null, "SOUMISE")).toBe(false);
   });
 
   it("une fiche archivée n'est jamais éditable, même par l'admin", () => {

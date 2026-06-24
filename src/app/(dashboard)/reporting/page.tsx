@@ -8,6 +8,7 @@ import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { useBranch } from "@/lib/context/branch-context";
 import type { FicheStatus, MotifRefus } from "@/types/database";
 import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel as getReportPeriodLabel } from "@/lib/periods";
@@ -110,6 +111,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 
 export default function ReportingPage() {
   const { profile, loading: profileLoading } = useProfile();
+  const { selectedBranchId, isDG } = useBranch();
   const router = useRouter();
   const supabase = createClient();
 
@@ -174,11 +176,13 @@ export default function ReportingPage() {
     }
 
     // ── Compteurs par statut ──
+    const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
     const countResults = await Promise.all(
       statuses.map(async (s) => {
         let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
         if (isComm) q = q.eq("assigned_to", profileId);
         if (ficheIdsForPeriod) q = q.in("id", ficheIdsForPeriod);
+        if (_branchFilter) q = q.eq("organization_id", _branchFilter);
         const { count } = await q;
         return { status: s, count: count || 0 };
       })
@@ -193,6 +197,7 @@ export default function ReportingPage() {
       .neq("status", "BROUILLON");
     if (isComm) fichesQuery = fichesQuery.eq("assigned_to", profileId);
     if (ficheIdsForPeriod) fichesQuery = fichesQuery.in("id", ficheIdsForPeriod);
+    if (_branchFilter) fichesQuery = fichesQuery.eq("organization_id", _branchFilter);
     const { data: fichesRaw } = await fichesQuery;
 
     type FicheRow = {
@@ -380,14 +385,14 @@ export default function ReportingPage() {
   useEffect(() => {
     if (profileLoading) return;
     if (!profile) return;
-    if (profile.role !== "ADMIN" && profile.role !== "COMMERCIAL") { router.replace("/"); return; }
+    if (profile.role !== "ADMIN" && profile.role !== "COMMERCIAL" && profile.role !== "DIRECTION_GENERALE") { router.replace("/"); return; }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData(profile.id, profile.role, periodFilter);
     setShowAllVilles(false);
     setShowAllReferents(false);
     setShowAllCommerciaux(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, profileLoading, periodFilter]);
+  }, [profile, profileLoading, periodFilter, selectedBranchId]);
 
   const accepted      = statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0;
   const refused       = statusCounts.find((s) => s.status === "REFUSEE")?.count ?? 0;

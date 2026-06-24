@@ -370,17 +370,17 @@ export default function DashboardPage() {
     const promises: PromiseLike<any>[] = [];
     const keys: string[] = [];
 
-    // [0..N] Compteurs par statut
+    // Compteurs par statut — une seule requête au lieu de 6-7
     const statusesToCount: FicheStatus[] = isReferent
       ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
       : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
-    for (const s of statusesToCount) {
-      let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
+    {
+      let q = supabase.from("fiches").select("status").in("status", statusesToCount);
       if (isReferent) q = q.eq("created_by", profile.id);
       if (isCommercial) q = q.eq("assigned_to", profile.id);
       if (branchFilter) q = q.eq("organization_id", branchFilter);
       if (periodDates) q = q.gte("created_at", `${periodDates.from}T00:00:00Z`).lte("created_at", `${periodDates.to}T23:59:59Z`);
-      keys.push(`count_${s}`);
+      keys.push("statusCounts");
       promises.push(q);
     }
 
@@ -492,7 +492,10 @@ export default function DashboardPage() {
     const allCounts: Record<FicheStatus, number> = {
       BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
     };
-    for (const s of statusesToCount) allCounts[s] = r.get(`count_${s}`)?.count ?? 0;
+    const statusRows = (r.get("statusCounts")?.data ?? []) as { status: FicheStatus }[];
+    for (const row of statusRows) {
+      if (allCounts[row.status] !== undefined) allCounts[row.status]++;
+    }
     setCounts(allCounts);
 
     if (isAdmin) {

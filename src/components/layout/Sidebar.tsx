@@ -99,7 +99,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { profile, loading: profileLoading } = useProfile();
+  const { profile, loading: profileLoading, organizationName } = useProfile();
   const { isDG, selectedBranchName } = useBranch();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [badges, setBadges] = useState<Record<BadgeKey, number>>({ fiches: 0, notifs: 0, soumises: 0 });
@@ -178,11 +178,14 @@ export function Sidebar() {
             <p className="text-[10px] font-semibold text-white/50 tracking-widest">CONSEIL</p>
           </div>
         </Link>
-        {isDG && selectedBranchName && (
-          <div className="mt-2 px-2 py-1.5 rounded-lg bg-[#F97316]/15 border border-[#F97316]/25">
-            <p className="text-xs font-bold text-[#F97316] truncate">{selectedBranchName}</p>
-          </div>
-        )}
+        {(() => {
+          const displayName = isDG ? selectedBranchName : organizationName;
+          return displayName ? (
+            <div className="mt-2 px-2 py-1 rounded-md bg-white/10 border border-white/15">
+              <p className="text-[11px] font-semibold text-white text-center truncate">{displayName}</p>
+            </div>
+          ) : null;
+        })()}
       </div>
 
       {/* Sélecteur de succursale (DG uniquement) */}

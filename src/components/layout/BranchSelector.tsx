@@ -11,21 +11,23 @@ export function BranchSelector() {
   return (
     <div className="px-3 pb-1">
       <div className="relative">
-        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6e6e73] pointer-events-none" />
+        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
         <select
           value={selectedBranchId}
           onChange={(e) => setSelectedBranchId(e.target.value)}
-          className="w-full appearance-none bg-white/60 backdrop-blur-md text-[#1d1d1f] text-sm font-medium pl-9 pr-8 py-2 rounded-xl border border-white/40 hover:bg-white/80 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#F97316]/50"
+          className="w-full appearance-none bg-white/8 text-white text-sm font-medium pl-9 pr-8 py-2 rounded-xl border border-white/10 hover:bg-white/12 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#F97316]/50"
           title="Filtrer par succursale"
         >
-          <option value="all">Toutes les succursales</option>
+          <option value="all" className="bg-[#1E3A5F] text-white">
+            Toutes les succursales
+          </option>
           {branches.map((b) => (
-            <option key={b.id} value={b.id}>
+            <option key={b.id} value={b.id} className="bg-[#1E3A5F] text-white">
               {b.name}{b.is_hq ? " (Siège)" : ""}
             </option>
           ))}
         </select>
-        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#6e6e73] pointer-events-none" />
+        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40 pointer-events-none" />
       </div>
     </div>
   );

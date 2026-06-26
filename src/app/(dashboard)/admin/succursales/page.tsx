@@ -34,7 +34,11 @@ export default function SuccursalesPage() {
 
   async function load() {
     const { data: orgs } = await supabase.from("organizations").select("*").order("name");
-    const list = orgs ?? [];
+    const list = (orgs ?? []).slice().sort((a, b) => {
+      if (a.is_hq && !b.is_hq) return -1;
+      if (!a.is_hq && b.is_hq) return 1;
+      return (a.name ?? "").localeCompare(b.name ?? "", "fr");
+    });
     const withCounts = await Promise.all(
       list.map(async (o) => {
         const { count } = await supabase

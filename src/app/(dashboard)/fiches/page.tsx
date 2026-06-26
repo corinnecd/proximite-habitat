@@ -28,7 +28,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-import { type PeriodFilter, PERIOD_LABELS, getPeriodDates } from "@/lib/periods";
+import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel } from "@/lib/periods";
 
 type FicheCsvRow = {
   reference: string; statut: string; nom: string; prenom: string;
@@ -471,8 +471,14 @@ export default function FichesPage() {
             <div className={isValidationMode ? "space-y-1" : "space-y-3"}>
               {/* Ligne unique : Période + Antérieures + Référents + Commerciaux */}
               <div className={isValidationMode ? "" : "space-y-1"}>
-                <label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                  <CalendarDays className="w-3 h-3" />{isValidationMode ? "Période d'activité" : "Période de soumission"}
+                <label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-2 flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <CalendarDays className="w-3 h-3" />{isValidationMode ? "Période d'activité" : "Période de soumission"}
+                  </span>
+                  <span className="text-sm font-bold text-foreground tracking-normal normal-case">{PERIOD_LABELS[periodFilter].toUpperCase()}</span>
+                  {getPeriodLabel(periodFilter) && (
+                    <span className="text-xs font-medium text-muted-foreground tracking-normal normal-case">{getPeriodLabel(periodFilter)}</span>
+                  )}
                 </label>
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex gap-2 flex-wrap flex-1">

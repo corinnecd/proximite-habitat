@@ -513,8 +513,14 @@ export default function ReportingPage() {
 
         {/* ── Filtre période de soumission ─────────────────────────────────── */}
         <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            <CalendarDays className="w-3.5 h-3.5" />Période de soumission
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-wrap">
+            <span className="flex items-center gap-1">
+              <CalendarDays className="w-3.5 h-3.5" />Période de soumission
+            </span>
+            <span className="text-sm font-bold text-foreground tracking-normal normal-case">{PERIOD_LABELS[periodFilter].toUpperCase()}</span>
+            {getReportPeriodLabel(periodFilter) && (
+              <span className="text-xs font-medium text-muted-foreground tracking-normal normal-case">{getReportPeriodLabel(periodFilter)}</span>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((p) => (

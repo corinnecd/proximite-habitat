@@ -64,14 +64,14 @@ function NavItem({
       className={cn(
         "relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium tracking-tight transition-all duration-200",
         isActive
-          ? "bg-white/10 text-white"
-          : "text-white/70 hover:text-white hover:bg-white/8",
+          ? "bg-black/8 text-[#1d1d1f] backdrop-blur-md"
+          : "text-[#424245] hover:text-[#1d1d1f] hover:bg-black/4",
       )}
     >
       {isActive && (
         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#F97316] rounded-r-full" />
       )}
-      <Icon className="w-4.5 h-4.5 shrink-0" />
+      <Icon className={cn("w-4.5 h-4.5 shrink-0", isActive ? "text-[#F97316]" : "text-[#6e6e73]")} />
       <span className="flex-1">{item.name}</span>
       {badge !== undefined && badge > 0 && (
         <span className="bg-[#F97316] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
@@ -89,7 +89,7 @@ function NavItem({
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <p className="px-4 pt-5 pb-1 text-[10px] font-bold tracking-widest uppercase text-white/45 select-none">
+    <p className="px-4 pt-5 pb-1 text-[10px] font-bold tracking-widest uppercase text-[#6e6e73] select-none">
       {label}
     </p>
   );
@@ -167,20 +167,21 @@ export function Sidebar() {
   const sidebarContent = (
     <div className="flex flex-col h-full relative overflow-hidden">
       {/* Lueur subtile en haut à droite */}
-      <div className="pointer-events-none absolute -top-16 -right-16 w-40 h-40 rounded-full bg-[#F97316] opacity-[.07] blur-2xl" />
+      <div className="pointer-events-none absolute -top-20 -right-20 w-48 h-48 rounded-full bg-[#F97316] opacity-[.15] blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 -left-20 w-48 h-48 rounded-full bg-[#1B2659] opacity-[.10] blur-3xl" />
 
       {/* Brand */}
-      <div className="px-5 py-4 border-b border-white/8">
+      <div className="px-5 py-4 border-b border-white/30">
         <Link href="/" className="flex items-center gap-3" onClick={close}>
           <BrandLogo size={42} />
           <div>
-            <h1 className="text-sm font-bold text-white tracking-tight leading-tight">PROXIMITÉ HABITAT</h1>
-            <p className="text-[10px] font-semibold text-white/60 tracking-widest">CONSEIL</p>
+            <h1 className="text-sm font-bold text-[#1d1d1f] tracking-tight leading-tight">PROXIMITÉ HABITAT</h1>
+            <p className="text-[10px] font-semibold text-[#6e6e73] tracking-widest">CONSEIL</p>
           </div>
         </Link>
         {!isDG && organizationName && (
-          <div className="mt-2 px-2 py-1 rounded-md bg-white/10 border border-white/15">
-            <p className="text-[11px] font-semibold text-white text-center truncate">{organizationName}</p>
+          <div className="mt-2 px-2 py-1 rounded-md bg-white/40 backdrop-blur-sm border border-white/50">
+            <p className="text-[11px] font-semibold text-[#1d1d1f] text-center truncate">{organizationName}</p>
           </div>
         )}
       </div>
@@ -194,11 +195,11 @@ export function Sidebar() {
           /* Skeleton complet pendant le chargement du profil — évite les secousses */
           <div className="space-y-1 animate-pulse">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="px-4 py-2.5"><div className="h-4 rounded bg-white/10" style={{ width: `${60 + (i % 3) * 20}%` }} /></div>
+              <div key={i} className="px-4 py-2.5"><div className="h-4 rounded bg-black/8" style={{ width: `${60 + (i % 3) * 20}%` }} /></div>
             ))}
-            <div className="px-4 pt-4 pb-1"><div className="h-2 w-20 rounded bg-white/10" /></div>
+            <div className="px-4 pt-4 pb-1"><div className="h-2 w-20 rounded bg-black/8" /></div>
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={`b${i}`} className="px-4 py-2.5"><div className="h-4 rounded bg-white/10" style={{ width: `${50 + (i % 2) * 25}%` }} /></div>
+              <div key={`b${i}`} className="px-4 py-2.5"><div className="h-4 rounded bg-black/8" style={{ width: `${50 + (i % 2) * 25}%` }} /></div>
             ))}
           </div>
         ) : (
@@ -292,7 +293,7 @@ export function Sidebar() {
       </nav>
 
       {/* Footer utilisateur */}
-      <div className="px-3 py-3 border-t border-white/8 space-y-0.5">
+      <div className="px-3 py-3 border-t border-white/30 space-y-0.5">
         {profile ? (
           <>
             <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl">
@@ -300,15 +301,15 @@ export function Sidebar() {
                 {profile.first_name[0]}{profile.last_name[0]}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold tracking-tight text-white truncate leading-tight">
+                <p className="text-sm font-semibold tracking-tight text-[#1d1d1f] truncate leading-tight">
                   {profile.first_name} {profile.last_name}
                 </p>
-                <p className="text-xs text-white/55">{ROLE_LABELS[profile.role]}</p>
+                <p className="text-xs text-[#6e6e73]">{ROLE_LABELS[profile.role]}</p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-white/70 hover:text-white hover:bg-white/8 transition-all duration-200 w-full"
+              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#424245] hover:text-[#1d1d1f] hover:bg-black/4 transition-all duration-200 w-full"
             >
               <LogOut className="w-4.5 h-4.5" />
               Déconnexion
@@ -317,15 +318,15 @@ export function Sidebar() {
         ) : (
           <>
             <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl">
-              <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse shrink-0" />
+              <div className="w-8 h-8 rounded-full bg-black/8 animate-pulse shrink-0" />
               <div className="flex-1 space-y-1.5">
-                <div className="h-3.5 w-28 bg-white/10 rounded animate-pulse" />
-                <div className="h-2.5 w-16 bg-white/10 rounded animate-pulse" />
+                <div className="h-3.5 w-28 bg-black/8 rounded animate-pulse" />
+                <div className="h-2.5 w-16 bg-black/8 rounded animate-pulse" />
               </div>
             </div>
             <div className="flex items-center gap-3 px-4 py-2.5">
-              <div className="h-4 w-4 bg-white/10 rounded animate-pulse" />
-              <div className="h-3.5 w-24 bg-white/10 rounded animate-pulse" />
+              <div className="h-4 w-4 bg-black/8 rounded animate-pulse" />
+              <div className="h-3.5 w-24 bg-black/8 rounded animate-pulse" />
             </div>
           </>
         )}
@@ -348,7 +349,7 @@ export function Sidebar() {
       )}
 
       <aside className={cn(
-        "lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-[#1E3A5F] transform transition-transform duration-300",
+        "lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-white/55 backdrop-blur-2xl border-r border-white/40 transform transition-transform duration-300",
         mobileOpen ? "translate-x-0" : "-translate-x-full",
       )}>
         <button onClick={close} aria-label="Fermer le menu" className="absolute top-4 right-4 text-white/60 hover:text-white">
@@ -357,7 +358,7 @@ export function Sidebar() {
         {sidebarContent}
       </aside>
 
-      <aside className="hidden lg:flex lg:w-72 lg:flex-col lg:fixed lg:inset-y-0 bg-[#1E3A5F]">
+      <aside className="hidden lg:flex lg:w-72 lg:flex-col lg:fixed lg:inset-y-0 bg-white/55 backdrop-blur-2xl border-r border-white/40">
         {sidebarContent}
       </aside>
     </>

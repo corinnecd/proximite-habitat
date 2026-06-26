@@ -62,14 +62,14 @@ function NavItem({
       href={item.href}
       onClick={onClick}
       className={cn(
-        "relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+        "relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium tracking-tight transition-all duration-200",
         isActive
           ? "bg-white/10 text-white"
-          : "text-white/55 hover:text-white hover:bg-white/6",
+          : "text-white/70 hover:text-white hover:bg-white/8",
       )}
     >
       {isActive && (
-        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#F97316] rounded-r-full" />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#F97316] rounded-r-full" />
       )}
       <Icon className="w-4.5 h-4.5 shrink-0" />
       <span className="flex-1">{item.name}</span>
@@ -89,7 +89,7 @@ function NavItem({
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <p className="px-4 pt-5 pb-1 text-[10px] font-bold tracking-widest uppercase text-white/25 select-none">
+    <p className="px-4 pt-5 pb-1 text-[10px] font-bold tracking-widest uppercase text-white/45 select-none">
       {label}
     </p>
   );
@@ -174,8 +174,8 @@ export function Sidebar() {
         <Link href="/" className="flex items-center gap-3" onClick={close}>
           <BrandLogo size={42} />
           <div>
-            <h1 className="text-sm font-bold text-white tracking-wide leading-tight">PROXIMITÉ HABITAT</h1>
-            <p className="text-[10px] font-semibold text-white/50 tracking-widest">CONSEIL</p>
+            <h1 className="text-sm font-bold text-white tracking-tight leading-tight">PROXIMITÉ HABITAT</h1>
+            <p className="text-[10px] font-semibold text-white/60 tracking-widest">CONSEIL</p>
           </div>
         </Link>
         {!isDG && organizationName && (
@@ -300,15 +300,15 @@ export function Sidebar() {
                 {profile.first_name[0]}{profile.last_name[0]}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate leading-tight">
+                <p className="text-sm font-semibold tracking-tight text-white truncate leading-tight">
                   {profile.first_name} {profile.last_name}
                 </p>
-                <p className="text-xs text-white/35">{ROLE_LABELS[profile.role]}</p>
+                <p className="text-xs text-white/55">{ROLE_LABELS[profile.role]}</p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-white/55 hover:text-white hover:bg-white/6 transition-all duration-200 w-full"
+              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-white/70 hover:text-white hover:bg-white/8 transition-all duration-200 w-full"
             >
               <LogOut className="w-4.5 h-4.5" />
               Déconnexion
@@ -338,7 +338,7 @@ export function Sidebar() {
       <button
         onClick={() => setMobileOpen(true)}
         aria-label="Ouvrir le menu"
-        className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg"
+        className="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white shadow-lg"
       >
         <Menu className="w-5 h-5" />
       </button>

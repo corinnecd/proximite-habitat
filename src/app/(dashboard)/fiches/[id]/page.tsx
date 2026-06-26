@@ -104,7 +104,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-card border border-border rounded-2xl p-6 space-y-4 hover:shadow-md transition-all duration-200">
+    <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4 hover:shadow-md transition-all duration-200">
       <div className="flex items-center gap-3">
         <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
           <span className={iconColor}>{icon}</span>
@@ -943,7 +943,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                     <ChevronDown className="w-4 h-4" />
                   </Button>
                   {showStatusDropdown && (
-                    <div className="absolute right-0 top-full mt-1 w-64 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+                    <div className="absolute right-0 top-full mt-1 w-64 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] shadow-xl z-50 overflow-hidden">
                       {availableTransitions.map((status) => {
                         const dropdownLabels: Partial<Record<FicheStatus, string>> = {
                           RETRACTATION: "Attente Acceptation Client",
@@ -1395,7 +1395,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             </SectionCard>
 
             {/* Consentement RGPD */}
-            <div className="bg-card border border-border rounded-2xl p-6 space-y-4 hover:shadow-md transition-all duration-200">
+            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4 hover:shadow-md transition-all duration-200">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center shrink-0">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
@@ -1471,7 +1471,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           <div className="space-y-4">
 
             {/* Historique */}
-            <div className="bg-card border border-border rounded-2xl p-6">
+            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6">
               <button
                 type="button"
                 onClick={() => setShowHistory(!showHistory)}
@@ -1626,7 +1626,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             })()}
 
             {/* Infos */}
-            <div className="bg-card border border-border rounded-2xl p-5 space-y-3 text-sm hover:shadow-md transition-all duration-200">
+            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-5 space-y-3 text-sm hover:shadow-md transition-all duration-200">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center shrink-0">
                   <Calendar className="w-3.5 h-3.5 text-primary" />
@@ -1693,7 +1693,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* ── Barre de validation bas de page — direction uniquement ───────── */}
         {fiche.status === "SOUMISE" && profile?.role === "ADMIN" && (
-          <div data-no-print className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card border border-border rounded-2xl px-6 py-4">
+          <div data-no-print className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] px-6 py-4">
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <span className={`flex items-center gap-1.5 font-medium ${isValidated ? "text-emerald-600" : "text-muted-foreground"}`}>
                 <CheckCircle2 className="w-4 h-4" />

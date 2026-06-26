@@ -487,7 +487,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
         )}
 
         {/* Stepper visuel */}
-        <div className="mb-8 bg-card border border-border rounded-2xl px-6 pt-5 pb-4">
+        <div className="mb-8 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] px-6 pt-5 pb-4">
           <div className="flex items-center">
             {STEPS.map((s, i) => {
               const done   = i < currentStep;
@@ -624,7 +624,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
                 type="button"
                 onClick={handleNext}
                 disabled={saving}
-                className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2"
+                className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2"
               >
                 Suivant<ChevronRight className="w-4 h-4" />
               </Button>

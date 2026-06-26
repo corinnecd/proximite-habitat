@@ -145,7 +145,7 @@ export function Topbar({ title, actions }: { title?: string; actions?: React.Rea
             </button>
 
             {dropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-card border border-border rounded-2xl shadow-xl z-50 overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-card rounded-2xl shadow-[0_8px_24px_rgba(0,0,0,0.1),0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-foreground/5 z-50 overflow-hidden">
                 {/* En-tête */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <span className="font-semibold text-sm">Notifications</span>

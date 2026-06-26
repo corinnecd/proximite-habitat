@@ -440,7 +440,7 @@ export default function FichesPage() {
         {/* Filtres direction / période */}
         {!profile && (
           <div className="space-y-4 animate-pulse">
-            <div className="bg-card border border-border rounded-2xl p-4 h-[72px]" />
+            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 h-[72px]" />
             <div className="flex gap-2">
               {Array.from({ length: 7 }).map((_, i) => (
                 <div key={i} className="h-10 rounded-xl bg-card border border-border" style={{ width: `${80 + (i % 3) * 30}px` }} />
@@ -449,7 +449,7 @@ export default function FichesPage() {
           </div>
         )}
         {isAdminOrDG && (
-          <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 space-y-3">
             {!isValidationMode && (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
@@ -660,7 +660,7 @@ export default function FichesPage() {
             />
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {fiches.slice(0, visibleCount).map((fiche, idx) => {
               const s = STATUS_CARD_STYLES[fiche.status];
               const StatusIcon = s.Icon;

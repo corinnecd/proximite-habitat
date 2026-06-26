@@ -258,7 +258,7 @@ export default function PlanificationPage() {
       <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* Navigation semaine — toujours visible */}
-        <div className="flex items-center justify-between bg-card border border-border rounded-2xl px-6 py-4">
+        <div className="flex items-center justify-between bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] px-6 py-4">
           <Button variant="outline" size="sm" className="rounded-xl" onClick={() => navigateWeek(-1)}>
             <ChevronLeft className="w-4 h-4" />
           </Button>
@@ -277,7 +277,7 @@ export default function PlanificationPage() {
         {/* Skeleton pendant chargement du profil */}
         {(profileLoading || !profile) && (
           <div className="space-y-6">
-            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
               <div className="h-5 w-48 bg-muted rounded animate-pulse" />
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[1, 2, 3].map((i) => (
@@ -290,7 +290,7 @@ export default function PlanificationPage() {
 
         {/* Contenu principal — visible après chargement du profil */}
         {profile && <>
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+        <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-bold flex items-center gap-2">
               <MapPin className="w-5 h-5 text-[#F97316]" />
@@ -368,7 +368,7 @@ export default function PlanificationPage() {
 
         {/* Tableau récapitulatif des performances */}
         {planEntries.length > 0 && (
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <h2 className="font-bold flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-[#F97316]" />
@@ -494,7 +494,7 @@ export default function PlanificationPage() {
         )}
 
         {/* Ajouter des villes — ADMIN uniquement */}
-        {isAdmin && <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+        {isAdmin && <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
           <h2 className="font-bold flex items-center gap-2">
             <MapPin className="w-5 h-5 text-primary" />
             Ajouter des villes

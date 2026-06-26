@@ -63,7 +63,7 @@ export default function SocietePage() {
           <p className="text-muted-foreground">Aucune société rattachée.</p>
         ) : (
           <>
-            <div className="bg-card border border-border rounded-2xl p-6 flex items-center gap-5">
+            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 flex items-center gap-5">
               <div className="w-16 h-16 rounded-2xl bg-[#1E3A5F] flex items-center justify-center shrink-0">
                 <Building className="w-8 h-8 text-white" />
               </div>

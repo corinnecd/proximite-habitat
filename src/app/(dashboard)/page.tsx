@@ -700,7 +700,7 @@ export default function DashboardPage() {
           {/* Compteurs */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-28 bg-card rounded-xl border border-border border-l-4 border-l-muted" style={{ animationDelay: `${i * 50}ms` }} />
+              <div key={i} className="h-28 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] border-l-4 border-l-muted" style={{ animationDelay: `${i * 50}ms` }} />
             ))}
           </div>
           {/* Bloc ventes */}
@@ -719,7 +719,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="h-7 bg-card rounded-xl w-24" />
               </div>
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden">
                 {Array.from({ length: 2 }).map((_, j) => (
                   <div key={j} className={`px-5 py-4 flex items-start gap-3 ${j > 0 ? "border-t border-border" : ""}`}>
                     <div className="flex-1 space-y-2">
@@ -765,7 +765,7 @@ export default function DashboardPage() {
         <DialogFooter>
           <DialogClose render={<Button variant="outline" className="rounded-xl" />}>Annuler</DialogClose>
           <Button
-            className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2"
+            className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-4 gap-2"
             onClick={handleQuickAssign}
             disabled={!assignCommercialId || assigning}
           >
@@ -960,7 +960,7 @@ export default function DashboardPage() {
           const qEnd = new Date(now.getFullYear(), qIdx * 3 + 3, 0);
           const fmtD = (d: Date) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
           return (
-          <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 space-y-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               <CalendarDays className="w-3.5 h-3.5" />Période d&apos;activité
               <span className="text-sm font-bold text-foreground tracking-normal">DU TRIMESTRE EN COURS</span>
@@ -1152,7 +1152,7 @@ export default function DashboardPage() {
             {/* Tableaux référents + commerciaux */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Classement référents — ventes uniquement */}
-              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+              <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
@@ -1196,7 +1196,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Classement commerciaux avec CA */}
-              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+              <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
@@ -1320,7 +1320,7 @@ export default function DashboardPage() {
                           {isAdmin && (
                           <Button
                             size="sm"
-                            className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl text-xs gap-1.5 h-8"
+                            className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-4 text-xs gap-1.5 h-8"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1427,7 +1427,7 @@ export default function DashboardPage() {
 
             {/* Détail CA par fiche acceptée */}
             {fichesAcceptees.length > 0 && (
-              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+              <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
@@ -1509,7 +1509,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden">
                 <CollapsibleList items={fichesAffectees} renderItem={(fiche: FicheAffectee, idx: number, total: number) => {
                   const days = daysSince(fiche.updated_at);
                   return (
@@ -1547,7 +1547,7 @@ export default function DashboardPage() {
                           <UrgencyBadge days={days} />
                           <Button
                             size="sm"
-                            className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl text-xs gap-1.5 h-8"
+                            className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-4 text-xs gap-1.5 h-8"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1601,7 +1601,7 @@ export default function DashboardPage() {
                   {fiches.length === 0 ? (
                     <p className="text-sm text-muted-foreground px-1">{emptyMsg}</p>
                   ) : (
-                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                    <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden">
                       <CollapsibleList items={fiches} renderItem={(fiche: FicheListItem, idx: number, total: number) => (
                         <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                           <div className={`flex items-center gap-4 px-5 py-4 ${hoverBg} dark:hover:bg-white/5 transition-colors cursor-pointer ${idx < total - 1 ? "border-b border-border" : ""}`}>
@@ -1657,7 +1657,7 @@ export default function DashboardPage() {
                   {list.length === 0 ? (
                     <p className="text-sm text-muted-foreground px-1">Aucune fiche en attente de validation.</p>
                   ) : (
-                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                    <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden">
                       <CollapsibleList items={list} renderItem={(fiche: FicheAffectee, idx: number, total: number) => (
                         <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                           <div className={`flex items-center gap-4 px-5 py-4 hover:bg-purple-50/40 dark:hover:bg-purple-950/20 transition-colors cursor-pointer ${idx < total - 1 ? "border-b border-border" : ""}`}>
@@ -1696,7 +1696,7 @@ export default function DashboardPage() {
                   {list.length === 0 ? (
                     <p className="text-sm text-muted-foreground px-1">Aucune fiche validée pour le moment.</p>
                   ) : (
-                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                    <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden">
                       <CollapsibleList items={list} renderItem={(fiche: FicheAffectee, idx: number, total: number) => (
                         <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                           <div className={`flex items-center gap-4 px-5 py-4 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer ${idx < total - 1 ? "border-b border-border" : ""}`}>
@@ -1735,7 +1735,7 @@ export default function DashboardPage() {
                   {list.length === 0 ? (
                     <p className="text-sm text-muted-foreground px-1">Aucune fiche refusée.</p>
                   ) : (
-                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                    <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden">
                       <CollapsibleList items={list} renderItem={(fiche: FicheAffectee, idx: number, total: number) => (
                         <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                           <div className={`flex items-center gap-4 px-5 py-4 hover:bg-red-50/40 dark:hover:bg-red-950/20 transition-colors cursor-pointer ${idx < total - 1 ? "border-b border-border" : ""}`}>
@@ -1774,7 +1774,7 @@ export default function DashboardPage() {
                   {list.length === 0 ? (
                     <p className="text-sm text-muted-foreground px-1">Aucune fiche archivée.</p>
                   ) : (
-                    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                    <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden">
                       <CollapsibleList items={list} renderItem={(fiche: FicheAffectee, idx: number, total: number) => (
                         <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                           <div className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/20 transition-colors cursor-pointer ${idx < total - 1 ? "border-b border-border" : ""}`}>

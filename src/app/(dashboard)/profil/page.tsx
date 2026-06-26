@@ -260,7 +260,7 @@ export default function ProfilPage() {
                 bg: "bg-orange-50 dark:bg-orange-950/30",
               },
             ].map(({ icon: Icon, label, value, sub, color, bg }) => (
-              <div key={label} className="bg-card border border-border rounded-2xl p-4 space-y-2" style={{ animation: "fadeSlideIn 0.25s ease both" }}>
+              <div key={label} className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 space-y-2" style={{ animation: "fadeSlideIn 0.25s ease both" }}>
                 <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center`}>
                   <Icon className={`w-4 h-4 ${color}`} />
                 </div>
@@ -275,7 +275,7 @@ export default function ProfilPage() {
         )}
 
         {/* ── Informations personnelles ──────────────────────────────────── */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+        <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <User className="w-4 h-4 text-primary" />
@@ -327,7 +327,7 @@ export default function ProfilPage() {
         </div>
 
         {/* ── Changer le mot de passe ────────────────────────────────────── */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+        <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
               <Lock className="w-4 h-4 text-orange-600" />

@@ -512,7 +512,7 @@ export default function ReportingPage() {
         </div>
 
         {/* ── Filtre période de soumission ─────────────────────────────────── */}
-        <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+        <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 space-y-3">
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             <CalendarDays className="w-3.5 h-3.5" />Période de soumission
           </div>
@@ -577,7 +577,7 @@ export default function ReportingPage() {
 
         {/* ── Taux d'acceptation par commercial ──────────────────────────── */}
         {!isCommercial && commerciaux.length > 0 && (
-          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
@@ -673,7 +673,7 @@ export default function ReportingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
           {/* Pie chart — répartition par statut */}
-          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <BarChart3 className="w-4 h-4 text-primary" />
@@ -789,7 +789,7 @@ export default function ReportingPage() {
           </div>
 
           {/* Top referents (direction) ou performance (commercial) */}
-          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
@@ -895,7 +895,7 @@ export default function ReportingPage() {
             .map((m) => ({ name: MOTIF_REFUS_LABELS[m], value: motifRefusCounts[m], fill: MOTIF_COLORS_HEX[m] }));
 
           return (
-            <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
                   <XCircle className="w-4 h-4 text-red-500" />
@@ -981,7 +981,7 @@ export default function ReportingPage() {
         })()}
 
         {/* ── Évolution semaine par semaine (courbe 12 semaines) ──────────── */}
-        <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+        <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
               <TrendingUp className="w-4 h-4 text-blue-600" />
@@ -1023,7 +1023,7 @@ export default function ReportingPage() {
 
         {/* ── Répartition géographique ────────────────────────────────────── */}
         {!isCommercial && (
-          <div className="bg-card border border-border rounded-2xl p-6 hover:shadow-md transition-all duration-200">
+          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
                 <MapPin className="w-4 h-4 text-purple-600" />

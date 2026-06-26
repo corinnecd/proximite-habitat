@@ -204,7 +204,7 @@ export default function UtilisateursPage() {
             { label: "Commerciaux", value: stats.commercials, Icon: UserCheck, bg: "bg-blue-100 dark:bg-blue-900/30", icon: "text-blue-600" },
             { label: "Référents", value: stats.référents, Icon: Users, bg: "bg-emerald-50 dark:bg-emerald-950/30", icon: "text-emerald-600" },
           ].map(({ label, value, Icon, bg, icon }) => (
-            <div key={label} className="bg-card border border-border rounded-2xl p-5">
+            <div key={label} className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-5">
               <div className="flex items-center gap-3 mb-2">
                 <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center`}>
                   <Icon className={`w-4 h-4 ${icon}`} />
@@ -245,7 +245,7 @@ export default function UtilisateursPage() {
             </div>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger render={<Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2 shrink-0" />}>
+            <DialogTrigger render={<Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2 shrink-0" />}>
               <UserPlus className="w-4 h-4" />Nouvel utilisateur
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
@@ -312,7 +312,7 @@ export default function UtilisateursPage() {
                     </Select>
                   </div>
                 )}
-                <Button type="submit" disabled={creating} className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2">
+                <Button type="submit" disabled={creating} className="w-full bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2">
                   {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                   Créer l&apos;utilisateur
                 </Button>
@@ -466,7 +466,7 @@ export default function UtilisateursPage() {
               <DialogClose>
                 <Button type="button" variant="outline" className="rounded-xl">Annuler</Button>
               </DialogClose>
-              <Button type="submit" disabled={saving} className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2">
+              <Button type="submit" disabled={saving} className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
                 Enregistrer
               </Button>

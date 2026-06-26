@@ -111,7 +111,7 @@ export default function SuccursalesPage() {
             </p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger render={<Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2" />}>
+            <DialogTrigger render={<Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2" />}>
               <Plus className="w-4 h-4" />Nouvelle succursale
             </DialogTrigger>
             <DialogContent>
@@ -133,7 +133,7 @@ export default function SuccursalesPage() {
                   <DialogClose render={<Button type="button" variant="outline" className="rounded-xl" />}>
                     Annuler
                   </DialogClose>
-                  <Button type="submit" disabled={creating || !name.trim()} className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2">
+                  <Button type="submit" disabled={creating || !name.trim()} className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2">
                     {creating && <Loader2 className="w-4 h-4 animate-spin" />}
                     Créer
                   </Button>

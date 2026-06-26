@@ -178,14 +178,11 @@ export function Sidebar() {
             <p className="text-[10px] font-semibold text-white/50 tracking-widest">CONSEIL</p>
           </div>
         </Link>
-        {(() => {
-          const displayName = isDG ? selectedBranchName : organizationName;
-          return displayName ? (
-            <div className="mt-2 px-2 py-1 rounded-md bg-white/10 border border-white/15">
-              <p className="text-[11px] font-semibold text-white text-center truncate">{displayName}</p>
-            </div>
-          ) : null;
-        })()}
+        {!isDG && organizationName && (
+          <div className="mt-2 px-2 py-1 rounded-md bg-white/10 border border-white/15">
+            <p className="text-[11px] font-semibold text-white text-center truncate">{organizationName}</p>
+          </div>
+        )}
       </div>
 
       {/* Sélecteur de succursale (DG uniquement) */}

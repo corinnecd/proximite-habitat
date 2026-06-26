@@ -459,6 +459,7 @@ export default function DashboardPage() {
       let aq = supabase.from("fiches").select("id, reference, prospect_nom, prospect_prenom, status, updated_at");
       if (isCommercial) aq = aq.eq("assigned_to", profile.id);
       else aq = aq.neq("status", "BROUILLON");
+      aq = bq(aq);
       aq = aq.lt("updated_at", `${qFrom}T00:00:00Z`).order("updated_at", { ascending: false }).limit(50);
       keys.push("anterieures");
       promises.push(aq);

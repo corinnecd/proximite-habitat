@@ -142,18 +142,23 @@ export default function ReportingPage() {
       ? ["AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
       : ["SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
+    const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
     const dates = getPeriodDates(period);
     let ficheIdsForPeriod: string[] | null = null;
     if (dates) {
       const from = `${dates.from}T00:00:00Z`;
       const to   = `${dates.to}T23:59:59Z`;
-      const { data: histRows } = await supabase
+      let histQ = supabase
         .from("fiche_history").select("fiche_id")
         .eq("new_status", "SOUMISE").gte("created_at", from).lte("created_at", to);
+      if (_branchFilter) histQ = histQ.eq("organization_id", _branchFilter);
+      const { data: histRows } = await histQ;
       const idSet = new Set((histRows ?? []).map((h: { fiche_id: string }) => h.fiche_id));
-      const { data: legacyRows } = await supabase
+      let legacyQ = supabase
         .from("fiches").select("id").neq("status", "BROUILLON")
         .gte("created_at", from).lte("created_at", to);
+      if (_branchFilter) legacyQ = legacyQ.eq("organization_id", _branchFilter);
+      const { data: legacyRows } = await legacyQ;
       (legacyRows ?? []).forEach((f: { id: string }) => idSet.add(f.id));
       ficheIdsForPeriod = Array.from(idSet);
       if (ficheIdsForPeriod.length === 0) {
@@ -161,9 +166,11 @@ export default function ReportingPage() {
         setTotalFiches(0);
         setReferents([]);
         // Still load all commercials even with 0 fiches
-        const { data: emptyCommProfiles } = await supabase
+        let emptyCommQ = supabase
           .from("profiles").select("id, first_name, last_name")
           .eq("role", "COMMERCIAL").eq("is_active", true);
+        if (_branchFilter) emptyCommQ = emptyCommQ.eq("organization_id", _branchFilter);
+        const { data: emptyCommProfiles } = await emptyCommQ;
         setCommerciaux((emptyCommProfiles ?? []).map((p) => ({
           name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0,
         })));
@@ -176,7 +183,6 @@ export default function ReportingPage() {
     }
 
     // ── Compteurs par statut ──
-    const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
     const countResults = await Promise.all(
       statuses.map(async (s) => {
         let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);

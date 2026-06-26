@@ -227,6 +227,7 @@ export default function FichesPage() {
   useEffect(() => {
     if (!profile || isReferent) return;
     async function loadAnterieures() {
+      const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
       const now = new Date();
       const q = Math.floor(now.getMonth() / 3);
       const quarterStart = new Date(now.getFullYear(), q * 3, 1);
@@ -235,17 +236,19 @@ export default function FichesPage() {
       let aq = supabase.from("fiches").select("id");
       if (isCommercial && profile.id) aq = aq.eq("assigned_to", profile.id);
       else aq = aq.neq("status", "BROUILLON");
+      if (branchFilter) aq = aq.eq("organization_id", branchFilter);
       aq = aq.lt("updated_at", `${qFrom}T00:00:00Z`).limit(50);
       const { data } = await aq;
       setAnterieures((data as { id: string }[]) ?? []);
     }
     loadAnterieures();
-  }, [profile, isReferent, isCommercial, supabase]);
+  }, [profile, isReferent, isCommercial, supabase, isDG, selectedBranchId]);
 
   // Compteurs par statut
   useEffect(() => {
     if (!profile) return;
     async function loadStatusCounts() {
+      const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
       const statuses: FicheStatus[] = isReferent
         ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
         : isCommercial
@@ -257,6 +260,7 @@ export default function FichesPage() {
         let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
         if (isReferent && profile.id) q = q.eq("created_by", profile.id);
         else if (isCommercial && profile.id) q = q.eq("assigned_to", profile.id);
+        if (branchFilter) q = q.eq("organization_id", branchFilter);
         const { count } = await q;
         counts[s] = count ?? 0;
         total += count ?? 0;
@@ -265,12 +269,13 @@ export default function FichesPage() {
       setStatusCounts(counts);
     }
     loadStatusCounts();
-  }, [profile, isReferent, isCommercial, supabase]);
+  }, [profile, isReferent, isCommercial, supabase, isDG, selectedBranchId]);
 
   // Évolution des validations par semaine (trimestre en cours) — mode validation uniquement
   useEffect(() => {
-    if (!isValidationMode || !profile || !isAdmin) return;
+    if (!isValidationMode || !profile || !isAdminOrDG) return;
     async function loadValidationStats() {
+      const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
       const now = new Date();
       const q = Math.floor(now.getMonth() / 3);
       const quarterStart = new Date(now.getFullYear(), q * 3, 1);
@@ -300,32 +305,25 @@ export default function FichesPage() {
         weekNum++;
       }
 
+      const countHistory = async (status: FicheStatus, from: string, to: string) => {
+        let hq = supabase
+          .from("fiche_history")
+          .select("*", { count: "exact", head: true })
+          .eq("new_status", status)
+          .gte("created_at", `${from}T00:00:00Z`)
+          .lte("created_at", `${to}T23:59:59Z`);
+        if (branchFilter) hq = hq.eq("organization_id", branchFilter);
+        const { count } = await hq;
+        return count ?? 0;
+      };
+
       const results = await Promise.all(weeks.map(async (w) => {
-        // Fiches soumises dans cette semaine
-        const { count: soumises } = await supabase
-          .from("fiche_history")
-          .select("*", { count: "exact", head: true })
-          .eq("new_status", "SOUMISE")
-          .gte("created_at", `${w.from}T00:00:00Z`)
-          .lte("created_at", `${w.to}T23:59:59Z`);
-
-        // Fiches affectées dans cette semaine
-        const { count: affectees } = await supabase
-          .from("fiche_history")
-          .select("*", { count: "exact", head: true })
-          .eq("new_status", "AFFECTEE")
-          .gte("created_at", `${w.from}T00:00:00Z`)
-          .lte("created_at", `${w.to}T23:59:59Z`);
-
-        // Fiches validées (acceptées) dans cette semaine
-        const { count: validees } = await supabase
-          .from("fiche_history")
-          .select("*", { count: "exact", head: true })
-          .eq("new_status", "ACCEPTEE")
-          .gte("created_at", `${w.from}T00:00:00Z`)
-          .lte("created_at", `${w.to}T23:59:59Z`);
-
-        return { label: w.label, soumises: soumises ?? 0, affectees: affectees ?? 0, validees: validees ?? 0 };
+        const [soumises, affectees, validees] = await Promise.all([
+          countHistory("SOUMISE", w.from, w.to),
+          countHistory("AFFECTEE", w.from, w.to),
+          countHistory("ACCEPTEE", w.from, w.to),
+        ]);
+        return { label: w.label, soumises, affectees, validees };
       }));
 
       setValidationStats(results);
@@ -333,7 +331,7 @@ export default function FichesPage() {
       setQuarterLabel(`du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}`);
     }
     loadValidationStats();
-  }, [isValidationMode, profile, isAdmin, supabase]);
+  }, [isValidationMode, profile, isAdminOrDG, isDG, selectedBranchId, supabase]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore && !fetchError) fetchFiches(page + 1, true);

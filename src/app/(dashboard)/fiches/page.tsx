@@ -26,7 +26,7 @@ import {
   ChevronDown, ChevronUp,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates } from "@/lib/periods";
 
@@ -91,9 +91,9 @@ export default function FichesPage() {
 
   const [fiches, setFiches] = useState<FicheRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [page, setPage] = useState(0);
+  const [, setLoadingMore] = useState(false);
+  const [, setHasMore] = useState(false);
+  const [, setPage] = useState(0);
   const [visibleCount, setVisibleCount] = useState(VISIBLE_INIT);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -333,9 +333,6 @@ export default function FichesPage() {
     loadValidationStats();
   }, [isValidationMode, profile, isAdminOrDG, isDG, selectedBranchId, supabase]);
 
-  const loadMore = useCallback(() => {
-    if (!loadingMore && hasMore && !fetchError) fetchFiches(page + 1, true);
-  }, [loadingMore, hasMore, page, fetchFiches, fetchError]);
 
   async function handleExport() {
     setExporting(true);

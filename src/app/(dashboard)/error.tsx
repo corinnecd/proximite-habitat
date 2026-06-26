@@ -40,10 +40,10 @@ export default function DashboardError({
         <div className="space-y-2">
           <div className="flex items-center justify-center gap-2">
             <AlertTriangle className="w-5 h-5 text-destructive" />
-            <h2 className="text-xl font-semibold text-foreground">Une erreur s'est produite</h2>
+            <h2 className="text-xl font-semibold text-foreground">Une erreur s&apos;est produite</h2>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Une erreur inattendue s'est produite. Vous pouvez réessayer ou retourner au tableau de bord.
+            Une erreur inattendue s&apos;est produite. Vous pouvez réessayer ou retourner au tableau de bord.
           </p>
           {error.digest && (
             <p className="text-xs text-muted-foreground/50 font-mono">ID : {error.digest}</p>

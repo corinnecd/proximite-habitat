@@ -1,6 +1,6 @@
 "use client";
 import {
-  Document, Page, Text, View, StyleSheet, Font, Image as PDFImage,
+  Document, Page, Text, View, StyleSheet, Image as PDFImage,
 } from "@react-pdf/renderer";
 import type { Fiche } from "@/types/database";
 

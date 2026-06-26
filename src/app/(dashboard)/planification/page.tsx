@@ -59,7 +59,7 @@ export default function PlanificationPage() {
   const [selectedVilles, setSelectedVilles] = useState<Set<string>>(new Set());
   const [selectedChef, setSelectedChef] = useState<string>("");
   const [saving, setSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [villeStats, setVilleStats] = useState<Map<string, VilleStats>>(new Map());
   const [showAllPerfVilles, setShowAllPerfVilles] = useState(false);
 

@@ -156,7 +156,7 @@ export function CommandPalette({ open, onClose }: Props) {
           </ul>
         ) : query.trim().length >= 2 && !loading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
-            Aucun résultat pour <span className="font-medium text-foreground">"{query}"</span>
+            Aucun résultat pour <span className="font-medium text-foreground">&quot;{query}&quot;</span>
           </div>
         ) : query.trim().length === 0 ? (
           <div className="py-6 px-4 space-y-4">

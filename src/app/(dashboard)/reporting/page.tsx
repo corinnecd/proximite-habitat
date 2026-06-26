@@ -120,7 +120,7 @@ export default function ReportingPage() {
   const [commerciaux, setCommerciaux] = useState<CommercialRow[]>([]);
   const [villes, setVilles] = useState<VilleRow[]>([]);
   const [weeklyData, setWeeklyData] = useState<WeeklyPoint[]>([]);
-  const [delai, setDelai] = useState<DelaiInfo>({ avg: 0, min: 0, max: 0, count: 0 });
+  const [, setDelai] = useState<DelaiInfo>({ avg: 0, min: 0, max: 0, count: 0 });
   const [totalFiches, setTotalFiches] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -417,10 +417,6 @@ export default function ReportingPage() {
   const _pl = getReportPeriodLabel(periodFilter);
   const periodSuffix = _pl ? ` (${_pl})` : "";
   const isAllPeriod = periodFilter === "ALL";
-  // Taux de transformation = fiches soumises non encore validées et affectées
-  const pendingValidation = soumises + validees;
-  const pendingRate = totalFiches > 0 ? Math.round((pendingValidation / totalFiches) * 100) : 0;
-  const maxReferent = Math.max(...referents.map((p) => p.total), 1);
   const filteredCommerciaux = commSearch
     ? commerciaux.filter((c) => c.name.toLowerCase().includes(commSearch.toLowerCase()))
     : commerciaux;
@@ -434,7 +430,7 @@ export default function ReportingPage() {
     color: STATUS_COLORS_HEX[s.status],
   }));
 
-  const referentChartData = referents.slice(0, 6).map((p) => ({
+  const _referentChartData = referents.slice(0, 6).map((p) => ({
     name: p.name.split(" ")[0],
     fullName: p.name,
     "Fiches créées": p.total,
@@ -845,7 +841,7 @@ export default function ReportingPage() {
                   </div>
                 </div>
                 <div className="space-y-0">
-                  {(refSearch ? filteredReferents : (showAllReferents ? referents : referents.slice(0, 5))).map((p, i) => {
+                  {(refSearch ? filteredReferents : (showAllReferents ? referents : referents.slice(0, 5))).map((p) => {
                     const origIndex = referents.indexOf(p);
                     const convRate = p.total > 0 ? Math.round((p.accepted / p.total) * 100) : 0;
                     return (

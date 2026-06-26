@@ -445,7 +445,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
 
       // Soumission validée et écrite côté serveur (statut + RGPD + historique,
       // de façon atomique). Voir supabase/migrations/0003_rpc_transitions.sql.
-      const { data: submittedFiche, error: submitError } = await supabase.rpc("transition_fiche", {
+      const { error: submitError } = await supabase.rpc("transition_fiche", {
         p_fiche_id: id,
         p_new_status: "SOUMISE",
       });

@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { FicheFormData } from "@/lib/validations/fiche";
 import { Camera, X, ImageIcon, CloudCheck } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 
 export interface UploadedPhoto {
@@ -34,15 +34,9 @@ export function Step6Photos({
 }: Step6Props) {
   const { register } = useFormContext<FicheFormData>();
 
-  // Précalcule les blob URLs et les révoque quand les photos changent (évite le memory leak)
-  const prevUrlsRef = useRef<string[]>([]);
-  const localPhotoUrls = useMemo(() => {
-    prevUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
-    const urls = photos.map((p) => URL.createObjectURL(p));
-    prevUrlsRef.current = urls;
-    return urls;
-  }, [photos]);
-  useEffect(() => () => { prevUrlsRef.current.forEach((u) => URL.revokeObjectURL(u)); }, []);
+  // Précalcule les blob URLs et révoque les précédentes via effect (évite la mutation pendant le render)
+  const localPhotoUrls = useMemo(() => photos.map((p) => URL.createObjectURL(p)), [photos]);
+  useEffect(() => () => { localPhotoUrls.forEach((u) => URL.revokeObjectURL(u)); }, [localPhotoUrls]);
 
   const handleFiles = useCallback(
     async (files: FileList | null) => {

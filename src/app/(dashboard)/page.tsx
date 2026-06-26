@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
@@ -10,7 +10,6 @@ import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import {
-  countFichesByStatus,
   deleteFicheCascade,
   getActiveCommercialsAndAdmins,
   FICHE_LIST_COLUMNS,
@@ -23,7 +22,7 @@ import {
   FileText, FilePlus, Clock, CheckCircle2, XCircle, Send,
   UserCheck, Archive, Trash2, AlertCircle, ArrowRight,
   CalendarDays, User, Trophy, TrendingUp, Star,
-  ChevronDown, ChevronUp, Loader2, Euro, BarChart3, Building2, X,
+  ChevronDown, ChevronUp, Loader2, Euro, BarChart3, Building2,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -34,7 +33,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { sendEmailFicheAffectee, sendEmailFicheDecision } from "@/lib/email";
 import { toast } from "sonner";
-import { createNotifications } from "@/lib/data/notifications";
 
 // ── Filtre période dashboard ──────────────────────────────────────────────────
 import { type PeriodFilter as DashPeriod, PERIOD_LABELS as DASH_PERIOD_LABELS, getPeriodDates as getDashPeriodDates, getPeriodLabel } from "@/lib/periods";
@@ -103,16 +101,6 @@ interface CommercialStat {
   ca: number;
 }
 
-interface ActivityEntry {
-  id: string;
-  action: string;
-  old_status: FicheStatus | null;
-  new_status: FicheStatus | null;
-  comment: string | null;
-  created_at: string;
-  fiche: { id: string; reference: string; prospect_nom: string; prospect_prenom: string } | null;
-  author: { first_name: string; last_name: string; role: string } | null;
-}
 
 interface HistoryEntry {
   action: string;
@@ -287,7 +275,7 @@ function StatusBlock({
   );
 }
 
-function CollapsibleList({ items, renderItem, limit = 5 }: { items: { id: string }[]; renderItem: (item: any, idx: number, total: number) => React.ReactNode; limit?: number }) {
+function CollapsibleList<T extends { id: string }>({ items, renderItem, limit = 5 }: { items: T[]; renderItem: (item: T, idx: number, total: number) => React.ReactNode; limit?: number }) {
   const [showAll, setShowAll] = React.useState(false);
   const visible = showAll ? items : items.slice(0, limit);
   const hasMore = items.length > limit;
@@ -317,8 +305,6 @@ export default function DashboardPage() {
   const [counts, setCounts] = useState<Record<FicheStatus, number>>({
     BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
   });
-  const [periodFicheCount, setPeriodFicheCount] = useState(0);
-  const [periodCounts, setPeriodCounts] = useState<Record<DashPeriod, number>>({ ALL: 0, TODAY: 0, WEEK: 0, MONTH: 0, QUARTER: 0, SEMESTER: 0, YEAR: 0 });
   const [anterieures, setAnterieures] = useState<{ id: string; reference: string; prospect_nom: string; prospect_prenom: string; status: FicheStatus; updated_at: string }[]>([]);
   const [fichesPending,         setFichesPending]         = useState<FicheEnAttente[]>([]);
   const [fichesAffectees,       setFichesAffectees]       = useState<FicheAffectee[]>([]);
@@ -340,11 +326,9 @@ export default function DashboardPage() {
   const [totalVentes,       setTotalVentes]       = useState(0);
   const [mesVentes,         setMesVentes]          = useState(0);
   const [caTotal,           setCaTotal]            = useState(0);
-  const [activityLog,       setActivityLog]        = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [ficheToDelete, setFicheToDelete] = useState<{ id: string; reference: string } | null>(null);
-  const [deleteMotif, setDeleteMotif] = useState("");
   const [ficheToAssign, setFicheToAssign] = useState<{ id: string; reference: string; nom: string; created_by: string } | null>(null);
   const [assignCommercialId, setAssignCommercialId] = useState("");
   const [assigning, setAssigning] = useState(false);
@@ -364,9 +348,11 @@ export default function DashboardPage() {
     const isCommercial  = profile.role === "COMMERCIAL";
     const branchFilter  = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
     const periodDates = getDashPeriodDates(period);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bq = (q: any) => branchFilter ? q.eq("organization_id", branchFilter) : q;
 
     // ── Toutes les requêtes lancées en parallèle ──────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const promises: PromiseLike<any>[] = [];
     const keys: string[] = [];
 
@@ -474,18 +460,10 @@ export default function DashboardPage() {
       }
     }
 
-    // Journal d'activité
-    if (isAdmin) {
-      keys.push("activityLog");
-      promises.push(supabase.from("fiche_history").select(
-        "id, action, old_status, new_status, comment, created_at, " +
-        "fiche:fiches!fiche_history_fiche_id_fkey(id, reference, prospect_nom, prospect_prenom), " +
-        "author:profiles!fiche_history_user_id_fkey(first_name, last_name, role)"
-      ).order("created_at", { ascending: false }).limit(30));
-    }
 
     // ── Exécution parallèle ───────────────────────────────────────────────
     const settled = await Promise.all(promises);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const r = new Map<string, any>();
     keys.forEach((k, i) => r.set(k, settled[i]));
 
@@ -578,7 +556,6 @@ export default function DashboardPage() {
       setProspArchivees((r.get("prosp_ARCHIVEE")?.data as FicheListItem[]) ?? []);
     }
 
-    if (isAdmin) setActivityLog((r.get("activityLog")?.data as unknown as ActivityEntry[]) ?? []);
 
     setLoading(false);
     } catch (err) {
@@ -652,11 +629,6 @@ export default function DashboardPage() {
       if (traiterDecision === "REFUSEE" && ficheToTraiter.created_by) {
         void (async () => {
           try {
-            const { data: prospProfile } = await supabase
-              .from("profiles")
-              .select("email, first_name")
-              .eq("id", ficheToTraiter.created_by)
-              .single();
             await sendEmailFicheDecision(ficheToTraiter.id, "REFUSEE", traiterComment.trim() || undefined);
           } catch { /* silencieux */ }
         })();
@@ -1475,7 +1447,7 @@ export default function DashboardPage() {
                     <span className="text-right">Date</span>
                     <span className="text-right">Montant HT</span>
                   </div>
-                  <CollapsibleList items={fichesAcceptees} renderItem={(fiche: FicheAffectee, idx: number, total: number) => (
+                  <CollapsibleList items={fichesAcceptees} renderItem={(fiche: FicheAffectee) => (
                     <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                       <div className="grid grid-cols-[1fr_100px_100px] gap-2 items-center py-2.5 hover:bg-secondary/40 rounded-lg px-1 transition-colors cursor-pointer">
                         <div className="min-w-0">

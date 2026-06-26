@@ -100,7 +100,7 @@ export function Sidebar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { profile, loading: profileLoading, organizationName } = useProfile();
-  const { isDG, selectedBranchName } = useBranch();
+  const { isDG } = useBranch();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [badges, setBadges] = useState<Record<BadgeKey, number>>({ fiches: 0, notifs: 0, soumises: 0 });
   const supabase = createClient();

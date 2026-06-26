@@ -1058,7 +1058,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-2 shrink-0"
                 >
                   <Pencil className="w-4 h-4" />
-                  Modifier l'affectation
+                  Modifier l&apos;affectation
                 </Button>
               )}
             </div>

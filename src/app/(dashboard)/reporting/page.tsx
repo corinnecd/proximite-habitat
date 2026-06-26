@@ -13,7 +13,7 @@ import type { FicheStatus, MotifRefus } from "@/types/database";
 import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel as getReportPeriodLabel } from "@/lib/periods";
 import {
-  BarChart3, TrendingUp, Users, FileText, Search, ChevronDown, ChevronUp,
+  BarChart3, TrendingUp, Users, FileText, Search, X, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, Clock, ArrowUp, ArrowDown, Minus, Euro,
   Trophy, RefreshCw, CalendarDays, MapPin,
 } from "lucide-react";
@@ -601,8 +601,18 @@ export default function ReportingPage() {
                   placeholder="Rechercher un commercial…"
                   value={commSearch}
                   onChange={(e) => setCommSearch(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 w-52"
+                  className="pl-8 pr-8 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 w-52"
                 />
+                {commSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setCommSearch("")}
+                    aria-label="Effacer la recherche"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
               </div>
             </div>
             {/* Détail par commercial avec CA */}
@@ -835,8 +845,18 @@ export default function ReportingPage() {
                     placeholder="Rechercher un référent…"
                     value={refSearch}
                     onChange={(e) => setRefSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    className="w-full pl-8 pr-8 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
+                  {refSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setRefSearch("")}
+                      aria-label="Effacer la recherche"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
                 <div className="mb-3">
                   <div className="grid grid-cols-[1fr_50px_50px_50px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">

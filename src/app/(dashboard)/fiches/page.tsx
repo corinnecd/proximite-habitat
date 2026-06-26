@@ -660,7 +660,7 @@ export default function FichesPage() {
             />
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {fiches.slice(0, visibleCount).map((fiche, idx) => {
               const s = STATUS_CARD_STYLES[fiche.status];
               const StatusIcon = s.Icon;

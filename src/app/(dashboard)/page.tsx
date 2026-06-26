@@ -954,17 +954,16 @@ export default function DashboardPage() {
 
         {/* Filtre période — direction uniquement */}
         {!isReferent && (() => {
-          const now = new Date();
-          const qIdx = Math.floor(now.getMonth() / 3);
-          const qStart = new Date(now.getFullYear(), qIdx * 3, 1);
-          const qEnd = new Date(now.getFullYear(), qIdx * 3 + 3, 0);
-          const fmtD = (d: Date) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+          const dynamicLabel = DASH_PERIOD_LABELS[dashPeriod].toUpperCase();
+          const dynamicRange = getPeriodLabel(dashPeriod);
           return (
           <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 space-y-3">
             <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               <CalendarDays className="w-3.5 h-3.5" />Période d&apos;activité
-              <span className="text-sm font-bold text-foreground tracking-normal">DU TRIMESTRE EN COURS</span>
-              <span className="text-xs font-medium text-muted-foreground tracking-normal">{fmtD(qStart)} — {fmtD(qEnd)}</span>
+              <span className="text-sm font-bold text-foreground tracking-normal">{dynamicLabel}</span>
+              {dynamicRange && (
+                <span className="text-xs font-medium text-muted-foreground tracking-normal">{dynamicRange}</span>
+              )}
             </div>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(DASH_PERIOD_LABELS) as DashPeriod[]).map((p) => (

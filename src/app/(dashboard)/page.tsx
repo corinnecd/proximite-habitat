@@ -51,14 +51,14 @@ const STATUS_ICONS: Record<FicheStatus, React.ReactNode> = {
 };
 
 const COUNTER_STYLES: Record<FicheStatus, string> = {
-  BROUILLON:    "border-l-slate-400   bg-card/80  backdrop-blur-sm text-muted-foreground",
-  SOUMISE:      "border-l-blue-500    bg-blue-50/80   dark:bg-blue-950/30   backdrop-blur-sm text-blue-700   dark:text-blue-400",
-  VALIDEE:      "border-l-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/30 backdrop-blur-sm text-emerald-700 dark:text-emerald-400",
-  AFFECTEE:     "border-l-orange-500  bg-orange-50/80 dark:bg-orange-950/30 backdrop-blur-sm text-orange-700 dark:text-orange-400",
-  ACCEPTEE:     "border-l-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/30 backdrop-blur-sm text-emerald-700 dark:text-emerald-400",
-  RETRACTATION: "border-l-purple-500  bg-purple-50/80 dark:bg-purple-950/30 backdrop-blur-sm text-purple-700 dark:text-purple-400",
-  REFUSEE:      "border-l-red-500     bg-red-50/80    dark:bg-red-950/30    backdrop-blur-sm text-red-700    dark:text-red-400",
-  ARCHIVEE:     "border-l-slate-400   bg-muted/80 backdrop-blur-sm text-muted-foreground",
+  BROUILLON:    "border-l-slate-300   text-muted-foreground",
+  SOUMISE:      "border-l-blue-500    text-blue-600   dark:text-blue-400",
+  VALIDEE:      "border-l-emerald-500 text-emerald-600 dark:text-emerald-400",
+  AFFECTEE:     "border-l-orange-500  text-orange-600 dark:text-orange-400",
+  ACCEPTEE:     "border-l-emerald-500 text-emerald-600 dark:text-emerald-400",
+  RETRACTATION: "border-l-purple-500  text-purple-600 dark:text-purple-400",
+  REFUSEE:      "border-l-red-500     text-red-600    dark:text-red-400",
+  ARCHIVEE:     "border-l-slate-300   text-muted-foreground",
 };
 
 // ── Types locaux ──────────────────────────────────────────────────────────────
@@ -936,7 +936,7 @@ export default function DashboardPage() {
         {/* En-tête */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-xl font-medium text-foreground">Bonjour, {profile?.first_name}</h2>
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">Bonjour, {profile?.first_name}</h2>
             <p className="text-muted-foreground">
               {isReferent
                 ? `${counts.BROUILLON} brouillon${counts.BROUILLON > 1 ? "s" : ""} en cours`
@@ -945,7 +945,7 @@ export default function DashboardPage() {
           </div>
           {profile?.role !== "DIRECTION_GENERALE" && (
             <Link href="/fiches/nouvelle">
-              <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2">
+              <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2">
                 <FilePlus className="w-4 h-4" />Nouvelle fiche
               </Button>
             </Link>
@@ -1003,7 +1003,7 @@ export default function DashboardPage() {
               <Card className={`border border-border border-l-4 shadow-sm ${COUNTER_STYLES[status]} hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200 cursor-pointer`}>
                 <CardContent className="p-4 sm:p-5">
                   <div className="flex items-center justify-between mb-3">{STATUS_ICONS[status]}</div>
-                  <AnimatedCounter value={counts[status]} className="text-2xl sm:text-3xl font-bold" />
+                  <AnimatedCounter value={counts[status]} className="text-2xl sm:text-3xl font-bold tracking-tight" />
                   <div className="text-xs mt-2 opacity-70 overflow-hidden">
                     {isCommercial && status === "AFFECTEE"
                       ? <span className="inline-flex items-center rounded-full px-2 py-0.5 font-medium bg-orange-100 text-orange-700">À traiter</span>

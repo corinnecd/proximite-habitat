@@ -112,14 +112,14 @@ export function Topbar({ title, actions }: { title?: string; actions?: React.Rea
     <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-md border-b border-border/50">
       <div className="flex items-center justify-between h-16 px-4 lg:px-8 gap-2">
         <div className="lg:pl-0 pl-14 min-w-0 flex-1 flex items-center gap-3">
-          {title && <h1 className="font-heading text-lg sm:text-2xl text-foreground truncate">{title}</h1>}
+          {title && <h1 className="font-heading text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">{title}</h1>}
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
         </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={openSearch}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-secondary hover:bg-secondary/80 rounded-xl transition-colors border border-border/50"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-secondary hover:bg-secondary/80 rounded-full transition-colors border border-border/50"
             aria-label="Recherche globale"
           >
             <Search className="w-4 h-4" />
@@ -133,7 +133,7 @@ export function Topbar({ title, actions }: { title?: string; actions?: React.Rea
             <button
               type="button"
               onClick={handleBellClick}
-              className="relative p-2 rounded-xl hover:bg-secondary transition-colors"
+              className="relative p-2 rounded-full hover:bg-secondary transition-colors"
               aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} non lues)` : ""}`}
             >
               <Bell className="w-5 h-5 text-muted-foreground" />

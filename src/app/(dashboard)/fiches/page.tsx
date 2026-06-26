@@ -429,7 +429,7 @@ export default function FichesPage() {
             </Button>
             {profile && !isDG && (
               <Link href="/fiches/nouvelle">
-                <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-xl gap-2">
+                <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2">
                   <FilePlus className="w-4 h-4" />Nouvelle fiche
                 </Button>
               </Link>
@@ -629,15 +629,15 @@ export default function FichesPage() {
             ))}
           </div>
         ) : fetchError ? (
-          <div className="text-center py-16 bg-card rounded-xl border border-border space-y-3">
+          <div className="text-center py-16 bg-card rounded-2xl border border-border space-y-3">
             <AlertCircle className="w-10 h-10 mx-auto text-destructive opacity-60" />
             <p className="font-medium text-sm text-foreground">Erreur de chargement</p>
-            <Button variant="outline" className="rounded-xl" onClick={() => fetchFiches(0, false)}>
+            <Button variant="outline" className="rounded-full" onClick={() => fetchFiches(0, false)}>
               Réessayer
             </Button>
           </div>
         ) : fiches.length === 0 ? (
-          <div className="bg-card rounded-xl border border-border">
+          <div className="bg-card rounded-2xl border border-border">
             <EmptyState
               illustration={search ? "search" : "fiches"}
               title={isValidationMode ? "Aucune fiche à valider" : "Aucune fiche trouvée"}
@@ -652,7 +652,7 @@ export default function FichesPage() {
               }
               action={
                 !isValidationMode && !search && statusFilter === "ALL" && !isDG ? (
-                  <Link href="/fiches/nouvelle" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-medium transition-colors">
+                  <Link href="/fiches/nouvelle" className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-medium transition-colors">
                     <FilePlus className="w-4 h-4" />Nouvelle fiche
                   </Link>
                 ) : undefined
@@ -668,7 +668,7 @@ export default function FichesPage() {
               return (
                 <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                   <div
-                    className={`flex items-center gap-4 bg-card border border-border border-l-4 ${s.border} rounded-xl px-5 py-4 hover:translate-x-1 hover:shadow-md transition-all duration-200 cursor-pointer ${isHighlighted ? "ring-2 ring-[#F97316] bg-[#F97316]/5 animate-[highlightPulse_1.5s_ease-in-out]" : ""}`}
+                    className={`flex items-center gap-4 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_8px_rgba(0,0,0,0.03)] border-l-4 ${s.border} rounded-2xl px-5 py-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer ${isHighlighted ? "ring-2 ring-[#F97316] bg-[#F97316]/5 animate-[highlightPulse_1.5s_ease-in-out]" : ""}`}
                     style={{
                       animation: isHighlighted
                         ? "fadeSlideIn 0.25s ease both, highlightPulse 1.5s ease-in-out"

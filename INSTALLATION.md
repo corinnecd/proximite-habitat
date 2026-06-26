@@ -149,7 +149,41 @@ Le script **refuse de s'exécuter si une société existe déjà** (garde-fou an
 
 ---
 
-## 9. Journal des mises à jour de ce guide
+## 9. Personnalisation par client (multi-instances)
+
+> 📌 Note de réflexion — **à décider et mettre en place le moment venu**. Objectif :
+> pouvoir adapter certaines fonctionnalités pour un client sans impacter les autres instances.
+
+**Acquis grâce au Modèle B** : chaque client a son propre Vercel + sa propre base, donc
+l'**isolation des données** est totale et tu maîtrises **qui reçoit quoi et quand**
+(déployer sur le Vercel d'un client n'affecte pas les autres). Reste à gérer la
+**divergence du code** (aujourd'hui : un seul dépôt `main` partagé).
+
+### Stratégies possibles
+
+| Stratégie | Principe | Quand l'utiliser | Coût de maintenance |
+|---|---|---|---|
+| **Feature flags / config** ⭐ | Un seul code, des interrupteurs activables par instance (variables d'env ou table `settings`/`features` dans chaque base) | Activer/désactiver/paramétrer une fonction (champs, libellés, options de workflow) | Faible — une seule base de code, les correctifs profitent à tous |
+| **Branche Git par client** | Une branche longue durée par client (`client/acme`) ; `main` fusionné dedans pour les correctifs communs, spécificités sur la branche ; le Vercel du client déploie sa branche | Fonctionnalité sur-mesure profonde | Moyen/élevé — report des correctifs, conflits possibles |
+| **Fork complet** | Un dépôt par client | Cas extrême et unique | Élevé — à éviter en général |
+
+### Recommandation
+Approche **hybride** : **feature flags par défaut** (couvre la majorité des besoins), et
+**branche dédiée** uniquement pour une divergence profonde. Éviter à tout prix les conditions
+« en dur » par client dispersées dans le code → tout centraliser via des flags.
+
+### Piste de mise en œuvre (à faire plus tard)
+- Une table `settings` (ou `features`) par instance, lue au démarrage.
+- Un hook `useFeature("nom_fonction")` côté front qui lit ces flags.
+- Documenter chaque flag (nom, effet, valeur par défaut) ici même.
+
+> ✅ **Conclusion** : c'est tout à fait faisable, rien dans l'état actuel ne le bloque.
+> Le seul investissement à prévoir = poser la fondation de feature flags avant d'avoir
+> plusieurs clients aux besoins divergents.
+
+---
+
+## 10. Journal des mises à jour de ce guide
 
 > ✍️ À compléter à chaque changement impactant l'installation (nouvelle migration, nouvelle
 > variable d'env, nouveau bucket, changement de rôle, etc.). **Quand on ajoute une migration
@@ -157,3 +191,5 @@ Le script **refuse de s'exécuter si une société existe déjà** (garde-fou an
 
 - **2026-06-24** — Création du guide. Schéma = migrations `0001 → 20260623_companies_branches`.
   Bootstrap via `scripts/bootstrap-instance.mjs`. Buckets `photos`/`signatures`.
+- **2026-06-24** — Ajout §9 « Personnalisation par client (multi-instances) » : stratégies
+  feature flags / branche par client / fork, recommandation hybride (décision à venir).

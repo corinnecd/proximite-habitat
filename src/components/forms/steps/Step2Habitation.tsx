@@ -9,7 +9,7 @@ export function Step2Habitation() {
   const { register, setValue, watch } = useFormContext<FicheFormData>();
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><Home className="w-5 h-5 text-primary" /></div><div><h3 className="font-heading text-xl">Caractéristiques de l&apos;habitation</h3><p className="text-sm text-muted-foreground">Informations sur le logement</p></div></div>
+      <div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><Home className="w-5 h-5 text-primary" /></div><div><h3 className="font-heading text-xl font-semibold tracking-tight">Caractéristiques de l&apos;habitation</h3><p className="text-sm text-muted-foreground">Informations sur le logement</p></div></div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="space-y-2"><Label>Année de construction</Label><Input type="number" placeholder="1985" min={1800} max={new Date().getFullYear()} className="h-12 bg-card" {...register("annee_construction", { valueAsNumber: true, min: 1800, max: new Date().getFullYear() })} /></div>
         <div className="space-y-2"><Label>Année d&apos;emménagement</Label><Input type="number" placeholder="2010" min={1900} max={new Date().getFullYear()} className="h-12 bg-card" {...register("annee_emmenagement", { valueAsNumber: true, min: 1900, max: new Date().getFullYear() })} /></div>

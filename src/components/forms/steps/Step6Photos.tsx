@@ -66,7 +66,7 @@ export function Step6Photos({
           <Camera className="w-5 h-5 text-violet-600" />
         </div>
         <div>
-          <h3 className="font-heading text-xl">Photos & Observations</h3>
+          <h3 className="font-heading text-xl font-semibold tracking-tight">Photos & Observations</h3>
           <p className="text-sm text-muted-foreground">Photos et notes du logement</p>
         </div>
       </div>

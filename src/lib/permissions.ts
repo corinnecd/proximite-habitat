@@ -63,10 +63,14 @@ export const STATUS_LABELS: Record<FicheStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<FicheStatus, string> = {
-  BROUILLON: "bg-gray-100 text-gray-700", SOUMISE: "bg-blue-100 text-blue-700",
-  VALIDEE: "bg-emerald-100 text-emerald-700", AFFECTEE: "bg-orange-100 text-orange-700", ACCEPTEE: "bg-green-100 text-green-700",
-  RETRACTATION: "bg-purple-100 text-purple-700",
-  REFUSEE: "bg-red-100 text-red-700", ARCHIVEE: "bg-gray-200 text-gray-500",
+  BROUILLON: "bg-slate-50 text-slate-600 ring-1 ring-slate-200/60",
+  SOUMISE: "bg-blue-50 text-blue-700 ring-1 ring-blue-200/60",
+  VALIDEE: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60",
+  AFFECTEE: "bg-orange-50 text-orange-700 ring-1 ring-orange-200/60",
+  ACCEPTEE: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60",
+  RETRACTATION: "bg-purple-50 text-purple-700 ring-1 ring-purple-200/60",
+  REFUSEE: "bg-red-50 text-red-700 ring-1 ring-red-200/60",
+  ARCHIVEE: "bg-slate-100 text-slate-500 ring-1 ring-slate-200/60",
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {

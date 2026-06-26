@@ -633,7 +633,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
                 type="button"
                 onClick={handleSubmitFiche}
                 disabled={submitting}
-                className="bg-[#10B981] hover:bg-[#059669] text-white rounded-xl gap-2"
+                className="bg-[#10B981] hover:bg-[#059669] text-white rounded-full px-5 gap-2"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 {submitLabel}
@@ -668,7 +668,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
                 if (id) router.push(`/fiches/${id}`);
                 else router.push("/fiches");
               }}
-              className="bg-destructive hover:bg-destructive/90 text-white rounded-xl gap-2"
+              className="bg-destructive hover:bg-destructive/90 text-white rounded-full px-5 gap-2"
             >
               <X className="w-4 h-4" />
               {mode === "create" ? "Quitter (garder le brouillon)" : "Annuler les modifications"}

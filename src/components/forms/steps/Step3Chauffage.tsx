@@ -18,7 +18,7 @@ export function Step3Chauffage() {
   const { register } = useFormContext<FicheFormData>();
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center"><Flame className="w-5 h-5 text-orange-600" /></div><div><h3 className="font-heading text-xl">Chauffage</h3><p className="text-sm text-muted-foreground">Mode et système actuels</p></div></div>
+      <div className="flex items-center gap-3 mb-4"><div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center"><Flame className="w-5 h-5 text-orange-600" /></div><div><h3 className="font-heading text-xl font-semibold tracking-tight">Chauffage</h3><p className="text-sm text-muted-foreground">Mode et système actuels</p></div></div>
       <CheckGroup label="Mode de chauffage" options={MODES_CHAUFFAGE} field="modes_chauffage" />
       <CheckGroup label="Système de chauffage" options={SYSTEMES_CHAUFFAGE} field="systemes_chauffage" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

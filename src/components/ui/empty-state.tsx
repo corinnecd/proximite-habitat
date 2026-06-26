@@ -86,15 +86,15 @@ interface EmptyStateProps {
 export function EmptyState({ illustration = "fiches", title, description, action }: EmptyStateProps) {
   const Illu = ILLUS[illustration];
   return (
-    <div className="flex flex-col items-center justify-center py-16 px-6 text-center space-y-4" style={{ animation: "fadeIn 0.3s ease both" }}>
+    <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-5" style={{ animation: "fadeIn 0.3s ease both" }}>
       <div className="text-muted-foreground/50">
         <Illu />
       </div>
-      <div className="space-y-1">
-        <p className="font-semibold text-foreground">{title}</p>
-        {description && <p className="text-sm text-muted-foreground max-w-xs mx-auto">{description}</p>}
+      <div className="space-y-1.5">
+        <p className="text-lg font-semibold tracking-tight text-foreground">{title}</p>
+        {description && <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">{description}</p>}
       </div>
-      {action && <div className="pt-1">{action}</div>}
+      {action && <div className="pt-2">{action}</div>}
     </div>
   );
 }

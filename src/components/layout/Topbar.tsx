@@ -110,10 +110,10 @@ export function Topbar({ title, actions }: { title?: string; actions?: React.Rea
 
   return (
     <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-md border-b border-border/50">
-      <div className="flex items-center justify-between h-16 px-4 lg:px-8 gap-2">
-        <div className="lg:pl-0 pl-14 min-w-0 flex-1 flex items-center gap-3">
+      <div className="flex items-center justify-between min-h-16 px-4 lg:px-8 gap-2 py-2 lg:py-0">
+        <div className="lg:pl-0 pl-14 min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
           {title && <h1 className="font-heading text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">{title}</h1>}
-          {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+          {actions && <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0">{actions}</div>}
         </div>
         <div className="flex items-center gap-1">
           <button

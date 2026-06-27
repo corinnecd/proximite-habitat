@@ -594,14 +594,14 @@ export default function ReportingPage() {
                   <p className="text-[11px] text-muted-foreground mt-0.5">Affectées vs Acceptées vs Refusées</p>
                 </div>
               </div>
-              <div className="relative">
+              <div className="relative w-full sm:w-52">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Rechercher un commercial…"
                   value={commSearch}
                   onChange={(e) => setCommSearch(e.target.value)}
-                  className="pl-8 pr-8 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30 w-52"
+                  className="w-full pl-8 pr-8 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
                 />
                 {commSearch && (
                   <button
@@ -616,7 +616,8 @@ export default function ReportingPage() {
               </div>
             </div>
             {/* Détail par commercial avec CA */}
-            <div className="mt-5">
+            <div className="mt-5 -mx-6 px-6 overflow-x-auto">
+              <div className="min-w-[480px]">
               <div className="grid grid-cols-[1fr_50px_50px_50px_50px_80px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                 <span>Commercial</span>
                 <span className="text-right">Affect.</span>
@@ -652,6 +653,7 @@ export default function ReportingPage() {
                   <span className="text-sm font-bold text-right tabular-nums text-amber-600">{caTotal.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€</span>
                 </div>
               )}
+              </div>
             </div>
             {!commSearch && commerciaux.length > 5 && (
               <button
@@ -1060,7 +1062,7 @@ export default function ReportingPage() {
               </div>
             </div>
             {villes.length > 0 ? (
-              <div className="space-y-2.5">
+              <div className="space-y-2.5 -mx-6 px-6 overflow-x-auto"><div className="min-w-[400px] space-y-2.5">
                 <div className="grid grid-cols-[1fr_60px_60px_60px_50px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-1 border-b border-border">
                   <span>Ville</span>
                   <span className="text-right">Total</span>
@@ -1092,7 +1094,7 @@ export default function ReportingPage() {
                     {showAllVilles ? "Voir moins ▲" : `Voir plus (${villes.length - 5} villes) ▼`}
                   </button>
                 )}
-              </div>
+              </div></div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">Aucune fiche ne correspond aux villes planifiées</p>
             )}

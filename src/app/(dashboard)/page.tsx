@@ -901,13 +901,13 @@ export default function DashboardPage() {
 
         {/* Bandeau succursale (DG — toujours visible) */}
         {isDG && (
-          <div className="flex items-center justify-between bg-gradient-to-r from-rose-50 to-orange-50 dark:from-rose-950/30 dark:to-orange-950/20 border border-rose-200 dark:border-rose-800/40 rounded-2xl px-5 py-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gradient-to-r from-rose-50 to-orange-50 dark:from-rose-950/30 dark:to-orange-950/20 border border-rose-200 dark:border-rose-800/40 rounded-2xl px-4 sm:px-5 py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center shrink-0">
                 <Building2 className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" />
               </div>
-              <div>
-                <p className="text-lg font-extrabold text-rose-700 dark:text-rose-300">
+              <div className="min-w-0">
+                <p className="text-base sm:text-lg font-extrabold text-rose-700 dark:text-rose-300 truncate">
                   {selectedBranchName ?? "Toutes les succursales"}
                 </p>
                 <p className="text-xs text-rose-500/70 dark:text-rose-400/60">
@@ -915,11 +915,11 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <select
                 value={selectedBranchId}
                 onChange={(e) => setSelectedBranchId(e.target.value)}
-                className="appearance-none bg-white dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-sm font-medium pl-3 pr-8 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-rose-400/50"
+                className="w-full sm:w-auto appearance-none bg-white dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-sm font-medium pl-3 pr-8 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-rose-400/50"
               >
                 <option value="all">Toutes les succursales</option>
                 {branches.map((b) => (
@@ -1074,7 +1074,7 @@ export default function DashboardPage() {
         {isAdminOrDG && (
           <div className="space-y-6">
             {/* KPI Cards CA */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-card border border-border border-l-4 border-l-amber-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
                 <div className="flex items-center justify-between mb-3">
                   <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
@@ -1113,7 +1113,7 @@ export default function DashboardPage() {
               const totalAll = Object.values(counts).reduce((a, b) => a + b, 0);
               const inProgressRate = totalAll > 0 ? Math.round((inProgress / totalAll) * 100) : 0;
               return (
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
                     <div className="flex items-center justify-between mb-3">
                       <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
@@ -1394,7 +1394,7 @@ export default function DashboardPage() {
         {isCommercial && (
           <div className="space-y-6">
             {/* KPI cards */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
                 <div className="flex items-center justify-between mb-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">

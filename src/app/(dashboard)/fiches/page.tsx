@@ -427,7 +427,7 @@ export default function FichesPage() {
             <Button variant="outline" onClick={handleExport} disabled={exporting} className="rounded-xl gap-2" aria-label="Exporter les fiches au format CSV">
               {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}Exporter CSV
             </Button>
-            {profile && (profile.role === "PROSPECTEUR" || profile.role === "CHEF_EQUIPE") && (
+            {profile && !isDG && (
               <Link href="/fiches/nouvelle">
                 <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2">
                   <FilePlus className="w-4 h-4" />Nouvelle fiche
@@ -657,7 +657,7 @@ export default function FichesPage() {
                   : "Commencez par créer votre première fiche de pré-visite"
               }
               action={
-                !isValidationMode && !search && statusFilter === "ALL" && profile && (profile.role === "PROSPECTEUR" || profile.role === "CHEF_EQUIPE") ? (
+                !isValidationMode && !search && statusFilter === "ALL" && !isDG ? (
                   <Link href="/fiches/nouvelle" className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-medium transition-colors">
                     <FilePlus className="w-4 h-4" />Nouvelle fiche
                   </Link>

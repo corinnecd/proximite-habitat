@@ -944,7 +944,7 @@ export default function DashboardPage() {
                 : `${totalFiches} fiche${totalFiches > 1 ? "s" : ""} au total`}
             </p>
           </div>
-          {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && (
+          {profile?.role !== "DIRECTION_GENERALE" && (
             <Link href="/fiches/nouvelle">
               <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2">
                 <FilePlus className="w-4 h-4" />Nouvelle fiche

@@ -328,6 +328,7 @@ export default function DashboardPage() {
   const [caTotal,           setCaTotal]            = useState(0);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [statusOpenMobile, setStatusOpenMobile] = useState(false);
   const [ficheToDelete, setFicheToDelete] = useState<{ id: string; reference: string } | null>(null);
   const [ficheToAssign, setFicheToAssign] = useState<{ id: string; reference: string; nom: string; created_by: string } | null>(null);
   const [assignCommercialId, setAssignCommercialId] = useState("");
@@ -996,22 +997,34 @@ export default function DashboardPage() {
         })()}
 
         {/* Compteurs par statut */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          {visibleStatuses.map((status) => (
-            <Link key={status} href={`/fiches?status=${status}`}>
-              <Card className={`border border-border border-l-4 shadow-sm ${COUNTER_STYLES[status]} hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200 cursor-pointer`}>
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex items-center justify-between mb-3">{STATUS_ICONS[status]}</div>
-                  <AnimatedCounter value={counts[status]} className="text-2xl sm:text-3xl font-bold tracking-tight" />
-                  <div className="text-xs mt-2 opacity-70 overflow-hidden">
-                    {isCommercial && status === "AFFECTEE"
-                      ? <span className="inline-flex items-center rounded-full px-2 py-0.5 font-medium bg-orange-100 text-orange-700">À traiter</span>
-                      : <FicheStatusBadge status={status} short />}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+        <div>
+          {/* Mobile : bouton repliable */}
+          <button
+            type="button"
+            onClick={() => setStatusOpenMobile(!statusOpenMobile)}
+            className="sm:hidden w-full flex items-center justify-between px-5 py-3.5 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] mb-3"
+            aria-expanded={statusOpenMobile}
+          >
+            <span className="text-sm font-semibold tracking-tight">Statuts des fiches ({totalFiches})</span>
+            {statusOpenMobile ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </button>
+          <div className={`${statusOpenMobile ? "grid" : "hidden"} sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4`}>
+            {visibleStatuses.map((status) => (
+              <Link key={status} href={`/fiches?status=${status}`}>
+                <Card className={`border border-border border-l-4 shadow-sm ${COUNTER_STYLES[status]} hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200 cursor-pointer`}>
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex items-center justify-between mb-3">{STATUS_ICONS[status]}</div>
+                    <AnimatedCounter value={counts[status]} className="text-2xl sm:text-3xl font-bold tracking-tight" />
+                    <div className="text-xs mt-2 opacity-70 overflow-hidden">
+                      {isCommercial && status === "AFFECTEE"
+                        ? <span className="inline-flex items-center rounded-full px-2 py-0.5 font-medium bg-orange-100 text-orange-700">À traiter</span>
+                        : <FicheStatusBadge status={status} short />}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
         </div>
 
         {/* ── Prime du mois (référent) ─────────────────────────────────── */}

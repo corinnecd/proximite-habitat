@@ -169,7 +169,7 @@ export default function UtilisateursPage() {
     return (
       <>
         <Topbar title="Utilisateurs" />
-        <div className="p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto">
               <Shield className="w-8 h-8 text-muted-foreground opacity-40" />
@@ -194,7 +194,7 @@ export default function UtilisateursPage() {
         ] as { key: keyof { nom: string; prenom: string; email: string; role: string; actif: string }; label: string }[],
         rows: users.map((u) => ({ nom: u.last_name, prenom: u.first_name, email: u.email, role: ROLE_LABELS[u.role] || u.role, actif: u.is_active ? "Oui" : "Non" })),
       })} /></div>} />
-      <div className="p-6 lg:p-8 space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* ── KPIs ────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

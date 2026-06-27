@@ -410,7 +410,7 @@ export default function FichesPage() {
         ] as { key: keyof { reference: string; nom: string; prenom: string; ville: string; status: string; date: string }; label: string }[],
         rows: fiches.map((f) => ({ reference: f.reference, nom: f.prospect_nom, prenom: f.prospect_prenom, ville: f.prospect_ville || "", status: f.status, date: f.created_at?.slice(0, 10) || "" })),
       })} /></div>} />
-      <div className="p-6 lg:p-8 space-y-4">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4">
 
         {/* Barre principale : recherche + export + nouvelle fiche */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">

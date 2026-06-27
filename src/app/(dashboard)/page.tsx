@@ -689,7 +689,7 @@ export default function DashboardPage() {
     return (
       <>
         <Topbar title="Tableau de bord" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" /><ExportCsvButton filename="dashboard" getData={getDashboardCsvData} /></div>} />
-        <div className="p-6 lg:p-8 space-y-8 animate-pulse">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-8 animate-pulse">
           {/* Greeting */}
           <div className="flex items-center justify-between">
             <div className="space-y-2">
@@ -815,7 +815,7 @@ export default function DashboardPage() {
     return (
       <>
         <Topbar title="Tableau de bord" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" /><ExportCsvButton filename="dashboard" getData={getDashboardCsvData} /></div>} />
-        <div className="p-6 lg:p-8 flex items-center justify-center min-h-[40vh]">
+        <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[40vh]">
           <div className="text-center space-y-3">
             <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
             <p className="font-medium text-foreground">{fetchError}</p>
@@ -898,7 +898,7 @@ export default function DashboardPage() {
 
       {deleteDialog}
       <Topbar title="Tableau de bord" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" /><ExportCsvButton filename="dashboard" getData={getDashboardCsvData} /></div>} />
-      <div className="p-6 lg:p-8 space-y-8">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-8">
 
         {/* Bandeau succursale (DG — toujours visible) */}
         {isDG && (
@@ -1176,7 +1176,7 @@ export default function DashboardPage() {
                 {referentsStats.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="-mx-6 px-6 overflow-x-auto"><div className="space-y-1 min-w-[320px]">
                     <div className="grid grid-cols-[1fr_60px_70px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                       <span>Référent</span>
                       <span className="text-right">Ventes</span>
@@ -1203,7 +1203,7 @@ export default function DashboardPage() {
                         <span className="text-sm font-bold text-right tabular-nums text-emerald-600">+{referentsStats.reduce((s, r) => s + Math.max(0, r.ventes - 3), 0)}</span>
                       </div>
                     )}
-                  </div>
+                  </div></div>
                 )}
               </div>
 
@@ -1220,7 +1220,7 @@ export default function DashboardPage() {
                 {commerciauxStats.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="-mx-6 px-6 overflow-x-auto"><div className="space-y-1 min-w-[400px]">
                     <div className="grid grid-cols-[1fr_60px_80px_60px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                       <span>Commercial</span>
                       <span className="text-right">Ventes</span>
@@ -1259,7 +1259,7 @@ export default function DashboardPage() {
                         <span />
                       </div>
                     )}
-                  </div>
+                  </div></div>
                 )}
               </div>
             </div>
@@ -1453,7 +1453,7 @@ export default function DashboardPage() {
                     </Button>
                   </Link>
                 </div>
-                <div className="space-y-1">
+                <div className="-mx-6 px-6 overflow-x-auto"><div className="space-y-1 min-w-[400px]">
                   <div className="grid grid-cols-[1fr_100px_100px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                     <span>Client</span>
                     <span className="text-right">Date</span>
@@ -1480,7 +1480,7 @@ export default function DashboardPage() {
                       {caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
                     </span>
                   </div>
-                </div>
+                </div></div>
               </div>
             )}
           </div>

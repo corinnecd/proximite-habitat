@@ -452,7 +452,7 @@ export default function ReportingPage() {
     return (
       <>
         <Topbar title="Reporting" />
-        <div className="p-6 lg:p-8 animate-pulse space-y-6">
+        <div className="p-4 sm:p-6 lg:p-8 animate-pulse space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 bg-card rounded-2xl border border-border" />)}
           </div>
@@ -486,7 +486,7 @@ export default function ReportingPage() {
           ],
         })} /></div>}
       />
-      <div className="p-6 lg:p-8 space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* Sous-titre contextuel + bouton refresh */}
         <div className="flex items-center justify-between">
@@ -860,6 +860,7 @@ export default function ReportingPage() {
                     </button>
                   )}
                 </div>
+                <div className="-mx-6 px-6 overflow-x-auto"><div className="min-w-[360px]">
                 <div className="mb-3">
                   <div className="grid grid-cols-[1fr_50px_50px_50px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                     <span>Référent</span>
@@ -896,6 +897,7 @@ export default function ReportingPage() {
                     <span />
                   </div>
                 )}
+                </div></div>
                 {!refSearch && referents.length > 5 && (
                   <button
                     type="button"

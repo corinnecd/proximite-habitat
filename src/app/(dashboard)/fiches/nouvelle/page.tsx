@@ -23,7 +23,7 @@ export default function NouvelleFichePage() {
   return (
     <>
       <Topbar title="Nouvelle fiche de pré-visite" />
-      <div className="p-6 lg:p-8 max-w-4xl mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6 lg:p-10">
             <FicheStepper />

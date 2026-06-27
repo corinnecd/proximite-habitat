@@ -114,7 +114,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
     return (
       <>
         <Topbar title="Modifier la fiche" />
-        <div className="p-6 lg:p-8 flex items-center justify-center min-h-64">
+        <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-64">
           <div className="text-center text-muted-foreground">
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-primary" />
             <p className="text-sm">Chargement de la fiche…</p>
@@ -128,7 +128,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
     return (
       <>
         <Topbar title="Modifier la fiche" />
-        <div className="p-6 lg:p-8 flex items-center justify-center min-h-64">
+        <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-64">
           <div className="text-center text-muted-foreground">
             <AlertCircle className="w-8 h-8 mx-auto mb-3 text-destructive" />
             <p className="text-sm">{error}</p>
@@ -146,7 +146,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
   return (
     <>
       <Topbar title={pageTitle} />
-      <div className="p-6 lg:p-8 max-w-4xl mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6 lg:p-10">
             <FicheStepper

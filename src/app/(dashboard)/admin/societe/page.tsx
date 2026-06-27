@@ -39,7 +39,7 @@ export default function SocietePage() {
     return (
       <>
         <Topbar title="Société" />
-        <div className="p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto">
               <Shield className="w-8 h-8 text-muted-foreground opacity-40" />
@@ -54,7 +54,7 @@ export default function SocietePage() {
   return (
     <>
       <Topbar title="Société" />
-      <div className="p-6 lg:p-8 space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

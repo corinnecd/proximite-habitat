@@ -489,7 +489,7 @@ export default function NotificationsPage() {
         ] as { key: keyof { date: string; titre: string; message: string; lu: string }; label: string }[],
         rows: notifications.map((n) => ({ date: n.created_at?.slice(0, 10) || "", titre: n.title, message: n.message || "", lu: n.read ? "Oui" : "Non" })),
       })} /></div>} />
-      <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-4">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-4">
 
         {/* ── Bloc filtres ──────────────────────────────────────────────── */}
         <div className="bg-card rounded-2xl border border-border/40 shadow-sm p-4 space-y-4">

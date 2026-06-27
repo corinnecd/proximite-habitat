@@ -255,7 +255,7 @@ export default function PlanificationPage() {
   return (
     <>
       <Topbar title="Planification hebdomadaire" />
-      <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* Navigation semaine — toujours visible */}
         <div className="flex items-center justify-between bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] px-6 py-4">

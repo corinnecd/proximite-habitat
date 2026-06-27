@@ -618,7 +618,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     return (
       <>
         <Topbar title="Détail de la fiche" />
-        <div className="p-6 lg:p-8 space-y-4 animate-pulse">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-4 animate-pulse">
           <div className="h-36 bg-card rounded-2xl border border-border" />
           <div className="h-48 bg-card rounded-2xl border border-border" />
           <div className="h-32 bg-card rounded-2xl border border-border" />
@@ -631,7 +631,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     return (
       <>
         <Topbar title="Accès refusé" />
-        <div className="p-6 lg:p-8 max-w-lg mx-auto text-center space-y-4">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-lg mx-auto text-center space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center mx-auto">
             <Ban className="w-7 h-7 text-red-500" />
           </div>
@@ -651,7 +651,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     return (
       <>
         <Topbar title="Accès refusé" />
-        <div className="p-6 lg:p-8 max-w-lg mx-auto text-center space-y-4">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-lg mx-auto text-center space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-red-100 flex items-center justify-center mx-auto">
             <Ban className="w-7 h-7 text-red-500" />
           </div>
@@ -700,7 +700,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           { champ: "Montant HT", valeur: fiche.montant_ht ? String(fiche.montant_ht) : "" },
         ],
       })} /></div>} />
-      <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* ── Bannière "Fiche à valider" — visible direction uniquement ──── */}
         {fiche.status === "SOUMISE" && profile?.role === "ADMIN" && (

@@ -96,7 +96,7 @@ export default function FichesPage() {
   const [, setPage] = useState(0);
   const [visibleCount, setVisibleCount] = useState(VISIBLE_INIT);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
   const [statusFilter, setStatusFilter] = useState<FicheStatus | "ALL">(initialStatus || "ALL");
   const [exporting, setExporting] = useState(false);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Topbar } from "@/components/layout/Topbar";
 import { createClient } from "@/lib/supabase/client";
@@ -311,9 +312,13 @@ export default function PlanificationPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {planEntries.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between bg-secondary/50 rounded-xl px-4 py-3">
-                  <div>
-                    <p className="text-sm font-semibold">{entry.ville?.nom || "—"}</p>
+                <div key={entry.id} className="flex items-center justify-between bg-secondary/50 hover:bg-secondary/80 rounded-xl px-4 py-3 transition-colors group">
+                  <Link
+                    href={`/fiches?search=${encodeURIComponent(entry.ville?.nom || "")}`}
+                    className="flex-1 min-w-0"
+                    title={`Voir les fiches de ${entry.ville?.nom || ""}`}
+                  >
+                    <p className="text-sm font-semibold group-hover:text-[#F97316] transition-colors">{entry.ville?.nom || "—"}</p>
                     <p className="text-xs text-muted-foreground">
                       {entry.ville?.code_postal} · {departements.find((d) => d.code === entry.ville?.departement_code)?.nom || ""}
                     </p>
@@ -326,12 +331,13 @@ export default function PlanificationPage() {
                     {!entry.chef_equipe_id && (
                       <p className="text-xs text-muted-foreground/60 mt-0.5">Toute l&apos;équipe</p>
                     )}
-                  </div>
+                  </Link>
                   {isAdmin && (
                     <button
                       type="button"
                       onClick={() => handleDelete(entry.id)}
-                      className="w-8 h-8 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors"
+                      className="w-8 h-8 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors shrink-0 ml-2"
+                      aria-label="Supprimer cette planification"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

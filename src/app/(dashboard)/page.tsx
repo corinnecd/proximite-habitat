@@ -214,10 +214,10 @@ function StatusBlock({
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-foreground truncate">
-                        {fiche.prospect_prenom} {fiche.prospect_nom}
+                        Fiche de {fiche.prospect_prenom} {fiche.prospect_nom}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="text-xs text-muted-foreground">{fiche.reference}</span>
+                        
                         {fiche.prospect_ville && <span className="text-xs text-muted-foreground">{fiche.prospect_ville}</span>}
                         {fiche.created_by_profile && (
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -329,7 +329,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [statusOpenMobile, setStatusOpenMobile] = useState(false);
-  const [ficheToDelete, setFicheToDelete] = useState<{ id: string; reference: string } | null>(null);
+  const [ficheToDelete, setFicheToDelete] = useState<{ id: string; reference: string; nom?: string } | null>(null);
   const [ficheToAssign, setFicheToAssign] = useState<{ id: string; reference: string; nom: string; created_by: string } | null>(null);
   const [assignCommercialId, setAssignCommercialId] = useState("");
   const [assigning, setAssigning] = useState(false);
@@ -745,9 +745,8 @@ export default function DashboardPage() {
         <DialogHeader>
           <DialogTitle>Affecter la fiche</DialogTitle>
           <DialogDescription>
-            Choisissez un commercial pour{" "}
-            <span className="font-semibold text-foreground">{ficheToAssign?.nom}</span>{" "}
-            ({ficheToAssign?.reference})
+            Choisissez un commercial pour la{" "}
+            <span className="font-semibold text-foreground">fiche de {ficheToAssign?.nom}</span>
           </DialogDescription>
         </DialogHeader>
         <Select value={assignCommercialId} onValueChange={(v) => setAssignCommercialId(v ?? "")}>
@@ -785,8 +784,8 @@ export default function DashboardPage() {
         <DialogHeader>
           <DialogTitle>Supprimer le brouillon</DialogTitle>
           <DialogDescription>
-            Supprimer définitivement{" "}
-            <span className="font-semibold text-foreground">{ficheToDelete?.reference}</span>
+            Supprimer définitivement la{" "}
+            <span className="font-semibold text-foreground">fiche de {ficheToDelete?.nom ?? ""}</span>
             {" "}? Cette action est irréversible.
           </DialogDescription>
         </DialogHeader>
@@ -838,8 +837,7 @@ export default function DashboardPage() {
           <DialogHeader>
             <DialogTitle>Traiter la fiche</DialogTitle>
             <DialogDescription>
-              <span className="font-semibold text-foreground">{ficheToTraiter?.nom}</span>{" "}
-              — {ficheToTraiter?.reference}
+              <span className="font-semibold text-foreground">Fiche de {ficheToTraiter?.nom}</span>
             </DialogDescription>
           </DialogHeader>
 
@@ -1310,10 +1308,10 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-foreground truncate">
-                            {fiche.prospect_prenom} {fiche.prospect_nom}
+                            Fiche de {fiche.prospect_prenom} {fiche.prospect_nom}
                           </p>
                           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                            <span className="text-xs text-muted-foreground">{fiche.reference}</span>
+                            
                             {fiche.prospect_ville && <span className="text-xs text-muted-foreground">{fiche.prospect_ville}</span>}
                             {fiche.created_by_profile && (
                               <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -1463,8 +1461,8 @@ export default function DashboardPage() {
                     <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                       <div className="grid grid-cols-[1fr_100px_100px] gap-2 items-center py-2.5 hover:bg-secondary/40 rounded-lg px-1 transition-colors cursor-pointer">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
-                          <p className="text-xs text-muted-foreground">{fiche.reference}</p>
+                          <p className="text-sm font-medium truncate">Fiche de {fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                          
                         </div>
                         <span className="text-xs text-muted-foreground text-right">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
                         <span className={`text-sm font-bold text-right tabular-nums ${fiche.montant_ht ? "text-amber-600" : "text-muted-foreground"}`}>
@@ -1534,10 +1532,10 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm text-foreground truncate">
-                            {fiche.prospect_prenom} {fiche.prospect_nom}
+                            Fiche de {fiche.prospect_prenom} {fiche.prospect_nom}
                           </p>
                           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                            <span className="text-xs text-muted-foreground">{fiche.reference}</span>
+                            
                             {fiche.prospect_ville && (
                               <span className="text-xs text-muted-foreground">
                                 {fiche.prospect_ville} {fiche.prospect_cp}
@@ -1621,8 +1619,8 @@ export default function DashboardPage() {
                               <span className={iconColor}>{STATUS_ICONS[status]}</span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-sm truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
-                              <p className="text-xs text-muted-foreground">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville}` : ""}</p>
+                              <p className="font-semibold text-sm truncate">Fiche de {fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                              <p className="text-xs text-muted-foreground">{fiche.prospect_ville || ""}</p>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className="text-xs text-muted-foreground hidden sm:block">{new Date(fiche.created_at).toLocaleDateString("fr-FR")}</span>
@@ -1630,7 +1628,7 @@ export default function DashboardPage() {
                                 <button
                                   type="button"
                                   aria-label={`Supprimer ${fiche.reference}`}
-                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFicheToDelete({ id: fiche.id, reference: fiche.reference }); }}
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFicheToDelete({ id: fiche.id, reference: fiche.reference, nom: `${fiche.prospect_prenom} ${fiche.prospect_nom}` }); }}
                                   className="w-7 h-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 transition-all"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -1677,8 +1675,8 @@ export default function DashboardPage() {
                               <AlertCircle className="w-4 h-4 text-purple-500" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-sm truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
-                              <p className="text-xs text-muted-foreground">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville}` : ""}</p>
+                              <p className="font-semibold text-sm truncate">Fiche de {fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                              <p className="text-xs text-muted-foreground">{fiche.prospect_ville || ""}</p>
                             </div>
                             <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
                           </div>
@@ -1716,8 +1714,8 @@ export default function DashboardPage() {
                               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-sm truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
-                              <p className="text-xs text-muted-foreground">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville}` : ""}</p>
+                              <p className="font-semibold text-sm truncate">Fiche de {fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                              <p className="text-xs text-muted-foreground">{fiche.prospect_ville || ""}</p>
                             </div>
                             <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
                           </div>
@@ -1755,8 +1753,8 @@ export default function DashboardPage() {
                               <XCircle className="w-4 h-4 text-red-500" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-sm truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
-                              <p className="text-xs text-muted-foreground">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville}` : ""}</p>
+                              <p className="font-semibold text-sm truncate">Fiche de {fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                              <p className="text-xs text-muted-foreground">{fiche.prospect_ville || ""}</p>
                             </div>
                             <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
                           </div>
@@ -1794,8 +1792,8 @@ export default function DashboardPage() {
                               <Archive className="w-4 h-4 text-slate-400" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-sm truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
-                              <p className="text-xs text-muted-foreground">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville}` : ""}</p>
+                              <p className="font-semibold text-sm truncate">Fiche de {fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                              <p className="text-xs text-muted-foreground">{fiche.prospect_ville || ""}</p>
                             </div>
                             <span className="text-xs text-muted-foreground shrink-0">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
                           </div>

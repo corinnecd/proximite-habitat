@@ -24,7 +24,10 @@ import { toast } from "sonner";
 import {
   UserPlus, Loader2, Shield, Mail, Phone, Search,
   Users, CheckCircle2, XCircle, UserCheck, Pencil,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
+
+const VISIBLE_INIT = 10;
 
 // ── Palette rôle ──────────────────────────────────────────────────────────────
 
@@ -59,6 +62,7 @@ export default function UtilisateursPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "ALL">("ALL");
+  const [visibleCount, setVisibleCount] = useState(VISIBLE_INIT);
   const [newUser, setNewUser] = useState({
     email: "", password: "", first_name: "", last_name: "",
     role: "PROSPECTEUR" as UserRole, phone: "",
@@ -81,6 +85,7 @@ export default function UtilisateursPage() {
   }, [users, isDG, selectedBranchId]);
 
   const filtered = useMemo(() => {
+    setVisibleCount(VISIBLE_INIT);
     return branchScopedUsers.filter((u) => {
       const matchRole = roleFilter === "ALL" || u.role === roleFilter;
       const q = search.toLowerCase();
@@ -347,7 +352,7 @@ export default function UtilisateursPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {filtered.map((user) => {
+            {filtered.slice(0, visibleCount).map((user) => {
               const s = ROLE_STYLE[user.role];
               const initials = `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
               const isMe = user.id === profile?.id;
@@ -418,10 +423,37 @@ export default function UtilisateursPage() {
           </div>
         )}
 
+        {!loading && filtered.length > VISIBLE_INIT && (
+          <div className="flex justify-center gap-3">
+            {visibleCount < filtered.length ? (
+              <Button
+                variant="outline"
+                onClick={() => setVisibleCount((n) => n + VISIBLE_INIT)}
+                className="rounded-xl gap-2"
+              >
+                <ChevronDown className="w-4 h-4" />
+                Voir plus
+                <span className="text-xs text-muted-foreground">
+                  ({filtered.length - visibleCount} restant{filtered.length - visibleCount > 1 ? "s" : ""})
+                </span>
+              </Button>
+            ) : null}
+            {visibleCount > VISIBLE_INIT ? (
+              <Button
+                variant="outline"
+                onClick={() => setVisibleCount(VISIBLE_INIT)}
+                className="rounded-xl gap-2"
+              >
+                <ChevronUp className="w-4 h-4" />
+                Voir moins
+              </Button>
+            ) : null}
+          </div>
+        )}
         {!loading && filtered.length > 0 && (
           <p className="text-xs text-muted-foreground text-center">
-            {filtered.length} utilisateur{filtered.length > 1 ? "s" : ""} affiché{filtered.length > 1 ? "s" : ""}
-            {filtered.length !== users.length && ` sur ${users.length}`}
+            {Math.min(visibleCount, filtered.length)} utilisateur{Math.min(visibleCount, filtered.length) > 1 ? "s" : ""} affiché{Math.min(visibleCount, filtered.length) > 1 ? "s" : ""} sur {filtered.length}
+            {filtered.length !== users.length && ` (${users.length} au total)`}
           </p>
         )}
       </div>

@@ -48,7 +48,7 @@ const CSV_COLUMNS: CsvColumn<FicheCsvRow>[] = [
 ];
 
 const PAGE_SIZE = 100;
-const VISIBLE_INIT = 6;
+const VISIBLE_INIT = PAGE_SIZE;
 
 const STATUS_LABELS_PLURAL: Record<FicheStatus, string> = {
   BROUILLON: "brouillons", SOUMISE: "à valider", VALIDEE: "validées",

@@ -68,7 +68,7 @@ export default function UtilisateursPage() {
     role: "PROSPECTEUR" as UserRole, phone: "",
   });
   const [targetOrgId, setTargetOrgId] = useState<string>("");
-  const { profile } = useProfile();
+  const { profile, loading: profileLoading } = useProfile();
   const { isDG, branches, selectedBranchId } = useBranch();
   const supabase = useMemo(() => createClient(), []);
 
@@ -167,6 +167,20 @@ export default function UtilisateursPage() {
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Erreur lors de la mise à jour");
     } finally { setSaving(false); }
+  }
+
+  // Chargement du profil en cours — ne pas afficher "Accès restreint" prématurément
+  if (profileLoading) {
+    return (
+      <>
+        <Topbar title="Utilisateurs" />
+        <div className="p-4 sm:p-6 lg:p-8 space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-20 bg-card rounded-2xl border border-border animate-pulse" />
+          ))}
+        </div>
+      </>
+    );
   }
 
   // Accès refusé

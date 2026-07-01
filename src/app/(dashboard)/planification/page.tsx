@@ -79,9 +79,12 @@ export default function PlanificationPage() {
     updated_at: string;
     villes: string[];
     createdBy?: { first_name: string; last_name: string } | null;
+    nom: string | null;
+    date_effective: string | null;
   }>>([]);
   const [savedParcoursOpen, setSavedParcoursOpen] = useState(false);
   const [loadingSavedParcours, setLoadingSavedParcours] = useState(false);
+  const [savedParcoursSearch, setSavedParcoursSearch] = useState("");
 
   const mondayStr = `${currentMonday.getFullYear()}-${String(currentMonday.getMonth() + 1).padStart(2, "0")}-${String(currentMonday.getDate()).padStart(2, "0")}`;
   const sunday = new Date(currentMonday);
@@ -151,7 +154,7 @@ export default function PlanificationPage() {
     const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : profile.organization_id;
     const { data } = await supabase
       .from("parcours_hebdo")
-      .select("id, waypoints, route_geometry, distance_m, duration_s")
+      .select("id, waypoints, route_geometry, distance_m, duration_s, nom, date_effective")
       .eq("organization_id", branchFilter)
       .eq("semaine_du", mondayStr)
       .is("chef_equipe_id", null)
@@ -163,6 +166,8 @@ export default function PlanificationPage() {
         route_geometry: (data.route_geometry ?? []) as [number, number][],
         distance_m: data.distance_m,
         duration_s: data.duration_s,
+        nom: data.nom,
+        date_effective: data.date_effective,
       });
     } else {
       setParcoursId(null);
@@ -186,6 +191,8 @@ export default function PlanificationPage() {
       route_geometry: data.route_geometry,
       distance_m: data.distance_m != null ? Math.round(data.distance_m) : null,
       duration_s: data.duration_s != null ? Math.round(data.duration_s) : null,
+      nom: data.nom ?? null,
+      date_effective: data.date_effective ?? null,
       created_by: profile.id,
     };
     if (parcoursId) {
@@ -216,7 +223,7 @@ export default function PlanificationPage() {
 
     const { data: parcoursRows } = await supabase
       .from("parcours_hebdo")
-      .select("id, semaine_du, distance_m, duration_s, waypoints, updated_at, created_by")
+      .select("id, semaine_du, distance_m, duration_s, waypoints, updated_at, created_by, nom, date_effective")
       .eq("organization_id", branchFilter)
       .order("semaine_du", { ascending: false })
       .limit(50);
@@ -255,6 +262,8 @@ export default function PlanificationPage() {
         updated_at: p.updated_at,
         villes: [...(villesBySemaine.get(p.semaine_du) ?? new Set<string>())].sort(),
         createdBy: creatorMap.get(p.created_by) ?? null,
+        nom: p.nom,
+        date_effective: p.date_effective,
       })),
     );
     setLoadingSavedParcours(false);
@@ -804,6 +813,19 @@ export default function PlanificationPage() {
               Trajets enregistrés
             </DialogTitle>
           </DialogHeader>
+          {/* Recherche par nom */}
+          {savedParcoursList.length > 0 && (
+            <div className="pt-1 pb-2">
+              <input
+                type="text"
+                placeholder="Rechercher un parcours par nom, ville…"
+                value={savedParcoursSearch}
+                onChange={(e) => setSavedParcoursSearch(e.target.value)}
+                className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:border-transparent"
+              />
+            </div>
+          )}
+
           <div className="overflow-y-auto -mx-6 px-6 flex-1">
             {loadingSavedParcours ? (
               <div className="space-y-2 py-3">
@@ -818,57 +840,83 @@ export default function PlanificationPage() {
                 <p className="text-xs text-muted-foreground">Les parcours tracés apparaîtront ici.</p>
               </div>
             ) : (
-              <div className="space-y-2 py-2">
-                {savedParcoursList.map((p) => {
-                  const [y, m, d] = p.semaine_du.split("-").map(Number);
-                  const monday = new Date(y, m - 1, d);
-                  const sun = new Date(monday); sun.setDate(monday.getDate() + 6);
-                  const isCurrent = p.semaine_du === mondayStr;
-                  const km = p.distance_m != null ? (p.distance_m / 1000).toFixed(2) + " km" : "—";
-                  const dur = p.duration_s != null ? Math.round(p.duration_s / 60) + " min" : "—";
+              (() => {
+                const q = savedParcoursSearch.trim().toLowerCase();
+                const filtered = q
+                  ? savedParcoursList.filter((p) =>
+                      (p.nom?.toLowerCase().includes(q)) ||
+                      p.villes.some((v) => v.toLowerCase().includes(q)) ||
+                      p.semaine_du.includes(q),
+                    )
+                  : savedParcoursList;
+
+                if (filtered.length === 0) {
                   return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => goToSemaine(p.semaine_du)}
-                      className={`w-full text-left rounded-xl border p-4 transition-all hover:border-[#F97316] hover:shadow-sm ${isCurrent ? "border-[#F97316] bg-[#F97316]/5" : "border-border bg-card"}`}
-                    >
-                      <div className="flex items-start justify-between gap-3 flex-wrap">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold text-sm">
-                              Semaine du {formatDateFr(monday)}
-                            </p>
-                            {isCurrent && (
-                              <span className="text-[10px] font-semibold text-[#F97316] bg-[#F97316]/10 px-2 py-0.5 rounded-full">
-                                Semaine active
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            au {formatDateFr(sun)}
-                          </p>
-                          {p.villes.length > 0 && (
-                            <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                              <MapPin className="w-3 h-3 shrink-0" />
-                              <span className="truncate">{p.villes.join(", ")}</span>
-                            </p>
-                          )}
-                          {p.createdBy && (
-                            <p className="text-[11px] text-muted-foreground mt-1">
-                              Tracé par {p.createdBy.first_name} {p.createdBy.last_name}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right shrink-0 space-y-0.5">
-                          <p className="text-sm font-bold text-[#F97316]">{km}</p>
-                          <p className="text-xs text-muted-foreground">{dur} · {p.nb_waypoints} pts</p>
-                        </div>
-                      </div>
-                    </button>
+                    <div className="text-center py-10 space-y-2">
+                      <p className="text-sm font-medium">Aucun résultat</p>
+                      <p className="text-xs text-muted-foreground">Essayez un autre nom ou ville.</p>
+                    </div>
                   );
-                })}
-              </div>
+                }
+
+                return (
+                  <div className="space-y-2 py-2">
+                    {filtered.map((p) => {
+                      const [y, m, d] = p.semaine_du.split("-").map(Number);
+                      const monday = new Date(y, m - 1, d);
+                      const sun = new Date(monday); sun.setDate(monday.getDate() + 6);
+                      const isCurrent = p.semaine_du === mondayStr;
+                      const km = p.distance_m != null ? (p.distance_m / 1000).toFixed(2) + " km" : "—";
+                      const dur = p.duration_s != null ? Math.round(p.duration_s / 60) + " min" : "—";
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => goToSemaine(p.semaine_du)}
+                          className={`w-full text-left rounded-xl border p-4 transition-all hover:border-[#F97316] hover:shadow-sm ${isCurrent ? "border-[#F97316] bg-[#F97316]/5" : "border-border bg-card"}`}
+                        >
+                          <div className="flex items-start justify-between gap-3 flex-wrap">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-bold text-sm text-foreground truncate">
+                                  {p.nom || `Semaine du ${formatDateFr(monday)}`}
+                                </p>
+                                {isCurrent && (
+                                  <span className="text-[10px] font-semibold text-[#F97316] bg-[#F97316]/10 px-2 py-0.5 rounded-full">
+                                    Semaine active
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {p.date_effective ? (
+                                  <>Date effective : <span className="font-medium">{new Date(p.date_effective).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span></>
+                                ) : (
+                                  <>Semaine du {formatDateFr(monday)} au {formatDateFr(sun)}</>
+                                )}
+                              </p>
+                              {p.villes.length > 0 && (
+                                <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                                  <MapPin className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{p.villes.join(", ")}</span>
+                                </p>
+                              )}
+                              {p.createdBy && (
+                                <p className="text-[11px] text-muted-foreground mt-1">
+                                  Tracé par {p.createdBy.first_name} {p.createdBy.last_name}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right shrink-0 space-y-0.5">
+                              <p className="text-sm font-bold text-[#F97316]">{km}</p>
+                              <p className="text-xs text-muted-foreground">{dur} · {p.nb_waypoints} pts</p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()
             )}
           </div>
         </DialogContent>

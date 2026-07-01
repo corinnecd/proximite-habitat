@@ -294,6 +294,8 @@ export interface Database {
           route_geometry: [number, number][];
           distance_m: number | null;
           duration_s: number | null;
+          nom: string | null;
+          date_effective: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -307,6 +309,8 @@ export interface Database {
           route_geometry?: [number, number][];
           distance_m?: number | null;
           duration_s?: number | null;
+          nom?: string | null;
+          date_effective?: string | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;

@@ -13,6 +13,8 @@ export interface RouteData {
   route_geometry: LatLng[];
   distance_m: number | null;
   duration_s: number | null;
+  nom?: string | null;
+  date_effective?: string | null;
 }
 
 interface RouteMapProps {
@@ -40,6 +42,9 @@ const TILES = {
 
 const MAX_ZOOM = 19;
 const OSRM_URL = "https://router.project-osrm.org/route/v1/foot";
+
+const FS_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+const FS_EXIT = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
 
 function markerIcon(color = "#F97316") {
   return L.divIcon({
@@ -117,6 +122,10 @@ export function RouteMap({
   const [duration, setDuration] = useState<number | null>(route?.duration_s ?? null);
   const [computing, setComputing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [nomInput, setNomInput] = useState("");
+  const [dateInput, setDateInput] = useState("");
 
   // Sync avec les props si elles changent (semaine différente)
   useEffect(() => {
@@ -124,6 +133,8 @@ export function RouteMap({
     setRouteGeometry(route?.route_geometry ?? []);
     setDistance(route?.distance_m ?? null);
     setDuration(route?.duration_s ?? null);
+    setNomInput(route?.nom ?? "");
+    setDateInput(route?.date_effective ?? "");
   }, [route]);
 
   const markersKey = markers.map((m) => `${m.lat},${m.lng}`).join("|");
@@ -155,6 +166,26 @@ export function RouteMap({
     villeMarkersLayer.current = L.layerGroup().addTo(map);
     routeMarkersLayer.current = L.layerGroup().addTo(map);
 
+    // Bouton plein écran
+    const Ctrl = L.Control.extend({
+      options: { position: "bottomright" as L.ControlPosition },
+      onAdd() {
+        const btn = L.DomUtil.create("button", "leaflet-bar leaflet-control");
+        btn.style.cssText = "width:40px;height:40px;background:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.2)";
+        btn.innerHTML = FS_ICON;
+        btn.title = "Plein écran";
+        btn.setAttribute("data-fs-btn", "1");
+        L.DomEvent.disableClickPropagation(btn);
+        btn.addEventListener("click", () => {
+          if (!wrapperRef.current) return;
+          if (!document.fullscreenElement) wrapperRef.current.requestFullscreen().catch(() => {});
+          else document.exitFullscreen().catch(() => {});
+        });
+        return btn;
+      },
+    });
+    new Ctrl().addTo(map);
+
     mapInstance.current = map;
 
     return () => {
@@ -164,6 +195,22 @@ export function RouteMap({
       routeMarkersLayer.current = null;
       routeLineLayer.current = null;
     };
+  }, []);
+
+  // Gestion des évts fullscreen
+  useEffect(() => {
+    function onFs() {
+      const fs = !!document.fullscreenElement;
+      setFullscreen(fs);
+      setTimeout(() => mapInstance.current?.invalidateSize(), 50);
+      const btn = mapInstance.current?.getContainer().querySelector("[data-fs-btn]");
+      if (btn) {
+        btn.innerHTML = fs ? FS_EXIT : FS_ICON;
+        (btn as HTMLElement).title = fs ? "Quitter le plein écran" : "Plein écran";
+      }
+    }
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
   // Update ville markers
@@ -274,8 +321,23 @@ export function RouteMap({
     return () => { cancelled = true; clearTimeout(t); };
   }, [waypoints]);
 
-  const handleSave = useCallback(async () => {
+  function openSaveDialog() {
+    // Valeurs par défaut si non défini
+    if (!nomInput && !route?.nom) setNomInput("");
+    if (!dateInput && !route?.date_effective) {
+      const today = new Date();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setDateInput(`${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`);
+    }
+    setSaveDialogOpen(true);
+  }
+
+  const handleConfirmSave = useCallback(async () => {
     if (!onSave) return;
+    if (!nomInput.trim()) {
+      toast.error("Veuillez donner un nom au parcours");
+      return;
+    }
     setSaving(true);
     try {
       await onSave({
@@ -283,9 +345,12 @@ export function RouteMap({
         route_geometry: routeGeometry,
         distance_m: distance,
         duration_s: duration,
+        nom: nomInput.trim(),
+        date_effective: dateInput || null,
       });
       toast.success("Parcours sauvegardé");
       setEditMode(false);
+      setSaveDialogOpen(false);
     } catch (err) {
       const e = err as { message?: string; code?: string; details?: string };
       console.error("[Parcours] save error", err);
@@ -297,7 +362,7 @@ export function RouteMap({
       }
     }
     setSaving(false);
-  }, [onSave, waypoints, routeGeometry, distance, duration]);
+  }, [onSave, waypoints, routeGeometry, distance, duration, nomInput, dateInput]);
 
   const handleClear = useCallback(() => {
     setWaypoints([]);
@@ -324,7 +389,20 @@ export function RouteMap({
   const hasSavedRoute = (route?.waypoints?.length ?? 0) > 0;
 
   return (
-    <div ref={wrapperRef} className={`space-y-3 ${className}`}>
+    <div className={`space-y-3 ${className}`}>
+      {/* Nom du parcours (si défini) */}
+      {route?.nom && !editMode && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">Parcours</span>
+          <span className="text-sm font-bold text-foreground">{route.nom}</span>
+          {route.date_effective && (
+            <span className="text-xs text-muted-foreground">
+              · {new Date(route.date_effective).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <div className="flex items-center gap-3 text-sm">
@@ -390,7 +468,7 @@ export function RouteMap({
                 </button>
                 <button
                   type="button"
-                  onClick={handleSave}
+                  onClick={openSaveDialog}
                   disabled={saving || computing || waypoints.length < 2}
                   className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium transition-colors"
                 >
@@ -409,11 +487,77 @@ export function RouteMap({
       )}
 
       <div
-        className="rounded-xl overflow-hidden border border-border"
-        style={{ position: "relative", zIndex: 0 }}
+        ref={wrapperRef}
+        className={fullscreen ? "" : "rounded-xl overflow-hidden border border-border"}
+        style={fullscreen ? { width: "100%", height: "100%", background: "#000" } : { position: "relative", zIndex: 0 }}
       >
-        <div ref={mapRef} style={{ height, width: "100%", cursor: editMode ? "crosshair" : "" }} />
+        <div ref={mapRef} style={fullscreen ? { width: "100%", height: "100%", cursor: editMode ? "crosshair" : "" } : { height, width: "100%", cursor: editMode ? "crosshair" : "" }} />
       </div>
+
+      {/* Modale de sauvegarde du parcours (nom + date) */}
+      {saveDialogOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) setSaveDialogOpen(false); }}>
+          <div className="bg-card rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div>
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-[#F97316]/10 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 17a2 2 0 1 1-4 0M20 17V5a2 2 0 0 0-2-2h-4"/><path d="M8 17a2 2 0 1 1-4 0M8 17V7a2 2 0 0 1 2-2h4"/></svg>
+                </span>
+                Enregistrer le parcours
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Donnez un nom à ce parcours pour le retrouver facilement dans l&apos;historique.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="parcours-nom" className="text-sm font-medium">Nom du parcours *</label>
+              <input
+                id="parcours-nom"
+                type="text"
+                autoFocus
+                value={nomInput}
+                onChange={(e) => setNomInput(e.target.value)}
+                placeholder="Ex : Tournée Arnouville centre"
+                className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:border-transparent"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="parcours-date" className="text-sm font-medium">Date effective</label>
+              <input
+                id="parcours-date"
+                type="date"
+                value={dateInput}
+                onChange={(e) => { setDateInput(e.target.value); (e.target as HTMLInputElement).blur(); }}
+                onKeyDown={(e) => e.preventDefault()}
+                className="w-full h-10 rounded-xl border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:border-transparent"
+              />
+              <p className="text-xs text-muted-foreground">
+                Jour où le parcours doit être effectué (facultatif).
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setSaveDialogOpen(false)}
+                className="px-4 py-2 rounded-xl border border-border bg-card hover:bg-secondary text-sm font-medium transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSave}
+                disabled={saving || !nomInput.trim()}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+              >
+                {saving ? "Sauvegarde…" : "Confirmer et enregistrer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

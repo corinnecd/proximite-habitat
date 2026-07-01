@@ -699,7 +699,7 @@ export default function DashboardPage() {
             <div className="h-9 bg-card rounded-xl w-36" />
           </div>
           {/* Compteurs */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-28 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] border-l-4 border-l-muted" style={{ animationDelay: `${i * 50}ms` }} />
             ))}

@@ -817,7 +817,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         )}
 
         {/* ── Hero card ──────────────────────────────────────────────────── */}
-        <div className={`bg-card/80 backdrop-blur-sm border border-border border-l-4 ${hero.border} rounded-2xl p-6 shadow-sm`}>
+        <div className={`bg-card/80 backdrop-blur-sm border border-border border-l-4 ${hero.border} rounded-2xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)]`}>
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
 
             {/* Left: back + identity */}

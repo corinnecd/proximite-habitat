@@ -170,8 +170,8 @@ export default function PlanificationPage() {
       chef_equipe_id: null,
       waypoints: data.waypoints,
       route_geometry: data.route_geometry,
-      distance_m: data.distance_m,
-      duration_s: data.duration_s,
+      distance_m: data.distance_m != null ? Math.round(data.distance_m) : null,
+      duration_s: data.duration_s != null ? Math.round(data.duration_s) : null,
       created_by: profile.id,
     };
     if (parcoursId) {

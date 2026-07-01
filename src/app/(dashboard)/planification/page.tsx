@@ -18,6 +18,8 @@ import type { ZoneDepartement, ZoneVille } from "@/types/database";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { type MapMarker } from "@/components/ui/VilleMap";
 import { RouteMapDynamic, type RouteData } from "@/components/ui/RouteMapDynamic";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Route } from "lucide-react";
 
 interface PlanEntry {
   id: string;
@@ -68,6 +70,18 @@ export default function PlanificationPage() {
   const [showAllPerfVilles, setShowAllPerfVilles] = useState(false);
   const [parcours, setParcours] = useState<RouteData | null>(null);
   const [parcoursId, setParcoursId] = useState<string | null>(null);
+  const [savedParcoursList, setSavedParcoursList] = useState<Array<{
+    id: string;
+    semaine_du: string;
+    distance_m: number | null;
+    duration_s: number | null;
+    nb_waypoints: number;
+    updated_at: string;
+    villes: string[];
+    createdBy?: { first_name: string; last_name: string } | null;
+  }>>([]);
+  const [savedParcoursOpen, setSavedParcoursOpen] = useState(false);
+  const [loadingSavedParcours, setLoadingSavedParcours] = useState(false);
 
   const mondayStr = `${currentMonday.getFullYear()}-${String(currentMonday.getMonth() + 1).padStart(2, "0")}-${String(currentMonday.getDate()).padStart(2, "0")}`;
   const sunday = new Date(currentMonday);
@@ -193,6 +207,69 @@ export default function PlanificationPage() {
     setParcoursId(null);
     setParcours(null);
   }, [parcoursId, supabase]);
+
+  // Liste de tous les parcours enregistrés (pour la modale historique)
+  const fetchSavedParcoursList = useCallback(async () => {
+    if (!profile) return;
+    setLoadingSavedParcours(true);
+    const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : profile.organization_id;
+
+    const { data: parcoursRows } = await supabase
+      .from("parcours_hebdo")
+      .select("id, semaine_du, distance_m, duration_s, waypoints, updated_at, created_by")
+      .eq("organization_id", branchFilter)
+      .order("semaine_du", { ascending: false })
+      .limit(50);
+
+    if (!parcoursRows || parcoursRows.length === 0) {
+      setSavedParcoursList([]);
+      setLoadingSavedParcours(false);
+      return;
+    }
+
+    const semaines = [...new Set(parcoursRows.map((p) => p.semaine_du))];
+    const creatorIds = [...new Set(parcoursRows.map((p) => p.created_by))];
+
+    const [planRes, villesRes, creatorsRes] = await Promise.all([
+      supabase.from("planification_hebdo").select("semaine_du, ville_id").eq("organization_id", branchFilter).in("semaine_du", semaines),
+      supabase.from("zones_villes").select("id, nom"),
+      supabase.from("profiles").select("id, first_name, last_name").in("id", creatorIds),
+    ]);
+
+    const villeMap = new Map((villesRes.data || []).map((v) => [v.id, v.nom]));
+    const creatorMap = new Map((creatorsRes.data || []).map((c) => [c.id, c]));
+    const villesBySemaine = new Map<string, Set<string>>();
+    (planRes.data || []).forEach((p) => {
+      if (!villesBySemaine.has(p.semaine_du)) villesBySemaine.set(p.semaine_du, new Set());
+      const nom = villeMap.get(p.ville_id);
+      if (nom) villesBySemaine.get(p.semaine_du)!.add(nom);
+    });
+
+    setSavedParcoursList(
+      parcoursRows.map((p) => ({
+        id: p.id,
+        semaine_du: p.semaine_du,
+        distance_m: p.distance_m,
+        duration_s: p.duration_s,
+        nb_waypoints: (p.waypoints as [number, number][])?.length ?? 0,
+        updated_at: p.updated_at,
+        villes: [...(villesBySemaine.get(p.semaine_du) ?? new Set<string>())].sort(),
+        createdBy: creatorMap.get(p.created_by) ?? null,
+      })),
+    );
+    setLoadingSavedParcours(false);
+  }, [profile, isDG, selectedBranchId, supabase]);
+
+  function openSavedParcoursDialog() {
+    setSavedParcoursOpen(true);
+    fetchSavedParcoursList();
+  }
+
+  function goToSemaine(semaine_du: string) {
+    const [y, m, d] = semaine_du.split("-").map(Number);
+    setCurrentMonday(new Date(y, m - 1, d));
+    setSavedParcoursOpen(false);
+  }
 
   // Fetch fiche stats per planned ville (fiches créées pendant la semaine)
   useEffect(() => {
@@ -387,19 +464,31 @@ export default function PlanificationPage() {
       <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* Navigation semaine — toujours visible */}
-        <div className="flex items-center justify-between bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] px-6 py-4">
-          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => navigateWeek(-1)}>
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">Semaine du</p>
-            <p className="text-lg font-bold flex items-center gap-2 justify-center">
-              <Calendar className="w-5 h-5 text-[#F97316]" />
-              {formatDateFr(currentMonday)} — {formatDateFr(sunday)}
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] px-4 sm:px-6 py-4 gap-3">
+          <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-4 flex-1">
+            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => navigateWeek(-1)} aria-label="Semaine précédente">
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <div className="text-center flex-1 sm:flex-none">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">Semaine du</p>
+              <p className="text-lg font-bold flex items-center gap-2 justify-center">
+                <Calendar className="w-5 h-5 text-[#F97316]" />
+                {formatDateFr(currentMonday)} — {formatDateFr(sunday)}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => navigateWeek(1)} aria-label="Semaine suivante">
+              <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
-          <Button variant="outline" size="sm" className="rounded-xl" onClick={() => navigateWeek(1)}>
-            <ChevronRight className="w-4 h-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl gap-2 shrink-0"
+            onClick={openSavedParcoursDialog}
+            aria-label="Voir les trajets enregistrés"
+          >
+            <Route className="w-4 h-4 text-[#F97316]" />
+            Trajets enregistrés
           </Button>
         </div>
 
@@ -705,6 +794,85 @@ export default function PlanificationPage() {
         </div>}
         </>}
       </div>
+
+      {/* Dialog : trajets enregistrés (historique) */}
+      <Dialog open={savedParcoursOpen} onOpenChange={setSavedParcoursOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Route className="w-5 h-5 text-[#F97316]" />
+              Trajets enregistrés
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto -mx-6 px-6 flex-1">
+            {loadingSavedParcours ? (
+              <div className="space-y-2 py-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-20 bg-muted rounded-xl animate-pulse" />
+                ))}
+              </div>
+            ) : savedParcoursList.length === 0 ? (
+              <div className="text-center py-10 space-y-2">
+                <Route className="w-10 h-10 mx-auto text-muted-foreground opacity-40" />
+                <p className="text-sm font-medium">Aucun trajet enregistré</p>
+                <p className="text-xs text-muted-foreground">Les parcours tracés apparaîtront ici.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 py-2">
+                {savedParcoursList.map((p) => {
+                  const [y, m, d] = p.semaine_du.split("-").map(Number);
+                  const monday = new Date(y, m - 1, d);
+                  const sun = new Date(monday); sun.setDate(monday.getDate() + 6);
+                  const isCurrent = p.semaine_du === mondayStr;
+                  const km = p.distance_m != null ? (p.distance_m / 1000).toFixed(2) + " km" : "—";
+                  const dur = p.duration_s != null ? Math.round(p.duration_s / 60) + " min" : "—";
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => goToSemaine(p.semaine_du)}
+                      className={`w-full text-left rounded-xl border p-4 transition-all hover:border-[#F97316] hover:shadow-sm ${isCurrent ? "border-[#F97316] bg-[#F97316]/5" : "border-border bg-card"}`}
+                    >
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-sm">
+                              Semaine du {formatDateFr(monday)}
+                            </p>
+                            {isCurrent && (
+                              <span className="text-[10px] font-semibold text-[#F97316] bg-[#F97316]/10 px-2 py-0.5 rounded-full">
+                                Semaine active
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            au {formatDateFr(sun)}
+                          </p>
+                          {p.villes.length > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                              <MapPin className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{p.villes.join(", ")}</span>
+                            </p>
+                          )}
+                          {p.createdBy && (
+                            <p className="text-[11px] text-muted-foreground mt-1">
+                              Tracé par {p.createdBy.first_name} {p.createdBy.last_name}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0 space-y-0.5">
+                          <p className="text-sm font-bold text-[#F97316]">{km}</p>
+                          <p className="text-xs text-muted-foreground">{dur} · {p.nb_waypoints} pts</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

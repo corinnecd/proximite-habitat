@@ -139,7 +139,6 @@ export function RouteMap({
       scrollWheelZoom: true,
       zoomAnimation: false,
       fadeAnimation: false,
-      preferCanvas: true, // rendu canvas au lieu de SVG (compatible html2canvas pour l'export PDF)
     });
 
     const plan = L.tileLayer(TILES.plan.url, { attribution: TILES.plan.attr, maxNativeZoom: TILES.plan.maxNative, maxZoom: MAX_ZOOM });

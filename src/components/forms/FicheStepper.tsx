@@ -156,11 +156,28 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     return `PHC-${dateStr}-${time}${rand}`;
   }
 
+  /** Sanitise un nom de fichier pour Supabase Storage (ASCII-only, sans espaces ni caractères spéciaux) */
+  function sanitizeFileName(name: string): string {
+    const dotIndex = name.lastIndexOf(".");
+    const base = dotIndex > 0 ? name.slice(0, dotIndex) : name;
+    const ext = dotIndex > 0 ? name.slice(dotIndex + 1) : "";
+    const cleanBase = base
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/['‘’“”]/g, "")
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 80) || "photo";
+    const cleanExt = ext.toLowerCase().replace(/[^a-z0-9]/g, "");
+    return cleanExt ? `${cleanBase}.${cleanExt}` : cleanBase;
+  }
+
   /** Upload un lot de fichiers en parallèle vers storage + insertion dans fiche_photos */
   async function uploadPhotoFiles(files: File[], ficheId: string): Promise<UploadedPhoto[]> {
     if (!profile) return [];
     const results = await Promise.all(files.map(async (file) => {
-      const path = `${profile.organization_id}/${ficheId}/${Date.now()}-${file.name}`;
+      const safeName = sanitizeFileName(file.name);
+      const path = `${profile.organization_id}/${ficheId}/${Date.now()}-${safeName}`;
       const { error } = await supabase.storage.from("photos").upload(path, file);
       if (error) { toast.error(`Erreur upload ${file.name}`); return null; }
       const { data: ins } = await supabase
@@ -210,7 +227,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
 
   // ── Sauvegarde brouillon ───────────────────────────────────────────────────
 
-  const saveDraft = useCallback(async () => {
+  const saveDraft = useCallback(async (opts?: { silent?: boolean }) => {
     if (!profile) return;
     setSaving(true);
 
@@ -290,7 +307,9 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
           }
         }
       }
-      toast.success(mode === "edit-submitted" ? "Modifications enregistrées" : "Brouillon sauvegardé");
+      if (!opts?.silent) {
+        toast.success(mode === "edit-submitted" ? "Modifications enregistrées" : "Brouillon sauvegardé");
+      }
       setLastSavedAt(new Date());
     } catch (e) {
       console.error("Save error:", e);
@@ -303,7 +322,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
   // Auto-save toutes les 30 s si le formulaire a été modifié
   useEffect(() => {
     const interval = setInterval(() => {
-      if (profile && methods.formState.isDirty) saveDraft();
+      if (profile && methods.formState.isDirty) saveDraft({ silent: true });
     }, 30000);
     return () => clearInterval(interval);
   }, [profile, methods.formState.isDirty, saveDraft]);
@@ -612,7 +631,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             <Button
               type="button"
               variant="outline"
-              onClick={saveDraft}
+              onClick={() => saveDraft()}
               disabled={saving}
               className="rounded-xl gap-2"
             >

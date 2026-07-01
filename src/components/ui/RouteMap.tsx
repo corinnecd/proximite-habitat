@@ -36,16 +36,6 @@ const TILES = {
     attr: '&copy; <a href="https://www.esri.com/">Esri</a>',
     maxNative: 19,
   },
-  cadastre: {
-    url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png",
-    attr: '&copy; <a href="https://www.ign.fr/">IGN</a> Cadastre',
-    maxNative: 20,
-  },
-  labels: {
-    url: "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
-    attr: '&copy; <a href="https://carto.com/">CARTO</a>',
-    maxNative: 20,
-  },
 };
 
 const MAX_ZOOM = 19;
@@ -155,12 +145,10 @@ export function RouteMap({
     plan.addTo(map);
 
     const sat = L.tileLayer(TILES.satellite.url, { attribution: TILES.satellite.attr, maxNativeZoom: TILES.satellite.maxNative, maxZoom: MAX_ZOOM });
-    const cadastre = L.tileLayer(TILES.cadastre.url, { attribution: TILES.cadastre.attr, maxNativeZoom: TILES.cadastre.maxNative, maxZoom: MAX_ZOOM, opacity: 0.5 });
-    const labels = L.tileLayer(TILES.labels.url, { attribution: TILES.labels.attr, maxNativeZoom: TILES.labels.maxNative, maxZoom: MAX_ZOOM, pane: "overlayPane" });
 
     L.control.layers(
       { Plan: plan, Satellite: sat },
-      { "Cadastre (parcelles)": cadastre, "Noms de rues": labels },
+      {},
       { position: "topright", collapsed: false },
     ).addTo(map);
 

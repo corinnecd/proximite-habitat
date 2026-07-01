@@ -286,8 +286,15 @@ export function RouteMap({
       });
       toast.success("Parcours sauvegardé");
       setEditMode(false);
-    } catch {
-      toast.error("Erreur de sauvegarde du parcours");
+    } catch (err) {
+      const e = err as { message?: string; code?: string; details?: string };
+      console.error("[Parcours] save error", err);
+      const msg = e?.message || e?.details || "Erreur inconnue";
+      if (msg.toLowerCase().includes("does not exist") || e?.code === "42P01") {
+        toast.error("Table parcours_hebdo introuvable. Exécutez la migration SQL sur Supabase.");
+      } else {
+        toast.error(`Erreur de sauvegarde : ${msg}`);
+      }
     }
     setSaving(false);
   }, [onSave, waypoints, routeGeometry, distance, duration]);

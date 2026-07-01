@@ -88,7 +88,7 @@ async function computeRoute(waypoints: LatLng[]): Promise<{
     if (!json.routes || json.routes.length === 0) return null;
     const r = json.routes[0];
     const geometry: LatLng[] = r.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
-    return { geometry, distance: r.distance, duration: r.duration };
+    return { geometry, distance: Math.round(r.distance), duration: Math.round(r.duration) };
   } catch {
     return null;
   }

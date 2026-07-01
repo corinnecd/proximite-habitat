@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import type { ZoneDepartement, ZoneVille } from "@/types/database";
 import { Autocomplete } from "@/components/ui/autocomplete";
-import { VilleMapDynamic, type MapMarker } from "@/components/ui/VilleMapDynamic";
+import { type MapMarker } from "@/components/ui/VilleMap";
+import { RouteMapDynamic, type RouteData } from "@/components/ui/RouteMapDynamic";
 
 interface PlanEntry {
   id: string;
@@ -63,6 +64,8 @@ export default function PlanificationPage() {
   const [, setLoading] = useState(true);
   const [villeStats, setVilleStats] = useState<Map<string, VilleStats>>(new Map());
   const [showAllPerfVilles, setShowAllPerfVilles] = useState(false);
+  const [parcours, setParcours] = useState<RouteData | null>(null);
+  const [parcoursId, setParcoursId] = useState<string | null>(null);
 
   const mondayStr = `${currentMonday.getFullYear()}-${String(currentMonday.getMonth() + 1).padStart(2, "0")}-${String(currentMonday.getDate()).padStart(2, "0")}`;
   const sunday = new Date(currentMonday);
@@ -70,6 +73,7 @@ export default function PlanificationPage() {
   const sundayStr = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, "0")}-${String(sunday.getDate()).padStart(2, "0")}`;
 
   const isAdmin = profile?.role === "ADMIN";
+  const canEditParcours = profile?.role === "ADMIN" || profile?.role === "CHEF_EQUIPE";
 
   const fetchPlan = useCallback(async () => {
     if (!profile) return;
@@ -124,6 +128,69 @@ export default function PlanificationPage() {
     if (profileLoading || !profile) return;
     fetchPlan();
   }, [profileLoading, profile, fetchPlan]);
+
+  // Charger le parcours de la semaine (parcours "équipe" par défaut, chef_equipe_id null)
+  const fetchParcours = useCallback(async () => {
+    if (!profile) return;
+    const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : profile.organization_id;
+    const { data } = await supabase
+      .from("parcours_hebdo")
+      .select("id, waypoints, route_geometry, distance_m, duration_s")
+      .eq("organization_id", branchFilter)
+      .eq("semaine_du", mondayStr)
+      .is("chef_equipe_id", null)
+      .maybeSingle();
+    if (data) {
+      setParcoursId(data.id);
+      setParcours({
+        waypoints: (data.waypoints ?? []) as [number, number][],
+        route_geometry: (data.route_geometry ?? []) as [number, number][],
+        distance_m: data.distance_m,
+        duration_s: data.duration_s,
+      });
+    } else {
+      setParcoursId(null);
+      setParcours(null);
+    }
+  }, [profile, isDG, selectedBranchId, mondayStr, supabase]);
+
+  useEffect(() => {
+    if (profileLoading || !profile) return;
+    fetchParcours();
+  }, [profileLoading, profile, fetchParcours]);
+
+  const handleSaveParcours = useCallback(async (data: RouteData) => {
+    if (!profile) return;
+    const orgId = (isDG && selectedBranchId !== "all") ? selectedBranchId : profile.organization_id;
+    const payload = {
+      organization_id: orgId,
+      semaine_du: mondayStr,
+      chef_equipe_id: null,
+      waypoints: data.waypoints,
+      route_geometry: data.route_geometry,
+      distance_m: data.distance_m,
+      duration_s: data.duration_s,
+      created_by: profile.id,
+    };
+    if (parcoursId) {
+      const { error } = await supabase.from("parcours_hebdo").update(payload).eq("id", parcoursId);
+      if (error) throw error;
+    } else {
+      const { data: inserted, error } = await supabase
+        .from("parcours_hebdo").insert(payload).select("id").single();
+      if (error) throw error;
+      if (inserted) setParcoursId(inserted.id);
+    }
+    setParcours(data);
+  }, [profile, isDG, selectedBranchId, mondayStr, parcoursId, supabase]);
+
+  const handleDeleteParcours = useCallback(async () => {
+    if (!parcoursId) return;
+    const { error } = await supabase.from("parcours_hebdo").delete().eq("id", parcoursId);
+    if (error) throw error;
+    setParcoursId(null);
+    setParcours(null);
+  }, [parcoursId, supabase]);
 
   // Fetch fiche stats per planned ville (fiches créées pendant la semaine)
   useEffect(() => {
@@ -347,17 +414,17 @@ export default function PlanificationPage() {
             </div>
           )}
 
-          {/* Carte interactive des villes planifiées */}
+          {/* Carte interactive des villes planifiées + parcours de tournée */}
           {planEntries.length > 0 && (
             <div className="pt-2 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5" />
-                  Carte des villes planifiées
+                  Carte des villes planifiées & parcours de tournée
                 </p>
               </div>
 
-              <VilleMapDynamic
+              <RouteMapDynamic
                 markers={planEntries
                   .filter((e) => e.ville && e.ville.lat !== 0)
                   .map((e): MapMarker => ({
@@ -366,7 +433,11 @@ export default function PlanificationPage() {
                     label: e.ville!.nom,
                     sublabel: e.chefEquipe ? `${e.chefEquipe.first_name} ${e.chefEquipe.last_name}` : "Toute l'équipe",
                   }))}
-                height={400}
+                route={parcours}
+                isEditable={canEditParcours}
+                onSave={handleSaveParcours}
+                onDelete={parcoursId ? handleDeleteParcours : undefined}
+                height={450}
               />
             </div>
           )}

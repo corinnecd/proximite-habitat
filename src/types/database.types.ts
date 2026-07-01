@@ -284,6 +284,36 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["planification_hebdo"]["Insert"]>;
         Relationships: [];
       };
+      parcours_hebdo: {
+        Row: {
+          id: string;
+          organization_id: string;
+          semaine_du: string;
+          chef_equipe_id: string | null;
+          waypoints: [number, number][];
+          route_geometry: [number, number][];
+          distance_m: number | null;
+          duration_s: number | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          semaine_du: string;
+          chef_equipe_id?: string | null;
+          waypoints?: [number, number][];
+          route_geometry?: [number, number][];
+          distance_m?: number | null;
+          duration_s?: number | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["parcours_hebdo"]["Insert"]>;
+        Relationships: [];
+      };
       notifications: {
         Row: {
           id: string;

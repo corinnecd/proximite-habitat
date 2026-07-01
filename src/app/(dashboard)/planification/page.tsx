@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Topbar } from "@/components/layout/Topbar";
+import { ExportPdfButton } from "@/components/ui/export-pdf-button";
+import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { useBranch } from "@/lib/context/branch-context";
@@ -322,7 +324,66 @@ export default function PlanificationPage() {
 
   return (
     <>
-      <Topbar title="Planification hebdomadaire" />
+      <Topbar
+        title="Planification hebdomadaire"
+        actions={
+          <div className="flex items-center gap-2">
+            <ExportPdfButton
+              title="Planification hebdomadaire"
+              subtitle={`Semaine du ${formatDateFr(currentMonday)} — ${formatDateFr(sunday)}`}
+              filename={`planification-${mondayStr}`}
+            />
+            <ExportCsvButton
+              filename={`planification-${mondayStr}`}
+              getData={() => {
+                const distanceKm = parcours?.distance_m != null ? (parcours.distance_m / 1000).toFixed(2) : "";
+                const durationMin = parcours?.duration_s != null ? Math.round(parcours.duration_s / 60).toString() : "";
+                const nbPoints = parcours?.waypoints?.length?.toString() ?? "0";
+                return {
+                  columns: [
+                    { key: "semaine_du", label: "Semaine du" },
+                    { key: "ville", label: "Ville" },
+                    { key: "code_postal", label: "Code postal" },
+                    { key: "departement", label: "Département" },
+                    { key: "chef_equipe", label: "Chef d'équipe" },
+                    { key: "fiches_total", label: "Fiches total" },
+                    { key: "fiches_soumises", label: "Fiches soumises" },
+                    { key: "fiches_affectees", label: "Fiches affectées" },
+                    { key: "fiches_acceptees", label: "Fiches acceptées" },
+                    { key: "fiches_refusees", label: "Fiches refusées" },
+                    { key: "parcours_points", label: "Parcours (points)" },
+                    { key: "parcours_distance_km", label: "Distance parcours (km)" },
+                    { key: "parcours_duree_min", label: "Durée parcours (min)" },
+                  ] as { key: keyof {
+                    semaine_du: string; ville: string; code_postal: string; departement: string;
+                    chef_equipe: string; fiches_total: string; fiches_soumises: string;
+                    fiches_affectees: string; fiches_acceptees: string; fiches_refusees: string;
+                    parcours_points: string; parcours_distance_km: string; parcours_duree_min: string;
+                  }; label: string }[],
+                  rows: planEntries.map((e) => {
+                    const s = villeStats.get(e.ville_id);
+                    return {
+                      semaine_du: mondayStr,
+                      ville: e.ville?.nom ?? "",
+                      code_postal: e.ville?.code_postal ?? "",
+                      departement: e.ville?.departement_code ?? "",
+                      chef_equipe: e.chefEquipe ? `${e.chefEquipe.first_name} ${e.chefEquipe.last_name}` : "Toute l'équipe",
+                      fiches_total: (s?.total ?? 0).toString(),
+                      fiches_soumises: (s?.soumise ?? 0).toString(),
+                      fiches_affectees: (s?.affectee ?? 0).toString(),
+                      fiches_acceptees: (s?.acceptee ?? 0).toString(),
+                      fiches_refusees: (s?.refusee ?? 0).toString(),
+                      parcours_points: nbPoints,
+                      parcours_distance_km: distanceKm,
+                      parcours_duree_min: durationMin,
+                    };
+                  }),
+                };
+              }}
+            />
+          </div>
+        }
+      />
       <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* Navigation semaine — toujours visible */}

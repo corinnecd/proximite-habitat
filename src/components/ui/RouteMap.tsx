@@ -81,6 +81,7 @@ function formatDuration(s: number | null): string {
 /** Appelle OSRM pour calculer le trajet à pied entre les waypoints */
 async function computeRoute(waypoints: LatLng[]): Promise<{
   geometry: LatLng[];
+  snapped: LatLng[];
   distance: number;
   duration: number;
 } | null> {
@@ -93,7 +94,11 @@ async function computeRoute(waypoints: LatLng[]): Promise<{
     if (!json.routes || json.routes.length === 0) return null;
     const r = json.routes[0];
     const geometry: LatLng[] = r.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
-    return { geometry, distance: Math.round(r.distance), duration: Math.round(r.duration) };
+    // OSRM renvoie les positions "snappées" (accrochées à la rue la plus proche)
+    const snapped: LatLng[] = (json.waypoints ?? []).map(
+      (w: { location: [number, number] }) => [w.location[1], w.location[0]] as LatLng,
+    );
+    return { geometry, snapped, distance: Math.round(r.distance), duration: Math.round(r.duration) };
   } catch {
     return null;
   }
@@ -313,6 +318,17 @@ export function RouteMap({
         setRouteGeometry(r.geometry);
         setDistance(r.distance);
         setDuration(r.duration);
+        // Repositionne les waypoints sur les positions "snappées" par OSRM
+        // pour que les numéros collent au tracé orange. Tolérance ~1m pour
+        // éviter les boucles infinies dues à l'imprécision flottante.
+        if (r.snapped.length === waypoints.length) {
+          const TOL = 0.00001; // ~1 mètre
+          const needsSnap = r.snapped.some((wp, i) =>
+            Math.abs(wp[0] - waypoints[i][0]) > TOL ||
+            Math.abs(wp[1] - waypoints[i][1]) > TOL,
+          );
+          if (needsSnap) setWaypoints(r.snapped);
+        }
       } else {
         toast.error("Impossible de calculer le trajet — vérifiez la connexion.");
       }

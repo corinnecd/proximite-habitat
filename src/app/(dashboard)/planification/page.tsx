@@ -490,13 +490,12 @@ export default function PlanificationPage() {
             </Button>
           </div>
           <Button
-            variant="outline"
             size="sm"
-            className="rounded-xl gap-2 shrink-0"
+            className="rounded-full gap-2 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm px-4"
             onClick={openSavedParcoursDialog}
             aria-label="Voir les trajets enregistrés"
           >
-            <Route className="w-4 h-4 text-[#F97316]" />
+            <Route className="w-4 h-4" />
             Trajets enregistrés
           </Button>
         </div>

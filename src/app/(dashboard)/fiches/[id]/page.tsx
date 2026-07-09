@@ -280,6 +280,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     }
 
     setFiche({ ...fiche, status: newStatus, ...(motifRefus ? { motif_refus: motifRefus } : {}), ...(montantHtValue ? { montant_ht: montantHtValue } : {}) });
+    window.dispatchEvent(new CustomEvent("phc:fiche-status-changed"));
     toast.success(`Statut changé : ${STATUS_LABELS[newStatus]}`);
     if (newStatus === "ACCEPTEE") {
       confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#1E3A5F", "#F97316", "#10B981", "#F59E0B"] });
@@ -426,6 +427,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     });
     if (error) { toast.error("Rejet refusé : " + error.message); setTransitioning(false); return; }
     setFiche({ ...fiche, status: "BROUILLON" });
+    window.dispatchEvent(new CustomEvent("phc:fiche-status-changed"));
     toast.success("Fiche rejetée — le référent a été notifié.");
     setShowRejetDialog(false);
     setRejetMotif("");
@@ -461,6 +463,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     });
     if (error) { toast.error("Annulation refusée : " + error.message); setTransitioning(false); return; }
     setFiche({ ...fiche, status: "SOUMISE", assigned_to: null });
+    window.dispatchEvent(new CustomEvent("phc:fiche-status-changed"));
     toast.success("Validation annulée — la fiche revient en statut À valider.");
     setShowAnnulationDialog(false);
     setAnnulationMotif("");
@@ -514,6 +517,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     if (error) { toast.error("Affectation refusée : " + error.message); setTransitioning(false); return; }
     toast.success("Fiche validée et affectée avec succès");
     setFiche({ ...fiche, assigned_to: commercialId, status: "AFFECTEE" });
+    window.dispatchEvent(new CustomEvent("phc:fiche-status-changed"));
     setTransitioning(false);
 
     // Email + notifications (non bloquant)
@@ -1034,6 +1038,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                           const comm = commercials.find((c) => c.id === assignCommercialId);
                           const commName = comm ? `${comm.first_name} ${comm.last_name}` : "un commercial";
                           toast.success(`Fiche ${fiche.reference} validée et affectée à ${commName}`, { duration: 5000 });
+                          window.dispatchEvent(new CustomEvent("phc:fiche-status-changed"));
                           fetchData();
                         } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Erreur"); }
                         finally { setTransitioning(false); }

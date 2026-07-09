@@ -6,7 +6,7 @@ import {
   LayoutDashboard, FileText, FilePlus, Users, Bell,
   Building2, Building, LogOut, Menu, X, UserCircle, BarChart3, ClipboardCheck, CalendarDays,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { ROLE_LABELS } from "@/lib/permissions";
@@ -103,9 +103,9 @@ export function Sidebar() {
   const { isDG } = useBranch();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [badges, setBadges] = useState<Record<BadgeKey, number>>({ fiches: 0, notifs: 0, soumises: 0 });
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
-  const fetchBadgesRef = useRef<(() => void) | null>(null);
+  const fetchBadgesRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -130,7 +130,7 @@ export function Sidebar() {
     fetchBadges();
 
     const channel = supabase
-      .channel(`sidebar-badges-${profile.id}-${crypto.randomUUID()}`)
+      .channel(`sidebar-badges-${profile.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "fiches" }, () => {
         fetchBadges();
       })
@@ -139,8 +139,15 @@ export function Sidebar() {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [profile]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Mise à jour instantanée dans le même onglet après chaque transition de statut
+    function onFicheStatusChanged() { void fetchBadges(); }
+    window.addEventListener("phc:fiche-status-changed", onFicheStatusChanged);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("phc:fiche-status-changed", onFicheStatusChanged);
+    };
+  }, [profile, supabase]);
 
   useEffect(() => {
     fetchBadgesRef.current?.();

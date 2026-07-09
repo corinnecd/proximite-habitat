@@ -45,6 +45,9 @@ const OSRM_URL = "https://router.project-osrm.org/route/v1/foot";
 
 const FS_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
 const FS_EXIT = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+const RECENTER_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>`;
+
+const MIN_ZOOM = 10; // ~département — empêche de dézoomer trop loin
 
 function markerIcon(color = "#F97316") {
   return L.divIcon({
@@ -146,6 +149,9 @@ export function RouteMap({
   const villeMarkersLayer = useRef<L.LayerGroup | null>(null);
   const routeMarkersLayer = useRef<L.LayerGroup | null>(null);
   const routeLineLayer = useRef<L.Polyline | null>(null);
+  // Bornes des villes planifiées — servent au bouton "Recentrer" et à la
+  // limitation du pan (maxBounds).
+  const villeBoundsRef = useRef<L.LatLngBounds | null>(null);
 
   const [editMode, setEditMode] = useState(false);
   const [waypoints, setWaypoints] = useState<LatLng[]>(route?.waypoints ?? []);
@@ -178,6 +184,7 @@ export function RouteMap({
     const map = L.map(mapRef.current, {
       center: [48.86, 2.35],
       zoom: 13,
+      minZoom: MIN_ZOOM,   // ~département — blocage dézoom trop large
       maxZoom: MAX_ZOOM,
       scrollWheelZoom: true,
       zoomAnimation: false,
@@ -197,6 +204,25 @@ export function RouteMap({
 
     villeMarkersLayer.current = L.layerGroup().addTo(map);
     routeMarkersLayer.current = L.layerGroup().addTo(map);
+
+    // Bouton "Recentrer" — cadrage instantané sur les villes planifiées.
+    const RecenterCtrl = L.Control.extend({
+      options: { position: "bottomright" as L.ControlPosition },
+      onAdd() {
+        const btn = L.DomUtil.create("button", "leaflet-bar leaflet-control");
+        btn.style.cssText = "width:40px;height:40px;background:#fff;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.2);margin-bottom:6px;color:#1E3A5F";
+        btn.innerHTML = RECENTER_ICON;
+        btn.title = "Recentrer sur les villes planifiées";
+        L.DomEvent.disableClickPropagation(btn);
+        btn.addEventListener("click", () => {
+          const b = villeBoundsRef.current;
+          if (!b || !mapInstance.current) return;
+          mapInstance.current.fitBounds(b, { padding: [40, 40], maxZoom: 14, animate: true });
+        });
+        return btn;
+      },
+    });
+    new RecenterCtrl().addTo(map);
 
     // Bouton plein écran
     const Ctrl = L.Control.extend({
@@ -262,10 +288,18 @@ export function RouteMap({
       bounds.extend([m.lat, m.lng]);
     });
     if (markers.length === 1) {
+      const single = L.latLng(markers[0].lat, markers[0].lng);
+      // Bounds artificielles ~5 km autour de la ville unique.
+      villeBoundsRef.current = single.toBounds(10_000);
       map.setView([markers[0].lat, markers[0].lng], 14, { animate: false });
     } else {
+      villeBoundsRef.current = bounds;
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13, animate: false });
     }
+    // Limitation du pan : ~30 km autour du barycentre des villes, pour
+    // éviter que l'utilisateur ne dérive vers un autre pays.
+    const padded = villeBoundsRef.current.pad(2.5);
+    map.setMaxBounds(padded);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [markersKey]);
 

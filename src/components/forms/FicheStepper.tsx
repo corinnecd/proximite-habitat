@@ -29,8 +29,12 @@ interface StepAllProps {
   setPhotos?: (p: File[]) => void;
   signatureDataUrl?: string | null;
   setSignatureDataUrl?: (url: string | null) => void;
-  /** URL publique de la signature déjà en storage (mode édition) */
+  /** URL publique de la signature prospect déjà en storage (mode édition) */
   existingSignatureUrl?: string | null;
+  referentSignatureDataUrl?: string | null;
+  setReferentSignatureDataUrl?: (url: string | null) => void;
+  /** URL publique de la signature référent déjà en storage (mode édition) */
+  existingReferentSignatureUrl?: string | null;
   uploadedPhotos?: UploadedPhoto[];
   onRemoveUploaded?: (id: string) => void;
   onAddValidFiles?: (files: File[]) => Promise<void>;
@@ -45,8 +49,10 @@ export interface FicheStepperProps {
   initialData?: Partial<FicheFormData>;
   /** Photos déjà persistées (chargées depuis fiche_photos) */
   initialPhotos?: Array<{ id: string; storage_path: string; original_name: string }>;
-  /** URL publique de la signature déjà enregistrée (mode édition) */
+  /** URL publique de la signature prospect déjà enregistrée (mode édition) */
   existingSignatureUrl?: string | null;
+  /** URL publique de la signature référent déjà enregistrée (mode édition) */
+  existingReferentSignatureUrl?: string | null;
   /**
    * create        — nouvelle fiche (défaut) : soumettre → SOUMISE
    * edit-draft    — reprise d'un brouillon  : soumettre → SOUMISE
@@ -87,7 +93,7 @@ const DEFAULT_FORM_VALUES = {
 
 // ── Composant ─────────────────────────────────────────────────────────────────
 
-export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos, existingSignatureUrl, mode = "create" }: FicheStepperProps) {
+export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos, existingSignatureUrl, existingReferentSignatureUrl, mode = "create" }: FicheStepperProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [stepDirection, setStepDirection] = useState<"next" | "prev">("next");
   const [saving, setSaving] = useState(false);
@@ -103,6 +109,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
   const [photos, setPhotos] = useState<File[]>([]);
   const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([]);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [referentSignatureDataUrl, setReferentSignatureDataUrl] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const router = useRouter();
@@ -444,7 +451,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     try {
       const id = ficheIdRef.current;
 
-      // Signature : upload si nouvelle, sinon on conserve l'existante (pas d'écrasement)
+      // Signatures : upload si nouvelles, sinon on conserve les existantes (pas d'écrasement)
       if (signatureDataUrl) {
         try {
           const blob = await fetch(signatureDataUrl).then((r) => r.blob());
@@ -452,10 +459,19 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             .from("signatures")
             .upload(`${profile.organization_id}/${id}/signature.png`, blob, { contentType: "image/png", upsert: true });
         } catch {
-          toast.error("La signature n'a pas pu être enregistrée");
+          toast.error("La signature du prospect n'a pas pu être enregistrée");
         }
       }
-      // Si pas de nouvelle signature mais une existante → on ne fait rien (déjà en storage)
+      if (referentSignatureDataUrl) {
+        try {
+          const blob = await fetch(referentSignatureDataUrl).then((r) => r.blob());
+          await supabase.storage
+            .from("signatures")
+            .upload(`${profile.organization_id}/${id}/signature_referent.png`, blob, { contentType: "image/png", upsert: true });
+        } catch {
+          toast.error("La signature du référent n'a pas pu être enregistrée");
+        }
+      }
 
       // Photos encore en attente
       if (photos.length > 0) {
@@ -589,6 +605,9 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             signatureDataUrl={signatureDataUrl}
             setSignatureDataUrl={setSignatureDataUrl}
             existingSignatureUrl={existingSignatureUrl}
+            referentSignatureDataUrl={referentSignatureDataUrl}
+            setReferentSignatureDataUrl={setReferentSignatureDataUrl}
+            existingReferentSignatureUrl={existingReferentSignatureUrl}
             uploadedPhotos={uploadedPhotos}
             onRemoveUploaded={handleRemoveUploaded}
             onAddValidFiles={handleAddValidFiles}

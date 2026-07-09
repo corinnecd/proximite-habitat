@@ -23,6 +23,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
   const [initialData, setInitialData] = useState<Record<string, unknown> | null>(null);
   const [initialPhotos, setInitialPhotos] = useState<PhotoRow[]>([]);
   const [existingSignatureUrl, setExistingSignatureUrl] = useState<string | null>(null);
+  const [existingReferentSignatureUrl, setExistingReferentSignatureUrl] = useState<string | null>(null);
   const [ficheStatus, setFicheStatus] = useState<FicheStatus>("BROUILLON");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,9 +67,15 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
         prospect_cp:         fiche.prospect_cp         ?? "",
         prospect_ville:      fiche.prospect_ville      ?? "",
         prospect_telephone:  fiche.prospect_telephone  ?? "",
+        prospect_email:      fiche.prospect_email      ?? "",
+        departement_code:    fiche.departement_code    ?? null,
+        ville_id:            fiche.ville_id            ?? null,
         disponibilites:      fiche.disponibilites      ?? [],
         date_visite:         fiche.date_visite         ?? "",
         heure_visite:        fiche.heure_visite        ?? "",
+        rdv_date:            fiche.rdv_date            ?? "",
+        referent_nom:        fiche.referent_nom        ?? "",
+        referent_telephone:  fiche.referent_telephone  ?? "",
         annee_construction:  fiche.annee_construction  != null ? String(fiche.annee_construction)  : "",
         annee_emmenagement:  fiche.annee_emmenagement  != null ? String(fiche.annee_emmenagement)  : "",
         temperature_confort: fiche.temperature_confort != null ? String(fiche.temperature_confort) : "",
@@ -92,12 +99,14 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
 
       setInitialPhotos(photos.map((p) => ({ ...p, original_name: p.original_name ?? "" })));
 
-      // Charger la signature existante via signed URL (bucket privé)
+      // Charger les signatures existantes via signed URL (bucket privé)
       try {
-        const { data: signData } = await supabase.storage
-          .from("signatures")
-          .createSignedUrl(`${fiche.organization_id}/${id}/signature.png`, 7200);
+        const [{ data: signData }, { data: refSignData }] = await Promise.all([
+          supabase.storage.from("signatures").createSignedUrl(`${fiche.organization_id}/${id}/signature.png`, 7200),
+          supabase.storage.from("signatures").createSignedUrl(`${fiche.organization_id}/${id}/signature_referent.png`, 7200),
+        ]);
         if (signData?.signedUrl) setExistingSignatureUrl(signData.signedUrl);
+        if (refSignData?.signedUrl) setExistingReferentSignatureUrl(refSignData.signedUrl);
       } catch { /* pas de signature */ }
 
       setLoading(false);
@@ -155,6 +164,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
               initialData={initialData ?? undefined}
               initialPhotos={initialPhotos}
               existingSignatureUrl={existingSignatureUrl}
+              existingReferentSignatureUrl={existingReferentSignatureUrl}
               mode={isEditSubmitted ? "edit-submitted" : "edit-draft"}
             />
           </CardContent>

@@ -33,7 +33,16 @@ export default function LoginPage() {
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      setError(error.message);
+      const msg = error.message.toLowerCase();
+      if (msg.includes("invalid login credentials") || msg.includes("invalid email or password") || msg.includes("email not confirmed")) {
+        setError("Email ou mot de passe incorrect. Vérifiez vos identifiants.");
+      } else if (msg.includes("too many requests") || msg.includes("rate limit")) {
+        setError("Trop de tentatives. Veuillez patienter quelques minutes avant de réessayer.");
+      } else if (msg.includes("user not found")) {
+        setError("Aucun compte trouvé avec cet email.");
+      } else {
+        setError("Une erreur est survenue. Veuillez réessayer.");
+      }
       setLoading(false);
       return;
     }

@@ -509,9 +509,7 @@ export default function UtilisateursPage() {
               </Select>
             </div>
             <DialogFooter className="gap-2 pt-2">
-              <DialogClose>
-                <Button type="button" variant="outline" className="rounded-xl">Annuler</Button>
-              </DialogClose>
+              <DialogClose render={<Button type="button" variant="outline" className="rounded-xl" />}>Annuler</DialogClose>
               <Button type="submit" disabled={saving} className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
                 Enregistrer
@@ -537,9 +535,7 @@ export default function UtilisateursPage() {
             }
           </p>
           <DialogFooter className="gap-2">
-            <DialogClose>
-              <Button type="button" variant="outline" className="rounded-xl">Annuler</Button>
-            </DialogClose>
+            <DialogClose render={<Button type="button" variant="outline" className="rounded-xl" />}>Annuler</DialogClose>
             <Button
               onClick={handleToggleActive}
               disabled={toggling}

@@ -676,9 +676,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <DialogClose>
-              <Button type="button" variant="outline" className="rounded-xl">Continuer la saisie</Button>
-            </DialogClose>
+            <DialogClose render={<Button type="button" variant="outline" className="rounded-xl" />}>Continuer la saisie</DialogClose>
             <Button
               type="button"
               onClick={() => {

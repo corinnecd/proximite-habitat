@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import {
   User, Home, Flame, Wind, Shield, Camera, FileText,
   Clock, ArrowLeft, UserCheck, Loader2, Pencil, Trash2,
-  Phone, MapPin, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, Copy, ChevronDown, ChevronUp,
+  Phone, MapPin, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, Copy, ChevronDown, ChevronUp, PenTool,
 } from "lucide-react";
 import { DownloadFicheButton } from "@/components/pdf/DownloadFicheButton";
 import { VilleMapDynamic } from "@/components/ui/VilleMapDynamic";
@@ -133,6 +133,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [creatorName, setCreatorName] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const [referentSignatureUrl, setReferentSignatureUrl] = useState<string | null>(null);
   const [commercials, setCommercials] = useState<ProfileEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [transitioning, setTransitioning] = useState(false);
@@ -195,6 +197,17 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         if (vData) setVilleData(vData);
       } else {
         setVilleData(null);
+      }
+
+      // Signatures (bucket privé — signed URLs)
+      if (ficheData?.organization_id) {
+        const orgId = ficheData.organization_id;
+        const [{ data: sig }, { data: sigRef }] = await Promise.all([
+          supabase.storage.from("signatures").createSignedUrl(`${orgId}/${id}/signature.png`, 7200),
+          supabase.storage.from("signatures").createSignedUrl(`${orgId}/${id}/signature_referent.png`, 7200),
+        ]);
+        setSignatureUrl(sig?.signedUrl ?? null);
+        setReferentSignatureUrl(sigRef?.signedUrl ?? null);
       }
     } catch (err) {
       console.error("fetchData error", err);
@@ -1021,8 +1034,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                           const comm = commercials.find((c) => c.id === assignCommercialId);
                           const commName = comm ? `${comm.first_name} ${comm.last_name}` : "un commercial";
                           toast.success(`Fiche ${fiche.reference} validée et affectée à ${commName}`, { duration: 5000 });
-                          router.refresh();
-                          window.location.reload();
+                          fetchData();
                         } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Erreur"); }
                         finally { setTransitioning(false); }
                       }}
@@ -1450,6 +1462,35 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               </SectionCard>
               </div>
+            )}
+
+            {/* Signatures */}
+            {(signatureUrl || referentSignatureUrl) && (
+              <SectionCard
+                icon={<PenTool className="w-4 h-4" />}
+                iconBg="bg-emerald-50 dark:bg-emerald-950/30"
+                iconColor="text-emerald-600"
+                title="Signatures"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {signatureUrl && (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Signature du prospect</p>
+                      <div className="rounded-xl border border-border bg-white p-3">
+                        <Image src={signatureUrl} alt="Signature prospect" width={300} height={90} className="max-h-20 w-auto object-contain" unoptimized />
+                      </div>
+                    </div>
+                  )}
+                  {referentSignatureUrl && (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Signature du référent</p>
+                      <div className="rounded-xl border border-border bg-white p-3">
+                        <Image src={referentSignatureUrl} alt="Signature référent" width={300} height={90} className="max-h-20 w-auto object-contain" unoptimized />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </SectionCard>
             )}
 
             {/* Observations */}

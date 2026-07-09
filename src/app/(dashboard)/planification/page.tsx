@@ -337,8 +337,12 @@ export default function PlanificationPage() {
   async function handleSave() {
     if (!profile || selectedVilles.size === 0) return;
     setSaving(true);
+    // Quand la DG plannifie pour une succursale, on enregistre dans
+    // l'organisation sélectionnée — pas celle du profil DG (siège).
+    // Sinon les commerciaux/référents de la succursale ne voient rien.
+    const orgId = (isDG && selectedBranchId !== "all") ? selectedBranchId : profile.organization_id;
     const rows = [...selectedVilles].map((ville_id) => ({
-      organization_id: profile.organization_id,
+      organization_id: orgId,
       semaine_du: mondayStr,
       ville_id,
       chef_equipe_id: selectedChef || null,
@@ -371,10 +375,11 @@ export default function PlanificationPage() {
     prevMonday.setDate(prevMonday.getDate() - 7);
     const prevMondayStr = `${prevMonday.getFullYear()}-${String(prevMonday.getMonth() + 1).padStart(2, "0")}-${String(prevMonday.getDate()).padStart(2, "0")}`;
 
+    const orgId = (isDG && selectedBranchId !== "all") ? selectedBranchId : profile.organization_id;
     const { data } = await supabase
       .from("planification_hebdo")
       .select("ville_id, chef_equipe_id")
-      .eq("organization_id", profile.organization_id)
+      .eq("organization_id", orgId)
       .eq("semaine_du", prevMondayStr);
 
     if (!data || data.length === 0) {
@@ -384,7 +389,7 @@ export default function PlanificationPage() {
 
     setSaving(true);
     const rows = data.map((d) => ({
-      organization_id: profile.organization_id,
+      organization_id: orgId,
       semaine_du: mondayStr,
       ville_id: d.ville_id,
       chef_equipe_id: d.chef_equipe_id,

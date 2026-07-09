@@ -31,7 +31,6 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
-import { PlanificationWidget } from "@/components/dashboard/PlanificationWidget";
 import { sendEmailFicheAffectee, sendEmailFicheDecision } from "@/lib/email";
 import { toast } from "sonner";
 
@@ -1025,9 +1024,6 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-
-        {/* ── Planification de la semaine (partagée par tous les rôles) ─── */}
-        <PlanificationWidget />
 
         {/* ── Prime du mois (référent) ─────────────────────────────────── */}
         {isReferent && (() => {

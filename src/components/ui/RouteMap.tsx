@@ -78,6 +78,23 @@ function formatDuration(s: number | null): string {
   return rem === 0 ? `${h}h` : `${h}h${String(rem).padStart(2, "0")}`;
 }
 
+/** Snap un point unique sur la rue la plus proche via OSRM /nearest.
+ *  Retourne les coordonnées d'origine si OSRM échoue (fallback silencieux). */
+async function snapToRoad(lat: number, lng: number): Promise<LatLng> {
+  try {
+    const res = await fetch(
+      `https://router.project-osrm.org/nearest/v1/foot/${lng},${lat}?number=1`,
+    );
+    if (!res.ok) return [lat, lng];
+    const json = await res.json();
+    const loc = json?.waypoints?.[0]?.location;
+    if (!Array.isArray(loc) || loc.length !== 2) return [lat, lng];
+    return [loc[1], loc[0]];
+  } catch {
+    return [lat, lng];
+  }
+}
+
 /** Appelle OSRM pour calculer le trajet à pied entre les waypoints avec retry */
 async function computeRoute(waypoints: LatLng[]): Promise<{
   geometry: LatLng[];
@@ -261,11 +278,14 @@ export function RouteMap({
       const marker = L.marker(wp, { icon: waypointIcon(i + 1), draggable: editMode });
       marker.addTo(layer);
       if (editMode) {
-        marker.on("dragend", (e) => {
+        marker.on("dragend", async (e) => {
           const ll = e.target.getLatLng();
+          // Snap immédiat sur la rue la plus proche pour que le numéro
+          // reste toujours sur la route empruntée par le tracé orange.
+          const snapped = await snapToRoad(ll.lat, ll.lng);
           setWaypoints((prev) => {
             const next = [...prev];
-            next[i] = [ll.lat, ll.lng];
+            next[i] = snapped;
             return next;
           });
         });
@@ -303,9 +323,13 @@ export function RouteMap({
   useEffect(() => {
     const map = mapInstance.current;
     if (!map) return;
-    const handler = (e: L.LeafletMouseEvent) => {
+    const handler = async (e: L.LeafletMouseEvent) => {
       if (!editMode) return;
-      setWaypoints((prev) => [...prev, [e.latlng.lat, e.latlng.lng]]);
+      // Snap immédiat sur la rue la plus proche : le numéro apparaît
+      // directement sur une rue empruntable, jamais dans un bâtiment
+      // ou un jardin.
+      const snapped = await snapToRoad(e.latlng.lat, e.latlng.lng);
+      setWaypoints((prev) => [...prev, snapped]);
     };
     map.on("click", handler);
     return () => { map.off("click", handler); };

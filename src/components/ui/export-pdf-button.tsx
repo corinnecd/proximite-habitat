@@ -62,32 +62,42 @@ export function ExportPdfButton({
       const html2canvas = html2canvasLib!;
       const jsPDF = jsPDFLib!;
 
-      const main = document.querySelector("main");
+      const main = document.querySelector("main") as HTMLElement | null;
       if (!main) { setLoading(false); return; }
 
-      // Clone the main element to avoid modifying the visible DOM
-      const clone = main.cloneNode(true) as HTMLElement;
+      // Capture directement le DOM live (sans cloner) afin de préserver
+      // les transforms CSS Leaflet — la SVG polyline apparaît alors dans le PDF.
+      // On masque temporairement les éléments interactifs via une classe CSS.
+      const style = document.createElement("style");
+      style.setAttribute("data-pdf-print-style", "1");
+      style.textContent = `
+        body.pdf-printing button:not(.leaflet-control button):not([data-fs-btn]),
+        body.pdf-printing input,
+        body.pdf-printing select,
+        body.pdf-printing [data-no-print] { visibility: hidden !important; }
+        body.pdf-printing .leaflet-control-zoom,
+        body.pdf-printing .leaflet-control-layers,
+        body.pdf-printing .leaflet-control-attribution,
+        body.pdf-printing [data-fs-btn] { display: none !important; }
+      `;
+      document.head.appendChild(style);
+      document.body.classList.add("pdf-printing");
 
-      // Remove buttons, search inputs, and no-print elements from the clone
-      clone.querySelectorAll("button, [data-no-print], input, select").forEach((el) => el.remove());
+      // Attendre 1 frame pour laisser le repaint
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
 
-      // Position clone off-screen but rendered
-      clone.style.position = "absolute";
-      clone.style.left = "-9999px";
-      clone.style.top = "0";
-      clone.style.width = `${main.scrollWidth}px`;
-      clone.style.zIndex = "-1";
-      document.body.appendChild(clone);
-
-      const canvas = await html2canvas(clone, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
-
-      // Remove clone immediately after capture
-      document.body.removeChild(clone);
+      let canvas;
+      try {
+        canvas = await html2canvas(main, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+        });
+      } finally {
+        document.body.classList.remove("pdf-printing");
+        style.remove();
+      }
 
       const imgWidth = 190;
       const pageHeight = 277;

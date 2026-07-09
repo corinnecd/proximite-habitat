@@ -78,7 +78,7 @@ function formatDuration(s: number | null): string {
   return rem === 0 ? `${h}h` : `${h}h${String(rem).padStart(2, "0")}`;
 }
 
-/** Appelle OSRM pour calculer le trajet à pied entre les waypoints */
+/** Appelle OSRM pour calculer le trajet à pied entre les waypoints avec retry */
 async function computeRoute(waypoints: LatLng[]): Promise<{
   geometry: LatLng[];
   snapped: LatLng[];
@@ -87,21 +87,31 @@ async function computeRoute(waypoints: LatLng[]): Promise<{
 } | null> {
   if (waypoints.length < 2) return null;
   const coords = waypoints.map(([lat, lng]) => `${lng},${lat}`).join(";");
-  try {
-    const res = await fetch(`${OSRM_URL}/${coords}?overview=full&geometries=geojson`);
-    if (!res.ok) return null;
-    const json = await res.json();
-    if (!json.routes || json.routes.length === 0) return null;
-    const r = json.routes[0];
-    const geometry: LatLng[] = r.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
-    // OSRM renvoie les positions "snappées" (accrochées à la rue la plus proche)
-    const snapped: LatLng[] = (json.waypoints ?? []).map(
-      (w: { location: [number, number] }) => [w.location[1], w.location[0]] as LatLng,
-    );
-    return { geometry, snapped, distance: Math.round(r.distance), duration: Math.round(r.duration) };
-  } catch {
-    return null;
+  const url = `${OSRM_URL}/${coords}?overview=full&geometries=geojson`;
+
+  // 3 tentatives avec backoff exponentiel (0ms, 800ms, 2400ms)
+  // pour absorber les rate limits du serveur OSRM public.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 800 * attempt * attempt));
+    }
+    try {
+      const res = await fetch(url);
+      if (res.status === 429 || res.status === 503) continue; // rate limit → retry
+      if (!res.ok) return null;
+      const json = await res.json();
+      if (!json.routes || json.routes.length === 0) return null;
+      const r = json.routes[0];
+      const geometry: LatLng[] = r.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
+      const snapped: LatLng[] = (json.waypoints ?? []).map(
+        (w: { location: [number, number] }) => [w.location[1], w.location[0]] as LatLng,
+      );
+      return { geometry, snapped, distance: Math.round(r.distance), duration: Math.round(r.duration) };
+    } catch {
+      // Erreur réseau — on continue vers la tentative suivante.
+    }
   }
+  return null;
 }
 
 export function RouteMap({

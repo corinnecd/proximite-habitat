@@ -40,6 +40,24 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Vérification is_active : bloque un utilisateur désactivé même si son JWT
+  // est encore valide. Sans ça, un utilisateur désactivé restait connecté
+  // jusqu'à l'expiration du token (~1h).
+  if (user && !isAuthPage) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_active")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profile && profile.is_active === false) {
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("error", "account_disabled");
+      return NextResponse.redirect(url);
+    }
+  }
+
   if (user && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/";

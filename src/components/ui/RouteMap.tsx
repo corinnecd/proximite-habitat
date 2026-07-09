@@ -176,6 +176,8 @@ export function RouteMap({
   }, [route]);
 
   const markersKey = markers.map((m) => `${m.lat},${m.lng}`).join("|");
+  // Sert à re-cadrer la carte quand un parcours est chargé (changement de semaine).
+  const routeInitialKey = (route?.waypoints ?? []).map((w) => `${w[0]},${w[1]}`).join("|");
 
   // Init map
   useEffect(() => {
@@ -217,7 +219,9 @@ export function RouteMap({
         btn.addEventListener("click", () => {
           const b = villeBoundsRef.current;
           if (!b || !mapInstance.current) return;
-          mapInstance.current.fitBounds(b, { padding: [40, 40], maxZoom: 14, animate: true });
+          // maxZoom élevé : si un parcours est chargé, on zoome fort dessus
+          // pour voir les rues et le tracé orange.
+          mapInstance.current.fitBounds(b, { padding: [40, 40], maxZoom: 17, animate: true });
         });
         return btn;
       },
@@ -287,21 +291,28 @@ export function RouteMap({
       L.marker([m.lat, m.lng], { icon }).addTo(layer).bindPopup(popup);
       bounds.extend([m.lat, m.lng]);
     });
-    if (markers.length === 1) {
+    // Priorité au parcours : si un tracé est déjà chargé, on cadre dessus
+    // (avec zoom fort ~17) pour que l'utilisateur voit directement les
+    // rues et le tracé orange dès l'ouverture de la page.
+    const routeWps = route?.waypoints ?? [];
+    const hasRoute = routeWps.length >= 2;
+    if (hasRoute) {
+      const routeBounds = L.latLngBounds(routeWps.map((w) => L.latLng(w[0], w[1])));
+      villeBoundsRef.current = routeBounds;
+      map.fitBounds(routeBounds, { padding: [40, 40], maxZoom: 17, animate: false });
+    } else if (markers.length === 1) {
       const single = L.latLng(markers[0].lat, markers[0].lng);
-      // Bounds artificielles ~5 km autour de la ville unique.
       villeBoundsRef.current = single.toBounds(10_000);
       map.setView([markers[0].lat, markers[0].lng], 14, { animate: false });
     } else {
       villeBoundsRef.current = bounds;
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13, animate: false });
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15, animate: false });
     }
-    // Limitation du pan : ~30 km autour du barycentre des villes, pour
-    // éviter que l'utilisateur ne dérive vers un autre pays.
+    // Limitation du pan : ~30 km autour du barycentre pour éviter la dérive.
     const padded = villeBoundsRef.current.pad(2.5);
     map.setMaxBounds(padded);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markersKey]);
+  }, [markersKey, routeInitialKey]);
 
   // Update waypoint markers
   useEffect(() => {

@@ -213,7 +213,7 @@ export function Step1Coordonnees({ currentFicheId }: { currentFicheId?: string }
       </div>
       <div className="space-y-3"><Label className="flex items-center gap-2"><Calendar className="w-4 h-4" />Disponibilités</Label><div className="flex flex-wrap gap-3">{JOURS_DISPONIBILITES.map((j) => (<button key={j} type="button" onClick={() => toggleJour(j)} className={`px-4 py-3 rounded-xl border text-sm font-medium transition-all ${disponibilites.includes(j) ? "bg-primary text-white border-primary" : "bg-card border-border hover:border-primary/50"}`}>{j}</button>))}</div></div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="space-y-2"><Label>Date de visite</Label><Input type="date" className="h-12 bg-card" onKeyDown={(e) => e.preventDefault()} {...register("date_visite", { onChange: (e) => (e.target as HTMLInputElement).blur() })} /></div>
+        <div className="space-y-2"><Label>Date de visite *</Label><Input type="date" className="h-12 bg-card" onKeyDown={(e) => e.preventDefault()} {...register("date_visite", { onChange: (e) => (e.target as HTMLInputElement).blur() })} /></div>
         <div className="space-y-2"><Label>Heure souhaitée</Label><Input type="time" className="h-12 bg-card" {...register("heure_visite")} /></div>
       </div>
 

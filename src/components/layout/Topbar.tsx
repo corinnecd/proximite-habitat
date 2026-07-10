@@ -73,6 +73,7 @@ export function Topbar({ title, actions }: { title?: string; actions?: React.Rea
 
   useEffect(() => {
     if (userId) fetchUnread(userId);
+    setDropdownOpen(false);
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fermer le dropdown en cliquant en dehors
@@ -87,6 +88,7 @@ export function Topbar({ title, actions }: { title?: string; actions?: React.Rea
   }, [dropdownOpen]);
 
   async function handleBellClick() {
+    if (pathname === "/notifications") return;
     if (!dropdownOpen && userId) await fetchRecent(userId);
     setDropdownOpen((v) => !v);
   }

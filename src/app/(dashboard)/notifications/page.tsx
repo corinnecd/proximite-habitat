@@ -397,6 +397,8 @@ export default function NotificationsPage() {
   }
 
   function handlePeriodChange(p: PeriodFilter) {
+    setNotifications([]);
+    setLoading(true);
     setPeriod(p);
     if (p !== "custom") { setCustomFrom(""); setCustomTo(""); }
   }

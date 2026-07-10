@@ -701,7 +701,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <>
-      <Topbar title={fiche.reference} actions={<div className="flex items-center gap-2"><ExportPdfButton title={fiche.reference} subtitle={`Statut : ${STATUS_LABELS[fiche.status]}`} filename={`fiche-${fiche.reference}`} printLayout="3col" /><ExportCsvButton filename={`fiche-${fiche.reference}`} getData={() => ({
+      <Topbar title={fiche.reference} actions={<div className="flex items-center gap-2"><DownloadFicheButton fiche={fiche} referentNom={creatorName || "Référent"} commercialNom={fiche.assigned_to ? (commercials.find((c) => c.id === fiche.assigned_to) ? `${commercials.find((c) => c.id === fiche.assigned_to)!.first_name} ${commercials.find((c) => c.id === fiche.assigned_to)!.last_name}` : undefined) : undefined} photoUrls={photos.map((p) => p.signedUrl).filter(Boolean)} /><ExportCsvButton filename={`fiche-${fiche.reference}`} getData={() => ({
         columns: [
           { key: "champ", label: "Champ" },
           { key: "valeur", label: "Valeur" },

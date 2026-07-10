@@ -152,6 +152,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [rejetMotif, setRejetMotif] = useState("");
   const [showReassignPanel, setShowReassignPanel] = useState(false);
   const [reassignCommercialId, setReassignCommercialId] = useState("");
+  const [showReassignConfirmModal, setShowReassignConfirmModal] = useState(false);
   const [assignCommercialId, setAssignCommercialId] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [deleteMotif, setDeleteMotif] = useState("");
@@ -1103,11 +1104,11 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 </Select>
                 <Button
                   size="sm"
-                  onClick={handleReassign}
+                  onClick={() => { if (reassignCommercialId) setShowReassignConfirmModal(true); }}
                   disabled={!reassignCommercialId || transitioning}
                   className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white shrink-0"
                 >
-                  {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer"}
+                  Confirmer
                 </Button>
                 <Button
                   size="sm"
@@ -2090,6 +2091,89 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 >
                   {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                   Confirmer l&apos;affectation
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
+
+      {/* ── Modal : confirmation de ré-affectation ───────────────────────── */}
+      {(() => {
+        const newCommercial = commercials.find((c) => c.id === reassignCommercialId);
+        const oldCommercial = commercials.find((c) => c.id === fiche?.assigned_to);
+        const now = new Date();
+        const dateStr = now.toLocaleDateString("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+        const timeStr = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        return (
+          <Dialog open={showReassignConfirmModal} onOpenChange={(open) => { if (!open) setShowReassignConfirmModal(false); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                  <UserCheck className="w-5 h-5" />Confirmer la modification d&apos;affectation
+                </DialogTitle>
+                <DialogDescription>
+                  Vérifiez les informations avant de confirmer le changement.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="py-2 space-y-3">
+                <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20 p-4 space-y-3">
+                  {oldCommercial && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          <UserCheck className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Commercial actuel</p>
+                          <p className="text-sm font-semibold text-foreground line-through text-muted-foreground">
+                            {oldCommercial.first_name} {oldCommercial.last_name}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="h-px bg-blue-200 dark:bg-blue-800" />
+                    </>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                      <UserCheck className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-blue-600/70 dark:text-blue-400/70">Nouveau commercial</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {newCommercial ? `${newCommercial.first_name} ${newCommercial.last_name}` : "—"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-px bg-blue-200 dark:bg-blue-800" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center shrink-0">
+                      <Calendar className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-blue-600/70 dark:text-blue-400/70">Date de modification</p>
+                      <p className="text-sm font-semibold text-foreground capitalize">{dateStr} à {timeStr}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  L&apos;ancien et le nouveau commercial recevront chacun une notification.
+                </p>
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" className="rounded-xl" onClick={() => setShowReassignConfirmModal(false)}>Annuler</Button>
+                <Button
+                  disabled={transitioning}
+                  onClick={async () => {
+                    setShowReassignConfirmModal(false);
+                    await handleReassign();
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2 font-semibold"
+                >
+                  {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
+                  Confirmer la modification
                 </Button>
               </DialogFooter>
             </DialogContent>

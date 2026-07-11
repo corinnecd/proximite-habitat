@@ -373,7 +373,7 @@ export default function UtilisateursPage() {
               return (
                 <div
                   key={user.id}
-                  className={`bg-card border border-border border-l-4 ${s.border} rounded-2xl px-5 py-4 flex items-center justify-between gap-4 transition-all hover:shadow-sm ${!user.is_active ? "opacity-60" : ""}`}
+                  className={`bg-card border border-border border-l-4 ${s.border} rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 transition-all hover:shadow-sm ${!user.is_active ? "opacity-60" : ""}`}
                 >
                   <div className="flex items-center gap-4 min-w-0">
                     <div className={`w-11 h-11 rounded-xl ${s.avatarBg} flex items-center justify-center text-sm font-bold ${s.avatarText} shrink-0`}>

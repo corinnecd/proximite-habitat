@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -294,6 +293,7 @@ export default function NotificationsPage() {
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notificationsListRef = useRef<HTMLDivElement>(null);
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const { profile } = useProfile();
@@ -398,10 +398,10 @@ export default function NotificationsPage() {
   }
 
   function handlePeriodChange(p: PeriodFilter) {
-    flushSync(() => {
-      setNotifications([]);
-      setLoading(true);
-    });
+    // Masquer immédiatement la liste via DOM (avant que React ait le temps de re-rendre)
+    if (notificationsListRef.current) notificationsListRef.current.style.display = "none";
+    setNotifications([]);
+    setLoading(true);
     setPeriod(p);
     if (p !== "custom") { setCustomFrom(""); setCustomTo(""); }
   }
@@ -648,7 +648,7 @@ export default function NotificationsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
+          <div ref={notificationsListRef} className="space-y-6">
 
             {/* ── Section : À traiter (non lues) ── */}
             {sorted.unread.length > 0 && (

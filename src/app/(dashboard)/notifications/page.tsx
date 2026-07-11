@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -293,7 +293,7 @@ export default function NotificationsPage() {
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const notificationsListRef = useRef<HTMLDivElement>(null);
+  const contentWrapperRef = useRef<HTMLDivElement>(null);
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const { profile } = useProfile();
@@ -397,9 +397,15 @@ export default function NotificationsPage() {
     if (userId) fetchNotifications(userId, 0, false, { search: "", period, customFrom, customTo, types: selectedTypes });
   }
 
+  // Restaure la visibilité après chaque commit React, AVANT le paint navigateur.
+  // Sans tableau de dépendances = après chaque render.
+  useLayoutEffect(() => {
+    if (contentWrapperRef.current) contentWrapperRef.current.style.visibility = "";
+  });
+
   function handlePeriodChange(p: PeriodFilter) {
-    // Masquer immédiatement la liste via DOM (avant que React ait le temps de re-rendre)
-    if (notificationsListRef.current) notificationsListRef.current.style.display = "none";
+    // Cacher IMMÉDIATEMENT via DOM (avant tout paint navigateur)
+    if (contentWrapperRef.current) contentWrapperRef.current.style.visibility = "hidden";
     setNotifications([]);
     setLoading(true);
     setPeriod(p);
@@ -627,6 +633,7 @@ export default function NotificationsPage() {
         </div>
 
         {/* ── Contenu ───────────────────────────────────────────────────── */}
+        <div ref={contentWrapperRef}>
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -648,7 +655,7 @@ export default function NotificationsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div ref={notificationsListRef} className="space-y-6">
+          <div className="space-y-6">
 
             {/* ── Section : À traiter (non lues) ── */}
             {sorted.unread.length > 0 && (
@@ -719,6 +726,7 @@ export default function NotificationsPage() {
             )}
           </div>
         )}
+        </div>{/* /contentWrapperRef */}
       </div>
       {/* Dialog suppression fiche */}
       <Dialog open={deleteFicheId !== null} onOpenChange={(open) => { if (!open) setDeleteFicheId(null); }}>

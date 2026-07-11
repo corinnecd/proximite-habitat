@@ -518,40 +518,17 @@ export default function NotificationsPage() {
             <div className="flex-1 h-px bg-border/50" />
           </div>
           <div className="flex flex-wrap gap-2">
-            {(["all", "today", "week", "month", "custom"] as PeriodFilter[]).map((p) => (
+            {(["all", "today", "week", "month"] as PeriodFilter[]).map((p) => (
               <button key={p} type="button" onClick={() => handlePeriodChange(p)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border
                   ${period === p
                     ? "bg-primary text-primary-foreground border-primary shadow-sm"
                     : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
                   }`}>
-                {p === "custom" && <Calendar className="w-3 h-3 inline mr-1 -mt-px" />}
                 {PERIOD_LABELS[p]}
               </button>
             ))}
           </div>
-
-          {/* Dates custom */}
-          {period === "custom" && (
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <label className="text-xs text-muted-foreground mb-1 block">Du</label>
-                <Input type="date" value={customFrom} max={customTo || undefined}
-                  onChange={(e) => setCustomFrom(e.target.value)} onKeyDown={(e) => e.preventDefault()} className="rounded-xl h-9 text-sm" />
-              </div>
-              <div className="flex-1">
-                <label className="text-xs text-muted-foreground mb-1 block">Au</label>
-                <Input type="date" value={customTo} min={customFrom || undefined}
-                  onChange={(e) => setCustomTo(e.target.value)} onKeyDown={(e) => e.preventDefault()} className="rounded-xl h-9 text-sm" />
-              </div>
-              {(customFrom || customTo) && (
-                <button type="button" onClick={() => { setCustomFrom(""); setCustomTo(""); }}
-                  className="mb-0.5 text-muted-foreground hover:text-foreground transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          )}
 
           {/* Filtre type — masqué si un seul type disponible */}
           {statusOptions.length > 1 && (

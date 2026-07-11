@@ -275,6 +275,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [ficheStatuses, setFicheStatuses] = useState<Record<string, FicheStatus>>({});
   const [loading, setLoading] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
@@ -348,6 +349,7 @@ export default function NotificationsPage() {
     } finally {
       if (append) setLoadingMore(false);
       setLoading(false);
+      setInitialLoaded(true);
     }
   }, [supabase]);
 
@@ -601,7 +603,7 @@ export default function NotificationsPage() {
         </div>
 
         {/* ── Contenu ───────────────────────────────────────────────────── */}
-        {loading && notifications.length === 0 ? (
+        {!initialLoaded ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-20 bg-card rounded-xl animate-pulse" />

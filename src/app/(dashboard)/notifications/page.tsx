@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -293,7 +293,6 @@ export default function NotificationsPage() {
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const contentWrapperRef = useRef<HTMLDivElement>(null);
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const { profile } = useProfile();
@@ -397,17 +396,7 @@ export default function NotificationsPage() {
     if (userId) fetchNotifications(userId, 0, false, { search: "", period, customFrom, customTo, types: selectedTypes });
   }
 
-  // Restaure la visibilité après chaque commit React, AVANT le paint navigateur.
-  // Sans tableau de dépendances = après chaque render.
-  useLayoutEffect(() => {
-    if (contentWrapperRef.current) contentWrapperRef.current.style.visibility = "";
-  });
-
   function handlePeriodChange(p: PeriodFilter) {
-    // Cacher IMMÉDIATEMENT via DOM (avant tout paint navigateur)
-    if (contentWrapperRef.current) contentWrapperRef.current.style.visibility = "hidden";
-    setNotifications([]);
-    setLoading(true);
     setPeriod(p);
     if (p !== "custom") { setCustomFrom(""); setCustomTo(""); }
   }
@@ -635,14 +624,15 @@ export default function NotificationsPage() {
         </div>
 
         {/* ── Contenu ───────────────────────────────────────────────────── */}
-        <div ref={contentWrapperRef}>
-        {loading ? (
+        {loading && notifications.length === 0 ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-20 bg-card rounded-xl animate-pulse" />
             ))}
           </div>
-        ) : displayed.length === 0 ? (
+        ) : (
+        <div style={{ opacity: loading ? 0.4 : 1, transition: "opacity 150ms ease", pointerEvents: loading ? "none" : undefined }}>
+        {displayed.length === 0 ? (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
               <EmptyState
@@ -728,7 +718,8 @@ export default function NotificationsPage() {
             )}
           </div>
         )}
-        </div>{/* /contentWrapperRef */}
+        </div>
+        )}
       </div>
       {/* Dialog suppression fiche */}
       <Dialog open={deleteFicheId !== null} onOpenChange={(open) => { if (!open) setDeleteFicheId(null); }}>

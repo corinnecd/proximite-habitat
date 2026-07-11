@@ -1061,25 +1061,25 @@ export default function ReportingPage() {
             </div>
             {villes.length > 0 ? (
               <div className="space-y-2.5"><div className="space-y-2.5">
-                <div className="grid grid-cols-[1fr_60px_60px_60px_50px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-1 border-b border-border">
+                <div className="grid grid-cols-[1fr_48px_48px_50px] sm:grid-cols-[1fr_60px_60px_60px_50px] gap-1.5 sm:gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-1 border-b border-border">
                   <span>Ville</span>
                   <span className="text-right">Total</span>
                   <span className="text-right text-emerald-600">Accept.</span>
-                  <span className="text-right text-red-500">Refus.</span>
+                  <span className="hidden sm:block text-right text-red-500">Refus.</span>
                   <span className="text-right">Taux</span>
                 </div>
                 {(() => {
                   const sorted = [...villes].sort((a, b) => b.rate !== a.rate ? b.rate - a.rate : b.total - a.total);
                   return (showAllVilles ? sorted : sorted.slice(0, 5));
                 })().map((v) => (
-                  <div key={v.ville} className="grid grid-cols-[1fr_60px_60px_60px_50px] gap-2 items-center text-sm">
+                  <div key={v.ville} className="grid grid-cols-[1fr_48px_48px_50px] sm:grid-cols-[1fr_60px_60px_60px_50px] gap-1.5 sm:gap-2 items-center text-sm">
                     <span className="font-medium truncate">{v.ville}</span>
                     {v.total === 0 ? (
-                      <span className="col-span-4 text-xs text-muted-foreground italic text-center">Pas encore prospectée</span>
+                      <span className="col-span-3 sm:col-span-4 text-xs text-muted-foreground italic text-center">Pas encore prospectée</span>
                     ) : (<>
                       <span className="text-right tabular-nums text-muted-foreground">{v.total}</span>
                       <span className="text-right tabular-nums text-emerald-600 font-medium">{v.accepted}</span>
-                      <span className="text-right tabular-nums text-red-500 font-medium">{v.refused}</span>
+                      <span className="hidden sm:block text-right tabular-nums text-red-500 font-medium">{v.refused}</span>
                       <span className={`text-right tabular-nums font-bold ${v.rate >= 50 ? "text-emerald-600" : v.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{v.rate}%</span>
                     </>)}
                   </div>

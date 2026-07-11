@@ -291,17 +291,28 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
       }
     }
 
+    const silent = opts?.silent === true;
     try {
       if (ficheIdRef.current) {
         // Mise à jour — on exclut les champs immuables ET le statut
         // (le statut ne change que via le RPC transition_fiche, jamais ici)
         const { organization_id, created_by, reference, status, ...updateData } = cleanData;
         const { error } = await supabase.from("fiches").update(updateData).eq("id", ficheIdRef.current);
-        if (error) { toast.error("Erreur de sauvegarde : " + error.message); setSaving(false); return; }
+        if (error) {
+          console.error("[saveDraft] update error:", error);
+          if (!silent) toast.error("Erreur de sauvegarde : " + error.message);
+          setSaving(false);
+          return;
+        }
       } else {
         // Première insertion
         const { data, error } = await supabase.from("fiches").insert(cleanData).select("id").single();
-        if (error) { toast.error("Erreur de création : " + error.message); setSaving(false); return; }
+        if (error) {
+          console.error("[saveDraft] insert error:", error);
+          if (!silent) toast.error("Erreur de création : " + error.message);
+          setSaving(false);
+          return;
+        }
         if (data) {
           ficheIdRef.current = data.id;
           setSavedFicheId(data.id);
@@ -314,13 +325,13 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
           }
         }
       }
-      if (!opts?.silent) {
+      if (!silent) {
         toast.success(mode === "edit-submitted" ? "Modifications enregistrées" : "Brouillon sauvegardé");
       }
       setLastSavedAt(new Date());
     } catch (e) {
-      console.error("Save error:", e);
-      toast.error("Erreur inattendue");
+      console.error("[saveDraft] unexpected error:", e);
+      if (!silent) toast.error("Erreur inattendue");
     }
     setSaving(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -517,7 +517,7 @@ export default function FichesPage() {
                     )}
                   </div>
                   {!isValidationMode && (
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex flex-wrap gap-x-3 gap-y-2 items-center w-full sm:w-auto sm:shrink-0">
                       <div className="flex items-center gap-1.5">
                         <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Référents</label>
                         <Select value={referentFilter} onValueChange={(v) => setReferentFilter(v ?? "ALL")}>
@@ -572,7 +572,7 @@ export default function FichesPage() {
         )}
 
         {/* Filtres par statut */}
-        {!isValidationMode && profile && (<div className="flex gap-2 overflow-x-auto overflow-y-visible pb-12">
+        {!isValidationMode && profile && (<div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setStatusFilter("ALL")}
             aria-pressed={statusFilter === "ALL"}

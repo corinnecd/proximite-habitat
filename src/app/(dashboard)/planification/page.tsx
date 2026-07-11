@@ -651,17 +651,17 @@ export default function PlanificationPage() {
             })()}
 
             {/* Tableau détaillé par ville */}
-            <div className="overflow-x-auto">
+            <div>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    <th className="py-2.5 px-3 font-semibold">Ville</th>
-                    <th className="py-2.5 px-3 font-semibold">Chef d&apos;équipe</th>
-                    <th className="py-2.5 px-3 text-center font-semibold">Fiches</th>
-                    <th className="py-2.5 px-3 text-center font-semibold">Soumises</th>
-                    <th className="py-2.5 px-3 text-center font-semibold">Affectées</th>
-                    <th className="py-2.5 px-3 text-center font-semibold">Acceptées</th>
-                    <th className="py-2.5 px-3 text-center font-semibold">Taux</th>
+                    <th className="py-2.5 px-2 sm:px-3 font-semibold">Ville</th>
+                    <th className="py-2.5 px-2 sm:px-3 font-semibold hidden sm:table-cell">Chef d&apos;équipe</th>
+                    <th className="py-2.5 px-2 sm:px-3 text-center font-semibold">Fiches</th>
+                    <th className="py-2.5 px-2 sm:px-3 text-center font-semibold hidden sm:table-cell">Soumises</th>
+                    <th className="py-2.5 px-2 sm:px-3 text-center font-semibold hidden sm:table-cell">Affectées</th>
+                    <th className="py-2.5 px-2 sm:px-3 text-center font-semibold">Acceptées</th>
+                    <th className="py-2.5 px-2 sm:px-3 text-center font-semibold">Taux</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -680,31 +680,36 @@ export default function PlanificationPage() {
                     const rate = s && s.total > 0 ? Math.round((s.acceptee / s.total) * 100) : 0;
                     return (
                       <tr key={entry.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                        <td className="py-2.5 px-3">
+                        <td className="py-2.5 px-2 sm:px-3">
                           <p className="font-medium">{entry.ville?.nom || "—"}</p>
                           <p className="text-[10px] text-muted-foreground">{entry.ville?.code_postal}</p>
                         </td>
-                        <td className="py-2.5 px-3 text-xs">
+                        <td className="py-2.5 px-2 sm:px-3 text-xs hidden sm:table-cell">
                           {entry.chefEquipe
                             ? <span className="text-[#F97316] font-medium">{entry.chefEquipe.first_name} {entry.chefEquipe.last_name}</span>
                             : <span className="text-muted-foreground">Toute l&apos;équipe</span>}
                         </td>
                         {(!s || s.total === 0) ? (
-                          <td colSpan={5} className="py-2.5 px-3 text-center">
-                            <span className="text-xs text-muted-foreground italic">Pas encore prospectée</span>
-                          </td>
+                          <>
+                            <td colSpan={3} className="py-2.5 px-2 text-center sm:hidden">
+                              <span className="text-xs text-muted-foreground italic">Pas encore prospectée</span>
+                            </td>
+                            <td colSpan={5} className="py-2.5 px-3 text-center hidden sm:table-cell">
+                              <span className="text-xs text-muted-foreground italic">Pas encore prospectée</span>
+                            </td>
+                          </>
                         ) : (<>
-                          <td className="py-2.5 px-3 text-center font-medium">{s.total}</td>
-                          <td className="py-2.5 px-3 text-center">
+                          <td className="py-2.5 px-2 sm:px-3 text-center font-medium">{s.total}</td>
+                          <td className="py-2.5 px-2 sm:px-3 text-center hidden sm:table-cell">
                             <span className={s.soumise ? "text-blue-600 font-medium" : "text-muted-foreground/40"}>{s.soumise}</span>
                           </td>
-                          <td className="py-2.5 px-3 text-center">
+                          <td className="py-2.5 px-2 sm:px-3 text-center hidden sm:table-cell">
                             <span className={s.affectee ? "text-purple-600 font-medium" : "text-muted-foreground/40"}>{s.affectee}</span>
                           </td>
-                          <td className="py-2.5 px-3 text-center">
+                          <td className="py-2.5 px-2 sm:px-3 text-center">
                             <span className={s.acceptee ? "text-green-600 font-medium" : "text-muted-foreground/40"}>{s.acceptee}</span>
                           </td>
-                          <td className="py-2.5 px-3 text-center">
+                          <td className="py-2.5 px-2 sm:px-3 text-center">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
                               rate >= 50 ? "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400"
                               : rate > 0 ? "bg-[#F97316]/10 text-[#F97316]"

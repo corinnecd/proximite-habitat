@@ -616,24 +616,23 @@ export default function ReportingPage() {
               </div>
             </div>
             {/* Détail par commercial avec CA */}
-            <div className="mt-5 -mx-6 px-6 overflow-x-auto">
-              <div className="min-w-[480px]">
-              <div className="grid grid-cols-[1fr_50px_50px_50px_50px_80px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+            <div className="mt-5">
+              <div className="grid grid-cols-[1fr_48px_48px_48px_70px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1.5 sm:gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                 <span>Commercial</span>
                 <span className="text-right">Affect.</span>
                 <span className="text-right text-emerald-600">Accept.</span>
                 <span className="text-right text-red-500">Refus.</span>
-                <span className="text-right">Conv.</span>
+                <span className="hidden sm:block text-right">Conv.</span>
                 <span className="text-right">CA HT</span>
               </div>
               <div className={`space-y-0 overflow-y-auto ${showAllCommerciaux || commSearch ? "max-h-[400px]" : "max-h-[250px]"}`}>
                 {(commSearch ? filteredCommerciaux : (showAllCommerciaux ? commerciaux : commerciaux.slice(0, 5))).map((c) => (
-                  <div key={c.name} className="grid grid-cols-[1fr_50px_50px_50px_50px_80px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
+                  <div key={c.name} className="grid grid-cols-[1fr_48px_48px_48px_70px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1.5 sm:gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
                     <span className="text-sm font-medium truncate">{c.name}</span>
                     <span className="text-sm text-right tabular-nums text-muted-foreground">{c.assigned}</span>
                     <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{c.accepted}</span>
                     <span className="text-sm text-right tabular-nums text-red-500 font-medium">{c.refused}</span>
-                    <span className={`text-sm text-right tabular-nums font-bold ${c.rate >= 50 ? "text-emerald-600" : c.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{c.rate}%</span>
+                    <span className={`hidden sm:block text-sm text-right tabular-nums font-bold ${c.rate >= 50 ? "text-emerald-600" : c.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{c.rate}%</span>
                     <span className={`text-sm text-right tabular-nums font-bold ${c.ca > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
                       {c.ca > 0 ? c.ca.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€" : "—"}
                     </span>
@@ -644,16 +643,15 @@ export default function ReportingPage() {
                 )}
               </div>
               {commerciaux.length > 0 && !commSearch && (
-                <div className="grid grid-cols-[1fr_50px_50px_50px_50px_80px] gap-2 pt-3 mt-1 border-t border-border px-1">
+                <div className="grid grid-cols-[1fr_48px_48px_48px_70px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1.5 sm:gap-2 pt-3 mt-1 border-t border-border px-1">
                   <span className="text-sm font-bold">Total</span>
                   <span className="text-sm font-bold text-right tabular-nums">{commerciaux.reduce((s, c) => s + c.assigned, 0)}</span>
                   <span className="text-sm font-bold text-right tabular-nums text-emerald-600">{commerciaux.reduce((s, c) => s + c.accepted, 0)}</span>
                   <span className="text-sm font-bold text-right tabular-nums text-red-500">{commerciaux.reduce((s, c) => s + c.refused, 0)}</span>
-                  <span />
+                  <span className="hidden sm:block" />
                   <span className="text-sm font-bold text-right tabular-nums text-amber-600">{caTotal.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€</span>
                 </div>
               )}
-              </div>
             </div>
             {!commSearch && commerciaux.length > 5 && (
               <button
@@ -664,20 +662,18 @@ export default function ReportingPage() {
                 {showAllCommerciaux ? <><ChevronUp className="w-3.5 h-3.5" />Voir moins</> : <><ChevronDown className="w-3.5 h-3.5" />Voir plus ({commerciaux.length - 5} restant{commerciaux.length - 5 > 1 ? "s" : ""})</>}
               </button>
             )}
-            <div className="mt-5 overflow-x-auto">
-              <div style={{ minWidth: Math.max(400, commChartData.length * 120) }}>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={commChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f1f5f9", radius: 6 }} />
-                    <Bar dataKey="Affectées" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-                    <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-                    <Bar dataKey="Refusées" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="mt-5">
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={commChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f1f5f9", radius: 6 }} />
+                  <Bar dataKey="Affectées" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+                  <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+                  <Bar dataKey="Refusées" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
+                </BarChart>
+              </ResponsiveContainer>
               <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-500 inline-block" />Affectées</span>
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
@@ -860,7 +856,7 @@ export default function ReportingPage() {
                     </button>
                   )}
                 </div>
-                <div className="-mx-6 px-6 overflow-x-auto"><div className="min-w-[360px]">
+                <div>
                 <div className="mb-3">
                   <div className="grid grid-cols-[1fr_50px_50px_50px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                     <span>Référent</span>
@@ -897,7 +893,7 @@ export default function ReportingPage() {
                     <span />
                   </div>
                 )}
-                </div></div>
+                </div>
                 {!refSearch && referents.length > 5 && (
                   <button
                     type="button"
@@ -1064,7 +1060,7 @@ export default function ReportingPage() {
               </div>
             </div>
             {villes.length > 0 ? (
-              <div className="space-y-2.5 -mx-6 px-6 overflow-x-auto"><div className="min-w-[400px] space-y-2.5">
+              <div className="space-y-2.5"><div className="space-y-2.5">
                 <div className="grid grid-cols-[1fr_60px_60px_60px_50px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-1 border-b border-border">
                   <span>Ville</span>
                   <span className="text-right">Total</span>

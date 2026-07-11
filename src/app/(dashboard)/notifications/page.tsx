@@ -602,7 +602,9 @@ export default function NotificationsPage() {
         {/* ── En-tête résultats ──────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
           <p className="text-sm text-muted-foreground">
-            {isFiltered
+            {loading
+              ? "Chargement…"
+              : isFiltered
               ? `${totalDisplayed} résultat${totalDisplayed !== 1 ? "s" : ""}`
               : unreadCount > 0
                 ? `${unreadCount} non lue${unreadCount > 1 ? "s" : ""}`

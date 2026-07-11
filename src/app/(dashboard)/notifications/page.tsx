@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -397,8 +398,10 @@ export default function NotificationsPage() {
   }
 
   function handlePeriodChange(p: PeriodFilter) {
-    setNotifications([]);
-    setLoading(true);
+    flushSync(() => {
+      setNotifications([]);
+      setLoading(true);
+    });
     setPeriod(p);
     if (p !== "custom") { setCustomFrom(""); setCustomTo(""); }
   }

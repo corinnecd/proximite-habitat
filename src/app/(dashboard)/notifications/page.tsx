@@ -493,114 +493,136 @@ export default function NotificationsPage() {
       })} /></div>} />
       <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-4">
 
-        {/* ── Bloc filtres ──────────────────────────────────────────────── */}
-        <div className="bg-card rounded-2xl border border-border/40 shadow-sm p-4 space-y-4">
-
-          {/* Recherche */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-            <Input
-              type="text"
-              placeholder="Rechercher dans les notifications…"
-              value={searchInput}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-9 pr-9 rounded-xl h-10"
-            />
-            {searchInput && (
-              <button type="button" onClick={clearSearch} aria-label="Effacer"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Période */}
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/60 whitespace-nowrap">Période</span>
-            <div className="flex-1 h-px bg-border/50" />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {(["all", "today", "week", "month"] as PeriodFilter[]).map((p) => (
-              <button key={p} type="button" onClick={() => handlePeriodChange(p)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all border
-                  ${period === p
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
-                  }`}>
-                {PERIOD_LABELS[p]}
-              </button>
-            ))}
-          </div>
-
-          {/* Filtre type — masqué si un seul type disponible */}
-          {statusOptions.length > 1 && (
-            <>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/60 whitespace-nowrap">
-                  Type
-                </span>
-                <div className="flex-1 h-px bg-border/50" />
-                {selectedTypes.length > 0 && (
-                  <button type="button" onClick={() => setSelectedTypes([])}
-                    className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                    <X className="w-3 h-3" />Tout effacer
-                  </button>
-                )}
+        {/* ═══ HERO NOTIFICATIONS — navy signature ═══════════════════════ */}
+        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
+          <div className="relative z-10">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  {unreadCount > 0 && <span className="w-2 h-2 rounded-full bg-[#F97316] animate-pulse" />}
+                  <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
+                    Boîte de réception
+                  </span>
+                </div>
+                <h1 className="font-heading text-3xl sm:text-4xl text-white tracking-tight leading-none">
+                  Notifications
+                </h1>
+                <p className="text-sm text-white/60 mt-1.5">
+                  {loading
+                    ? "Chargement…"
+                    : unreadCount > 0
+                    ? <><span className="text-[#F97316] font-medium">{unreadCount} non lue{unreadCount > 1 ? "s" : ""}</span> · {totalDisplayed} au total</>
+                    : "Toutes les notifications sont lues"}
+                </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {statusOptions.map(({ value, label, icon: Icon, filterColor }) => {
-                  const active = selectedTypes.includes(value);
-                  return (
-                    <button key={value} type="button" onClick={() => toggleType(value)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border
-                        ${active
-                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                          : "bg-background border-border hover:border-primary/40 hover:text-foreground text-muted-foreground"
-                        }`}>
-                      <Icon className={`w-3 h-3 ${active ? "text-primary-foreground" : filterColor}`} />
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={markAllRead}
+                  className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium text-white/70 hover:text-white bg-white/8 hover:bg-white/15 border border-white/10 rounded-full px-3 py-2 transition-colors"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Tout marquer lu</span>
+                </button>
+              )}
+            </div>
 
-        {/* ── En-tête résultats ──────────────────────────────────────────── */}
-        <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
-          <p className="text-sm text-muted-foreground">
-            {loading
-              ? "Chargement…"
-              : isFiltered
-              ? `${totalDisplayed} résultat${totalDisplayed !== 1 ? "s" : ""}`
-              : unreadCount > 0
-                ? `${unreadCount} non lue${unreadCount > 1 ? "s" : ""}`
-                : "Toutes les notifications sont lues"}
-          </p>
-          <div className="flex items-center gap-2">
-            {/* Toggle non lues seulement */}
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowUnreadOnly((v) => !v)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border
-                  ${showUnreadOnly
-                    ? "bg-[#F97316] text-white border-[#F97316] shadow-sm"
-                    : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+            {/* Recherche intégrée */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Rechercher dans les notifications…"
+                value={searchInput}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full h-10 pl-10 pr-10 bg-white/8 border border-white/10 rounded-full text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-[#F97316]/50 focus:border-[#F97316]/30 transition-all"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  aria-label="Effacer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Filtres période chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {(["all", "today", "week", "month"] as PeriodFilter[]).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => handlePeriodChange(p)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    period === p
+                      ? "bg-[#F97316] text-white"
+                      : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"
                   }`}
-              >
-                <AlertCircle className="w-3.5 h-3.5" />
-                Non lues ({unreadCount})
-              </button>
-            )}
-            {unreadCount > 0 && !showUnreadOnly && (
-              <Button variant="outline" size="sm" onClick={markAllRead} className="rounded-xl gap-2">
-                <CheckCheck className="w-4 h-4" />Tout marquer lu
-              </Button>
-            )}
+                >
+                  {PERIOD_LABELS[p]}
+                </button>
+              ))}
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowUnreadOnly((v) => !v)}
+                  className={`ml-1 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    showUnreadOnly
+                      ? "bg-[#F97316] text-white"
+                      : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"
+                  }`}
+                >
+                  <AlertCircle className="w-3 h-3" />
+                  Non lues ({unreadCount})
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* ═══ Filtre par type (si plusieurs) ══════════════════════════════ */}
+        {statusOptions.length > 1 && (
+          <div className="bg-card rounded-2xl border border-border/40 shadow-sm p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/60">
+                Type
+              </span>
+              <div className="flex-1 h-px bg-border/50" />
+              {selectedTypes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedTypes([])}
+                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" />Tout effacer
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {statusOptions.map(({ value, label, icon: Icon, filterColor }) => {
+                const active = selectedTypes.includes(value);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => toggleType(value)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                      active
+                        ? "bg-[#0F1E3D] text-white border-[#0F1E3D] shadow-sm"
+                        : "bg-background border-border hover:border-primary/40 hover:text-foreground text-muted-foreground"
+                    }`}
+                  >
+                    <Icon className={`w-3 h-3 ${active ? "text-white" : filterColor}`} />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Contenu ───────────────────────────────────────────────────── */}
         {!initialLoaded ? (

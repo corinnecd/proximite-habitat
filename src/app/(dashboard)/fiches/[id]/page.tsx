@@ -36,6 +36,7 @@ import {
   User, Home, Flame, Wind, Shield, Camera, FileText,
   Clock, ArrowLeft, UserCheck, Loader2, Pencil, Trash2,
   Phone, MapPin, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, Copy, ChevronDown, ChevronUp, PenTool,
+  Send, Archive,
 } from "lucide-react";
 import { DownloadFicheButton } from "@/components/pdf/DownloadFicheButton";
 import { VilleMapDynamic } from "@/components/ui/VilleMapDynamic";
@@ -58,15 +59,15 @@ interface ProfileEntry { id: string; first_name: string; last_name: string; role
 
 // ── Status accent colors (same palette as fiches list) ────────────────────────
 
-const STATUS_HERO: Record<FicheStatus, { border: string; iconBg: string; icon: string }> = {
-  BROUILLON:    { border: "border-l-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800",       icon: "text-slate-500" },
-  SOUMISE:      { border: "border-l-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",       icon: "text-blue-500" },
-  VALIDEE:      { border: "border-l-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "text-emerald-500" },
-  AFFECTEE:     { border: "border-l-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",   icon: "text-orange-500" },
-  ACCEPTEE:     { border: "border-l-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", icon: "text-emerald-600 dark:text-emerald-400" },
-  RETRACTATION: { border: "border-l-purple-500",  iconBg: "bg-purple-50 dark:bg-purple-950/40",   icon: "text-purple-600 dark:text-purple-400" },
-  REFUSEE:      { border: "border-l-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",         icon: "text-red-500" },
-  ARCHIVEE:     { border: "border-l-slate-300",   iconBg: "bg-slate-100 dark:bg-slate-800",       icon: "text-slate-400" },
+const STATUS_HERO: Record<FicheStatus, { border: string; iconBg: string; icon: string; Icon: React.ElementType }> = {
+  BROUILLON:    { border: "border-l-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800",       icon: "text-slate-500",                        Icon: Clock },
+  SOUMISE:      { border: "border-l-blue-500",    iconBg: "bg-blue-100 dark:bg-blue-950/50",      icon: "text-blue-600 dark:text-blue-400",      Icon: Send },
+  VALIDEE:      { border: "border-l-emerald-500", iconBg: "bg-emerald-100 dark:bg-emerald-950/50",icon: "text-emerald-600 dark:text-emerald-400",Icon: CheckCircle2 },
+  AFFECTEE:     { border: "border-l-orange-500",  iconBg: "bg-orange-100 dark:bg-orange-950/50",  icon: "text-orange-600 dark:text-orange-400",  Icon: UserCheck },
+  ACCEPTEE:     { border: "border-l-emerald-500", iconBg: "bg-emerald-100 dark:bg-emerald-950/50",icon: "text-emerald-700 dark:text-emerald-300",Icon: CheckCircle2 },
+  RETRACTATION: { border: "border-l-purple-500",  iconBg: "bg-purple-100 dark:bg-purple-950/50",  icon: "text-purple-600 dark:text-purple-400",  Icon: AlertTriangle },
+  REFUSEE:      { border: "border-l-red-500",     iconBg: "bg-red-100 dark:bg-red-950/50",        icon: "text-red-600 dark:text-red-400",        Icon: Ban },
+  ARCHIVEE:     { border: "border-l-slate-300",   iconBg: "bg-slate-100 dark:bg-slate-800",       icon: "text-slate-500",                        Icon: Archive },
 };
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -835,27 +836,42 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        {/* ── Hero card ──────────────────────────────────────────────────── */}
-        <div className={`bg-card/80 backdrop-blur-sm border border-border border-l-4 ${hero.border} rounded-2xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)]`}>
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        {/* ── Hero card — statut vedette + montant HT en featured ─────────── */}
+        <div className={`bg-card border border-border border-l-4 ${hero.border} rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)]`}>
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5">
 
-            {/* Left: back + identity */}
-            <div className="flex items-start gap-4">
+            {/* Left: identity avec status icon block */}
+            <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
               <Button variant="outline" size="sm" onClick={() => router.push("/fiches")}
-                className="rounded-xl mt-0.5 shrink-0" aria-label="Retour à la liste">
+                className="rounded-xl mt-0.5 shrink-0 hidden sm:inline-flex" aria-label="Retour à la liste">
                 <ArrowLeft className="w-4 h-4" />
               </Button>
-              <div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h2 className="font-heading text-2xl leading-tight">
-                    {[fiche.prospect_prenom, fiche.prospect_nom].filter(Boolean).join(" ") || "—"}
-                  </h2>
+              {/* Icon statut vedette */}
+              <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${hero.iconBg} flex items-center justify-center flex-shrink-0`}>
+                <hero.Icon className={`w-6 h-6 sm:w-7 sm:h-7 ${hero.icon}`} />
+              </div>
+              <div className="min-w-0 flex-1">
+                {/* Micro-typo référence */}
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <button
+                    type="button"
+                    title="Copier la référence"
+                    onClick={() => {
+                      navigator.clipboard.writeText(fiche.reference).then(() => {
+                        toast.success("Référence copiée", { duration: 2000 });
+                      });
+                    }}
+                    className="group flex items-center gap-1 text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {fiche.reference}
+                    <Copy className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                  </button>
                   {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && fiche.status === "AFFECTEE" ? (
                     <>
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
                         Validée
                       </span>
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
                         Affectée
                       </span>
                     </>
@@ -863,49 +879,55 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                     <FicheStatusBadge status={fiche.status} />
                   )}
                   {fiche.status === "REFUSEE" && fiche.motif_refus && (
-                    <span className="ml-2 text-xs font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full">
                       {MOTIF_REFUS_LABELS[fiche.motif_refus]}
                     </span>
                   )}
-                  {fiche.status === "ACCEPTEE" && fiche.montant_ht != null && (
-                    <span className="ml-2 text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2.5 py-0.5 rounded-full">
-                      {Number(fiche.montant_ht).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} HT
+                </div>
+                {/* Nom prospect en heading */}
+                <h2 className="font-heading text-2xl sm:text-3xl leading-tight tracking-tight truncate">
+                  {[fiche.prospect_prenom, fiche.prospect_nom].filter(Boolean).join(" ") || "—"}
+                </h2>
+                {/* Meta : localisation + saisi par + affecté à */}
+                <div className="flex items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-2 flex-wrap">
+                  {fiche.prospect_ville && (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      {fiche.prospect_ville}{fiche.prospect_cp ? ` · ${fiche.prospect_cp}` : ""}
                     </span>
                   )}
+                  {creatorName && (
+                    <span>Saisi par <span className="font-medium text-foreground/80">{creatorName}</span></span>
+                  )}
+                  {fiche.assigned_to && (() => {
+                    const c = commercials.find((x) => x.id === fiche.assigned_to);
+                    return c ? (
+                      <span className="inline-flex items-center gap-1 font-medium text-orange-600 dark:text-orange-400">
+                        <UserCheck className="w-3 h-3" />
+                        {c.first_name} {c.last_name}
+                      </span>
+                    ) : null;
+                  })()}
                 </div>
-                <button
-                  type="button"
-                  title="Copier la référence"
-                  onClick={() => {
-                    navigator.clipboard.writeText(fiche.reference).then(() => {
-                      toast.success("Référence copiée !", { duration: 2000 });
-                    });
-                  }}
-                  className="group flex items-center gap-1.5 text-sm text-muted-foreground mt-1 hover:text-foreground transition-colors"
-                >
-                  {fiche.reference}
-                  <Copy className="w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition-opacity" />
-                </button>
-                {creatorName && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Saisi par <span className="font-medium text-foreground">{creatorName}</span>
-                  </p>
-                )}
-                {fiche.assigned_to && (() => {
-                  const c = commercials.find((x) => x.id === fiche.assigned_to);
-                  return c ? (
-                    <div className="flex items-center gap-1.5 mt-1.5">
-                      <UserCheck className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                      <p className="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                        Affectée à <span className="text-orange-700 dark:text-orange-300">{c.first_name} {c.last_name}</span>
-                      </p>
-                    </div>
-                  ) : null;
-                })()}
               </div>
             </div>
 
-            {/* Right: actions */}
+            {/* Right: montant vedette (accepted) + actions */}
+            {fiche.status === "ACCEPTEE" && fiche.montant_ht != null && (
+              <div className="flex-shrink-0 text-right pl-2 sm:border-l sm:border-border sm:pl-5">
+                <div className="font-heading text-2xl sm:text-3xl text-emerald-700 dark:text-emerald-400 tracking-tight leading-none">
+                  {Number(fiche.montant_ht).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                </div>
+                <div className="text-[10px] tracking-[1px] uppercase text-muted-foreground mt-1">
+                  Montant HT signé
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Actions — barre visible sous le hero */}
+          <div className="mt-5 pt-5 border-t border-border space-y-3">
+
             <div className="flex items-center gap-2 flex-wrap">
               <DownloadFicheButton
                 fiche={fiche}

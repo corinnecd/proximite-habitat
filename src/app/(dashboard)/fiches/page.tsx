@@ -412,28 +412,54 @@ export default function FichesPage() {
       })} /></div>} />
       <div className="p-4 sm:p-6 lg:p-8 space-y-4">
 
-        {/* Barre principale : recherche + export + nouvelle fiche */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher par nom, ville, référence..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 h-11 bg-card rounded-xl"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExport} disabled={exporting} className="rounded-xl gap-2" aria-label="Exporter les fiches au format CSV">
-              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}Exporter CSV
-            </Button>
-            {profile && !isDG && (
-              <Link href="/fiches/nouvelle">
-                <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2">
-                  <FilePlus className="w-4 h-4" />Nouvelle fiche
-                </Button>
-              </Link>
-            )}
+        {/* ═══ HERO FICHES — navy signature avec recherche intégrée ═══════ */}
+        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+              <div>
+                <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
+                  {isValidationMode ? "File d'attente" : "Gestion des fiches"}
+                </span>
+                <h1 className="font-heading text-3xl sm:text-4xl text-white tracking-tight leading-none mt-1.5">
+                  {isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"}
+                </h1>
+                <p className="text-sm text-white/60 mt-2">
+                  {isValidationMode
+                    ? `${fiches.length} fiche${fiches.length > 1 ? "s" : ""} en attente de votre validation`
+                    : `${statusCounts["ALL"] ?? 0} fiche${(statusCounts["ALL"] ?? 0) > 1 ? "s" : ""} au total`}
+                </p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={handleExport}
+                  disabled={exporting}
+                  className="bg-white/8 hover:bg-white/15 border border-white/10 text-white text-sm font-medium px-4 py-2 rounded-full inline-flex items-center gap-2 transition-colors disabled:opacity-50"
+                  aria-label="Exporter au format CSV"
+                >
+                  {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  <span className="hidden sm:inline">Exporter CSV</span>
+                </button>
+                {profile && !isDG && (
+                  <Link href="/fiches/nouvelle">
+                    <button className="bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-medium px-5 py-2 rounded-full inline-flex items-center gap-2 transition-colors">
+                      <FilePlus className="w-4 h-4" />Nouvelle fiche
+                    </button>
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            {/* Recherche intégrée */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Rechercher par nom, ville, référence…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full h-11 pl-10 pr-4 bg-white/8 border border-white/10 rounded-full text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-[#F97316]/50 focus:border-[#F97316]/30 transition-all"
+              />
+            </div>
           </div>
         </div>
 

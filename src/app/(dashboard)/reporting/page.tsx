@@ -488,54 +488,77 @@ export default function ReportingPage() {
       />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
-        {/* Sous-titre contextuel + bouton refresh */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {isCommercial
-              ? <><Users className="w-4 h-4" /> Statistiques personnelles — vos fiches affectées</>
-              : <><BarChart3 className="w-4 h-4" /> Vue globale — tous commerciaux et référents réunis</>}
-          </div>
-          <button
-            type="button"
-            disabled={refreshing}
-            onClick={async () => {
-              if (!profile) return;
-              setRefreshing(true);
-              await loadData(profile.id, profile.role, periodFilter);
-              setRefreshing(false);
-            }}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-secondary border border-border/50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-            {refreshing ? "Actualisation…" : "Actualiser"}
-          </button>
-        </div>
+        {/* ═══ HERO REPORTING — navy signature avec KPI vedette + filtre période ═══ */}
+        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
+              <div>
+                <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
+                  {isCommercial ? "Vue personnelle" : "Vue consolidée"}
+                </span>
+                <h1 className="font-heading text-3xl sm:text-4xl text-white tracking-tight leading-none mt-1.5">
+                  {isCommercial ? "Mon reporting" : "Reporting"}
+                </h1>
+                <p className="text-sm text-white/60 mt-2">
+                  {isCommercial
+                    ? "Statistiques personnelles — vos fiches affectées"
+                    : "Vue globale — tous commerciaux et référents réunis"}
+                </p>
+              </div>
+              {/* KPI vedette CA total */}
+              {caTotal > 0 && (
+                <div className="text-right flex-shrink-0">
+                  <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
+                    CA HT · {PERIOD_LABELS[periodFilter]}
+                  </div>
+                  <div className="font-heading text-3xl sm:text-4xl text-white leading-none tracking-tight">
+                    {(caTotal / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}<span className="text-xl">&nbsp;K€</span>
+                  </div>
+                </div>
+              )}
+            </div>
 
-        {/* ── Filtre période de soumission ─────────────────────────────────── */}
-        <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-wrap">
-            <span className="flex items-center gap-1">
-              <CalendarDays className="w-3.5 h-3.5" />Période de soumission
-            </span>
-            <span className="text-sm font-bold text-foreground tracking-normal normal-case">{PERIOD_LABELS[periodFilter].toUpperCase()}</span>
-            {getReportPeriodLabel(periodFilter) && (
-              <span className="text-xs font-medium text-muted-foreground tracking-normal normal-case">{getReportPeriodLabel(periodFilter)}</span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((p) => (
-              <button
-                key={p}
-                type="button"
-                aria-pressed={periodFilter === p}
-                onClick={() => setPeriodFilter(p)}
-                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
-                  periodFilter === p ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-secondary border border-border"
-                }`}
-              >
-                {PERIOD_LABELS[p]}
-              </button>
-            ))}
+            {/* Filtre période intégré */}
+            <div className="pt-5 border-t border-white/10">
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarDays className="w-3.5 h-3.5 text-white/50" />
+                <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">Période de soumission</span>
+                {getReportPeriodLabel(periodFilter) && (
+                  <span className="text-[11px] text-white/70">· {getReportPeriodLabel(periodFilter)}</span>
+                )}
+                <button
+                  type="button"
+                  disabled={refreshing}
+                  onClick={async () => {
+                    if (!profile) return;
+                    setRefreshing(true);
+                    await loadData(profile.id, profile.role, periodFilter);
+                    setRefreshing(false);
+                  }}
+                  className="ml-auto flex items-center gap-1.5 text-[11px] text-white/60 hover:text-white transition-colors"
+                >
+                  <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
+                  {refreshing ? "Actualisation…" : "Actualiser"}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    aria-pressed={periodFilter === p}
+                    onClick={() => setPeriodFilter(p)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      periodFilter === p
+                        ? "bg-[#F97316] text-white"
+                        : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"
+                    }`}
+                  >
+                    {PERIOD_LABELS[p]}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

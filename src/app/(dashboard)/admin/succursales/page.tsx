@@ -103,17 +103,24 @@ export default function SuccursalesPage() {
     <>
       <Topbar title="Succursales" />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h2 className="text-xl font-bold">Succursales de la société</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {branches.length} succursale{branches.length > 1 ? "s" : ""}
-            </p>
-          </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger render={<Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2" />}>
-              <Plus className="w-4 h-4" />Nouvelle succursale
-            </DialogTrigger>
+        {/* ═══ HERO SUCCURSALES ═══════════════════════════════════════ */}
+        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div>
+              <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
+                Réseau de la société
+              </span>
+              <h1 className="font-heading text-3xl sm:text-4xl text-white tracking-tight leading-none mt-1.5">
+                Succursales
+              </h1>
+              <p className="text-sm text-white/60 mt-2">
+                {branches.length} succursale{branches.length > 1 ? "s" : ""} · {branches.reduce((s, b) => s + b.userCount, 0)} collaborateur{branches.reduce((s, b) => s + b.userCount, 0) > 1 ? "s" : ""} au total
+              </p>
+            </div>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger render={<button className="flex-shrink-0 bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 py-2 text-sm font-medium inline-flex items-center gap-2 transition-colors" />}>
+                <Plus className="w-4 h-4" />Nouvelle succursale
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Créer une succursale</DialogTitle>
@@ -141,6 +148,7 @@ export default function SuccursalesPage() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         {loading ? (

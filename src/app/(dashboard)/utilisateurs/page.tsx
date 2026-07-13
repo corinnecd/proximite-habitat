@@ -215,58 +215,25 @@ export default function UtilisateursPage() {
       })} /></div>} />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
-        {/* ── KPIs ────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { label: "Total", value: stats.total, Icon: Users, bg: "bg-primary/10", icon: "text-primary" },
-            { label: "Actifs", value: stats.active, Icon: CheckCircle2, bg: "bg-emerald-100 dark:bg-emerald-900/30", icon: "text-emerald-600" },
-            { label: "Commerciaux", value: stats.commercials, Icon: UserCheck, bg: "bg-blue-100 dark:bg-blue-900/30", icon: "text-blue-600" },
-            { label: "Référents", value: stats.référents, Icon: Users, bg: "bg-emerald-50 dark:bg-emerald-950/30", icon: "text-emerald-600" },
-          ].map(({ label, value, Icon, bg, icon }) => (
-            <div key={label} className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-5">
-              <div className="flex items-center gap-3 mb-2">
-                <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center`}>
-                  <Icon className={`w-4 h-4 ${icon}`} />
-                </div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+        {/* ═══ HERO UTILISATEURS — navy signature ═══════════════════════ */}
+        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+              <div>
+                <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
+                  Gestion des équipes
+                </span>
+                <h1 className="font-heading text-3xl sm:text-4xl text-white tracking-tight leading-none mt-1.5">
+                  Utilisateurs
+                </h1>
+                <p className="text-sm text-white/60 mt-2">
+                  {stats.total} collaborateur{stats.total > 1 ? "s" : ""} · {stats.active} actif{stats.active > 1 ? "s" : ""} · {stats.commercials} commerciaux · {stats.référents} référents
+                </p>
               </div>
-              <p className="text-3xl font-bold">{value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* ── Barre de recherche + filtres + bouton créer ──────────────── */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <div className="flex flex-col sm:flex-row gap-3 flex-1">
-            <div className="relative max-w-xs w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 h-10 bg-card rounded-xl"
-              />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {ROLE_FILTERS.map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setRoleFilter(value)}
-                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all border ${
-                    roleFilter === value
-                      ? "bg-primary text-white border-primary"
-                      : "bg-card border-border text-muted-foreground hover:border-primary/40"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger render={<Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2 shrink-0" />}>
-              <UserPlus className="w-4 h-4" />Nouvel utilisateur
-            </DialogTrigger>
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger render={<button className="flex-shrink-0 bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 py-2 text-sm font-medium inline-flex items-center gap-2 transition-colors self-start" />}>
+                  <UserPlus className="w-4 h-4" />Nouvel utilisateur
+                </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
@@ -338,6 +305,37 @@ export default function UtilisateursPage() {
               </form>
             </DialogContent>
           </Dialog>
+            </div>
+
+            {/* Recherche + filtres rôle intégrés dans le hero */}
+            <div className="flex flex-col sm:flex-row gap-3 mt-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Rechercher par nom, email…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full h-10 pl-10 pr-3 bg-white/8 border border-white/10 rounded-full text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-[#F97316]/50 focus:border-[#F97316]/30 transition-all"
+                />
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {ROLE_FILTERS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setRoleFilter(value)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      roleFilter === value
+                        ? "bg-[#F97316] text-white"
+                        : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* ── Liste ────────────────────────────────────────────────────────── */}

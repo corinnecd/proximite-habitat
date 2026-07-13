@@ -477,32 +477,54 @@ export default function PlanificationPage() {
       />
       <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
-        {/* Navigation semaine — toujours visible */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] px-4 sm:px-6 py-4 gap-3">
-          <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-4 flex-1">
-            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => navigateWeek(-1)} aria-label="Semaine précédente">
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <div className="text-center flex-1 sm:flex-none">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">Semaine du</p>
-              <p className="text-lg font-bold flex items-center gap-2 justify-center">
-                <Calendar className="w-5 h-5 text-[#F97316]" />
-                {formatDateFr(currentMonday)} — {formatDateFr(sunday)}
-              </p>
+        {/* ═══ HERO PLANIFICATION — navy signature ══════════════════════════ */}
+        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div>
+                <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
+                  Planification hebdomadaire
+                </span>
+                <h1 className="font-heading text-3xl sm:text-4xl text-white tracking-tight leading-none mt-1.5">
+                  Semaine du <span className="text-[#F97316]">{formatDateFr(currentMonday)}</span>
+                </h1>
+                <p className="text-sm text-white/60 mt-1.5">
+                  Au dimanche {formatDateFr(sunday)} · {planEntries.length} ville{planEntries.length > 1 ? "s" : ""} planifiée{planEntries.length > 1 ? "s" : ""}
+                </p>
+              </div>
+              <button
+                onClick={openSavedParcoursDialog}
+                className="flex-shrink-0 bg-emerald-500/90 hover:bg-emerald-500 text-white rounded-full px-4 py-2 text-sm font-medium inline-flex items-center gap-2 transition-colors self-start"
+                aria-label="Voir les trajets enregistrés"
+              >
+                <Route className="w-4 h-4" />
+                Trajets enregistrés
+              </button>
             </div>
-            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => navigateWeek(1)} aria-label="Semaine suivante">
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+
+            {/* Navigation semaines */}
+            <div className="mt-5 pt-5 border-t border-white/10 flex items-center gap-3">
+              <button
+                onClick={() => navigateWeek(-1)}
+                aria-label="Semaine précédente"
+                className="bg-white/8 hover:bg-white/15 border border-white/10 rounded-full w-9 h-9 flex items-center justify-center text-white transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex-1 flex items-center gap-2 text-sm text-white/70">
+                <Calendar className="w-4 h-4 text-[#F97316]" />
+                <span className="font-medium text-white">Vue semaine</span>
+                <span className="text-white/50">· lundi → dimanche</span>
+              </div>
+              <button
+                onClick={() => navigateWeek(1)}
+                aria-label="Semaine suivante"
+                className="bg-white/8 hover:bg-white/15 border border-white/10 rounded-full w-9 h-9 flex items-center justify-center text-white transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <Button
-            size="sm"
-            className="rounded-full gap-2 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm px-4"
-            onClick={openSavedParcoursDialog}
-            aria-label="Voir les trajets enregistrés"
-          >
-            <Route className="w-4 h-4" />
-            Trajets enregistrés
-          </Button>
         </div>
 
         {/* Skeleton pendant chargement du profil */}

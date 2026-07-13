@@ -63,36 +63,45 @@ export default function SocietePage() {
           <p className="text-muted-foreground">Aucune société rattachée.</p>
         ) : (
           <>
-            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 flex items-center gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-[#1E3A5F] flex items-center justify-center shrink-0">
-                <Building className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold">{company.name}</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">{company.slug}</p>
+            {/* ═══ HERO SOCIÉTÉ — navy signature ═══════════════════════ */}
+            <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-8">
+              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-5">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#F97316] flex items-center justify-center shrink-0">
+                  <Building className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
+                    Société mère
+                  </span>
+                  <h1 className="font-heading text-3xl sm:text-4xl text-white leading-none tracking-tight mt-1.5">
+                    {company.name}
+                  </h1>
+                  <p className="text-sm text-white/60 mt-2 font-mono">{company.slug}</p>
+                </div>
               </div>
             </div>
 
+            {/* Stats */}
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="bg-card border border-border border-l-4 border-l-rose-500 rounded-2xl p-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+              <div className="bg-card border border-border border-l-4 border-l-rose-500 rounded-2xl p-5 hover:-translate-y-0.5 hover:shadow-md transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-rose-600 dark:text-rose-400" />
                   </div>
                   <div>
-                    <p className="text-3xl font-bold tabular-nums">{branchCount}</p>
-                    <p className="text-sm text-muted-foreground">Succursale{branchCount > 1 ? "s" : ""}</p>
+                    <p className="font-heading text-3xl tracking-tight tabular-nums">{branchCount}</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-[0.5px] mt-0.5">Succursale{branchCount > 1 ? "s" : ""}</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-card border border-border border-l-4 border-l-blue-500 rounded-2xl p-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className="bg-card border border-border border-l-4 border-l-blue-500 rounded-2xl p-5 hover:-translate-y-0.5 hover:shadow-md transition-all">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                    <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-3xl font-bold tabular-nums">{userCount}</p>
-                    <p className="text-sm text-muted-foreground">Utilisateur{userCount > 1 ? "s" : ""}</p>
+                    <p className="font-heading text-3xl tracking-tight tabular-nums">{userCount}</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-[0.5px] mt-0.5">Utilisateur{userCount > 1 ? "s" : ""}</p>
                   </div>
                 </div>
               </div>

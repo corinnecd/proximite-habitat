@@ -194,27 +194,31 @@ export default function ProfilPage() {
         })} /></div>} />
       <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
 
-        {/* ── Hero card ─────────────────────────────────────────────────── */}
-        <div className={`bg-gradient-to-br ${roleStyle.heroBg} border border-border rounded-2xl p-6`}>
-          <div className="flex items-center gap-5">
-            <div className={`w-20 h-20 rounded-2xl ${roleStyle.avatarBg} flex items-center justify-center text-3xl font-bold ${roleStyle.avatarText} shrink-0 select-none`}>
+        {/* ── Hero navy signature ─────────────────────────────────────────── */}
+        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-8">
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-5">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#F97316] flex items-center justify-center text-3xl sm:text-4xl font-heading text-white shrink-0 select-none tracking-tight">
               {initials}
             </div>
-            <div className="min-w-0">
-              <h2 className="font-heading text-2xl leading-tight">{profile.first_name} {profile.last_name}</h2>
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
-                <Mail className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{profile.email}</span>
-              </div>
-              {profile.phone && (
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
-                  <Phone className="w-3.5 h-3.5 shrink-0" />
-                  <span>{profile.phone}</span>
-                </div>
-              )}
-              <Badge variant="secondary" className={`mt-2 text-xs rounded-lg ${roleStyle.badge}`}>
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
                 {ROLE_LABELS[profile.role]}
-              </Badge>
+              </span>
+              <h1 className="font-heading text-3xl sm:text-4xl text-white leading-none tracking-tight mt-1.5 mb-3">
+                {profile.first_name} {profile.last_name}
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+                <div className="flex items-center gap-1.5 text-white/70">
+                  <Mail className="w-3.5 h-3.5 shrink-0 text-[#F97316]" />
+                  <span className="truncate">{profile.email}</span>
+                </div>
+                {profile.phone && (
+                  <div className="flex items-center gap-1.5 text-white/70">
+                    <Phone className="w-3.5 h-3.5 shrink-0 text-[#F97316]" />
+                    <span>{profile.phone}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

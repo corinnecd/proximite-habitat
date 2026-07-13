@@ -896,103 +896,178 @@ export default function DashboardPage() {
 
       {deleteDialog}
       <Topbar title="Tableau de bord" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" /><ExportCsvButton filename="dashboard" getData={getDashboardCsvData} /></div>} />
-      <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
-        {/* Bandeau succursale (DG — toujours visible) */}
-        {isDG && (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gradient-to-r from-rose-50 to-orange-50 dark:from-rose-950/30 dark:to-orange-950/20 border border-rose-200 dark:border-rose-800/40 rounded-2xl px-4 sm:px-5 py-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/40 flex items-center justify-center shrink-0">
-                <Building2 className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400" />
+        {/* ═══════════════════════════════════════════════════════════════════
+            HERO DASHBOARD — bloc navy signature avec greeting + KPI vedette
+            + filtre période intégré + sélecteur succursale DG
+        ═══════════════════════════════════════════════════════════════════ */}
+        <div className="hero-surface rounded-3xl p-6 sm:p-8">
+          <div className="relative z-10">
+            {/* Sélecteur succursale (DG uniquement) */}
+            {isDG && (
+              <div className="mb-6 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <Building2 className="w-4 h-4 text-[#F97316]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
+                    {selectedBranchName ? "Succursale filtrée" : "Vue consolidée"}
+                  </div>
+                  <div className="text-sm text-white font-medium truncate">
+                    {selectedBranchName ?? "Toutes les succursales"}
+                  </div>
+                </div>
+                <div className="relative flex-shrink-0">
+                  <select
+                    value={selectedBranchId}
+                    onChange={(e) => setSelectedBranchId(e.target.value)}
+                    className="appearance-none bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-medium pl-3 pr-8 py-1.5 rounded-lg cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#F97316]/50 transition-colors"
+                  >
+                    <option value="all" className="text-foreground">Toutes les succursales</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id} className="text-foreground">
+                        {b.name}{b.is_hq ? " (Siège)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/60 pointer-events-none" />
+                </div>
               </div>
+            )}
+
+            {/* Greeting + KPI vedette */}
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-6">
               <div className="min-w-0">
-                <p className="text-base sm:text-lg font-extrabold text-rose-700 dark:text-rose-300 truncate">
-                  {selectedBranchName ?? "Toutes les succursales"}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-white/60">
+                    {(() => {
+                      const h = new Date().getHours();
+                      return h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir";
+                    })()}
+                  </span>
+                </div>
+                <h1 className="font-heading text-4xl sm:text-5xl text-white tracking-tight leading-none mb-2">
+                  {profile?.first_name}
+                </h1>
+                <p className="text-sm text-white/60 max-w-md leading-relaxed">
+                  {isReferent
+                    ? `${counts.BROUILLON} brouillon${counts.BROUILLON > 1 ? "s" : ""} en cours · ${counts.SOUMISE} soumise${counts.SOUMISE > 1 ? "s" : ""} en attente de validation`
+                    : isCommercial
+                    ? `${counts.AFFECTEE} fiche${counts.AFFECTEE > 1 ? "s" : ""} à traiter · ${counts.ACCEPTEE} contrat${counts.ACCEPTEE > 1 ? "s" : ""} signé${counts.ACCEPTEE > 1 ? "s" : ""}`
+                    : `${totalFiches} fiche${totalFiches > 1 ? "s" : ""} au total · ${counts.SOUMISE} à valider`}
                 </p>
-                <p className="text-xs text-rose-500/70 dark:text-rose-400/60">
-                  {selectedBranchName ? "Tableau de bord filtré sur cette succursale" : "Vue consolidée de toutes les succursales"}
-                </p>
+                {profile?.role !== "DIRECTION_GENERALE" && (
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <Link href="/fiches/nouvelle">
+                      <button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 py-2 text-sm font-medium inline-flex items-center gap-2 transition-colors">
+                        <FilePlus className="w-4 h-4" />Nouvelle fiche
+                      </button>
+                    </Link>
+                    {counts.SOUMISE > 0 && !isCommercial && (
+                      <Link href="/fiches?status=SOUMISE">
+                        <button className="bg-white/10 hover:bg-white/15 text-white border border-white/15 rounded-full px-4 py-2 text-sm font-medium inline-flex items-center gap-2 transition-colors">
+                          <CheckCircle2 className="w-4 h-4" />{counts.SOUMISE} à valider
+                        </button>
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* KPI vedette (droite) : CA HT pour Direction/DG, ventes pour Commercial, fiches acceptées pour Referent */}
+              <div className="text-right flex-shrink-0">
+                {isCommercial ? (
+                  <>
+                    <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
+                      Contrats signés
+                    </div>
+                    <div className="font-heading text-4xl sm:text-5xl text-white leading-none tracking-tight">
+                      {counts.ACCEPTEE}
+                    </div>
+                    <div className="text-[11px] text-emerald-300 mt-1">
+                      sur {counts.AFFECTEE + counts.ACCEPTEE + counts.REFUSEE + counts.RETRACTATION} fiches reçues
+                    </div>
+                  </>
+                ) : isReferent ? (
+                  <>
+                    <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
+                      Fiches acceptées
+                    </div>
+                    <div className="font-heading text-4xl sm:text-5xl text-white leading-none tracking-tight">
+                      {counts.ACCEPTEE}
+                    </div>
+                    <div className="text-[11px] text-white/50 mt-1">
+                      sur {totalFiches} fiche{totalFiches > 1 ? "s" : ""} créée{totalFiches > 1 ? "s" : ""}
+                    </div>
+                  </>
+                ) : caTotal > 0 ? (
+                  <>
+                    <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
+                      CA HT · {DASH_PERIOD_LABELS[dashPeriod]}
+                    </div>
+                    <div className="font-heading text-4xl sm:text-5xl text-white leading-none tracking-tight">
+                      {(caTotal / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}<span className="text-2xl sm:text-3xl">&nbsp;K€</span>
+                    </div>
+                    <div className="text-[11px] text-emerald-300 mt-1">
+                      {counts.ACCEPTEE} contrat{counts.ACCEPTEE > 1 ? "s" : ""} signé{counts.ACCEPTEE > 1 ? "s" : ""}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
+                      Fiches totales
+                    </div>
+                    <div className="font-heading text-4xl sm:text-5xl text-white leading-none tracking-tight">
+                      {totalFiches}
+                    </div>
+                    <div className="text-[11px] text-white/50 mt-1">
+                      {counts.SOUMISE} à valider · {counts.AFFECTEE} affectée{counts.AFFECTEE > 1 ? "s" : ""}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-            <div className="relative w-full sm:w-auto">
-              <select
-                value={selectedBranchId}
-                onChange={(e) => setSelectedBranchId(e.target.value)}
-                className="w-full sm:w-auto appearance-none bg-white dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-700 dark:text-rose-300 text-sm font-medium pl-3 pr-8 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-rose-400/50"
-              >
-                <option value="all">Toutes les succursales</option>
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}{b.is_hq ? " (Siège)" : ""}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-rose-400 pointer-events-none" />
-            </div>
-          </div>
-        )}
 
-        {/* En-tête */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">Bonjour, {profile?.first_name}</h2>
-            <p className="text-muted-foreground">
-              {isReferent
-                ? `${counts.BROUILLON} brouillon${counts.BROUILLON > 1 ? "s" : ""} en cours`
-                : `${totalFiches} fiche${totalFiches > 1 ? "s" : ""} au total`}
-            </p>
+            {/* Filtre période intégré (direction uniquement) */}
+            {!isReferent && (
+              <div className="pt-5 border-t border-white/10">
+                <div className="flex items-center gap-2 mb-3">
+                  <CalendarDays className="w-3.5 h-3.5 text-white/50" />
+                  <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">Période d&apos;activité</span>
+                  {getPeriodLabel(dashPeriod) && (
+                    <span className="text-[11px] text-white/70">· {getPeriodLabel(dashPeriod)}</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {(Object.keys(DASH_PERIOD_LABELS) as DashPeriod[]).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setDashPeriod(p)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        dashPeriod === p
+                          ? "bg-[#F97316] text-white"
+                          : "bg-white/8 text-white/70 hover:bg-white/12 border border-white/10"
+                      }`}
+                    >
+                      {DASH_PERIOD_LABELS[p]}
+                    </button>
+                  ))}
+                  <Link
+                    href={`/fiches?status=ARCHIVEE${anterieures.length > 0 ? `&highlight=${anterieures.map(f => f.id).join(",")}` : ""}`}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium transition-all bg-white/8 text-white/70 hover:bg-white/12 border border-white/10 inline-flex items-center gap-1.5"
+                  >
+                    <Archive className="w-3 h-3" />
+                    Antérieures
+                    {anterieures.length > 0 && (
+                      <span className="bg-[#F97316]/20 text-[#F97316] text-[10px] font-bold px-1.5 py-0.5 rounded-full">{anterieures.length}</span>
+                    )}
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
-          {profile?.role !== "DIRECTION_GENERALE" && (
-            <Link href="/fiches/nouvelle">
-              <Button className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2">
-                <FilePlus className="w-4 h-4" />Nouvelle fiche
-              </Button>
-            </Link>
-          )}
         </div>
-
-        {/* Filtre période — direction uniquement */}
-        {!isReferent && (() => {
-          const dynamicLabel = DASH_PERIOD_LABELS[dashPeriod].toUpperCase();
-          const dynamicRange = getPeriodLabel(dashPeriod);
-          return (
-          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <CalendarDays className="w-3.5 h-3.5" />Période d&apos;activité
-              <span className="text-sm font-bold text-foreground tracking-normal">{dynamicLabel}</span>
-              {dynamicRange && (
-                <span className="text-xs font-medium text-muted-foreground tracking-normal">{dynamicRange}</span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(Object.keys(DASH_PERIOD_LABELS) as DashPeriod[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setDashPeriod(p)}
-                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
-                    dashPeriod === p ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-secondary border border-border"
-                  }`}
-                >
-                  {DASH_PERIOD_LABELS[p]}
-                </button>
-              ))}
-              {/* Antérieures */}
-              <Link href={`/fiches?status=ARCHIVEE${anterieures.length > 0 ? `&highlight=${anterieures.map(f => f.id).join(",")}` : ""}`}
-                className="relative group px-3 py-1.5 rounded-xl text-sm font-medium transition-all bg-muted text-muted-foreground hover:bg-secondary border border-border inline-flex items-center gap-1.5">
-                <Archive className="w-3.5 h-3.5" />
-                Antérieures
-                {anterieures.length > 0 && (
-                  <span className="bg-primary/10 text-primary text-xs font-bold px-1.5 py-0.5 rounded-full">{anterieures.length}</span>
-                )}
-                <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max max-w-xs px-3 py-2 rounded-lg bg-foreground text-background text-xs leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
-                  {anterieures.length} fiche{anterieures.length > 1 ? "s" : ""} archivée{anterieures.length > 1 ? "s" : ""} au cours du trimestre en cours.
-                  <br />Cliquer pour les visualiser.
-                </span>
-              </Link>
-            </div>
-          </div>
-          );
-        })()}
 
         {/* Compteurs par statut */}
         <div>

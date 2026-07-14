@@ -107,6 +107,7 @@ export default function FichesPage() {
   const [commercials, setCommercials] = useState<ProfileOption[]>([]);
   const [anterieures, setAnterieures] = useState<{ id: string }[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [firstFicheDate, setFirstFicheDate] = useState<string | null>(null);
   const [validationStats, setValidationStats] = useState<{ label: string; soumises: number; affectees: number; validees: number }[]>([]);
   const [quarterLabel, setQuarterLabel] = useState("");
 
@@ -266,6 +267,15 @@ export default function FichesPage() {
       }));
       counts["ALL"] = total;
       setStatusCounts(counts);
+
+      // Date de la fiche la plus ancienne (visible pour le rôle courant)
+      let firstQ = supabase.from("fiches").select("created_at").order("created_at", { ascending: true }).limit(1);
+      if (isReferent && profile.id) firstQ = firstQ.eq("created_by", profile.id);
+      else if (isCommercial && profile.id) firstQ = firstQ.eq("assigned_to", profile.id);
+      else firstQ = firstQ.neq("status", "BROUILLON");
+      if (branchFilter) firstQ = firstQ.eq("organization_id", branchFilter);
+      const { data: firstData } = await firstQ;
+      setFirstFicheDate(firstData?.[0]?.created_at ?? null);
     }
     loadStatusCounts();
   }, [profile, isReferent, isCommercial, supabase, isDG, selectedBranchId]);
@@ -425,7 +435,14 @@ export default function FichesPage() {
                 <p className="text-sm text-white/60 mt-2">
                   {isValidationMode
                     ? `${fiches.length} fiche${fiches.length > 1 ? "s" : ""} en attente de votre validation`
-                    : `${statusCounts["ALL"] ?? 0} fiche${(statusCounts["ALL"] ?? 0) > 1 ? "s" : ""} au total`}
+                    : (
+                      <>
+                        {statusCounts["ALL"] ?? 0} fiche{(statusCounts["ALL"] ?? 0) > 1 ? "s" : ""} au total
+                        {firstFicheDate && (
+                          <> · depuis le <span className="text-white/80 font-medium">{new Date(firstFicheDate).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span></>
+                        )}
+                      </>
+                    )}
                 </p>
               </div>
               <div className="flex gap-2 flex-shrink-0">

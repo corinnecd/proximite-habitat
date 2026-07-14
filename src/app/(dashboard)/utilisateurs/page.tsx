@@ -23,7 +23,7 @@ import type { UserRole, Profile } from "@/types/database";
 import { toast } from "sonner";
 import {
   UserPlus, Loader2, Shield, Mail, Phone, Search,
-  Users, CheckCircle2, XCircle, UserCheck, Pencil,
+  CheckCircle2, XCircle, Pencil,
   ChevronDown, ChevronUp,
 } from "lucide-react";
 
@@ -85,7 +85,6 @@ export default function UtilisateursPage() {
   }, [users, isDG, selectedBranchId]);
 
   const filtered = useMemo(() => {
-    setVisibleCount(VISIBLE_INIT);
     return branchScopedUsers.filter((u) => {
       const matchRole = roleFilter === "ALL" || u.role === roleFilter;
       const q = search.toLowerCase();
@@ -95,6 +94,11 @@ export default function UtilisateursPage() {
         u.email.toLowerCase().includes(q);
       return matchRole && matchSearch;
     });
+  }, [branchScopedUsers, roleFilter, search]);
+
+  // Reset pagination when filters change (moved out of useMemo per lint rule)
+  useEffect(() => {
+    setVisibleCount(VISIBLE_INIT);
   }, [branchScopedUsers, roleFilter, search]);
 
   const stats = useMemo(() => ({

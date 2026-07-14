@@ -902,7 +902,7 @@ export default function DashboardPage() {
             HERO DASHBOARD — bloc navy signature avec greeting + KPI vedette
             + filtre période intégré + sélecteur succursale DG
         ═══════════════════════════════════════════════════════════════════ */}
-        <div className="hero-surface rounded-3xl p-6 sm:p-8">
+        <div className="hero-surface animate-hero-entry rounded-3xl p-6 sm:p-8">
           <div className="relative z-10">
             {/* Sélecteur succursale (DG uniquement) */}
             {isDG && (

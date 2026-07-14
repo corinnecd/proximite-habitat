@@ -51,7 +51,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* ── Panneau gauche : hero brand immersif ─────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[55%] hero-surface flex-col justify-between px-16 py-14">
+      <div className="hidden lg:flex lg:w-[55%] hero-surface animate-hero-entry flex-col justify-between px-16 py-14">
         {/* Cercles décoratifs additionnels */}
         <div className="absolute -bottom-24 -left-24 w-64 h-64 rounded-full border-[24px] border-emerald-400/10 pointer-events-none" />
 

@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex">
       {/* ── Panneau gauche : hero brand ───────────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[55%] hero-surface flex-col justify-between px-16 py-14">
+      <div className="hidden lg:flex lg:w-[55%] hero-surface animate-hero-entry flex-col justify-between px-16 py-14">
         <div className="absolute -bottom-24 -left-24 w-64 h-64 rounded-full border-[24px] border-emerald-400/10 pointer-events-none" />
 
         <div className="relative flex items-center gap-3 z-10">

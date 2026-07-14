@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
@@ -12,7 +11,6 @@ import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { ROLE_LABELS } from "@/lib/permissions";
-import type { UserRole } from "@/types/database";
 import { toast } from "sonner";
 import {
   User, Lock, Loader2, Eye, EyeOff, Mail, Phone,
@@ -21,13 +19,6 @@ import {
 
 // ── Palette rôle ─────────────────────────────────────────────────────────────
 
-const ROLE_STYLE: Record<UserRole, { heroBg: string; avatarBg: string; avatarText: string; badge: string }> = {
-  ADMIN:       { heroBg: "from-purple-50 to-white dark:from-purple-950/20 dark:to-background", avatarBg: "bg-purple-100 dark:bg-purple-900/40", avatarText: "text-purple-700 dark:text-purple-300", badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
-  COMMERCIAL:  { heroBg: "from-blue-50 to-white dark:from-blue-950/20 dark:to-background",   avatarBg: "bg-blue-100 dark:bg-blue-900/40",    avatarText: "text-blue-700 dark:text-blue-300",    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-  PROSPECTEUR: { heroBg: "from-emerald-50 to-white dark:from-emerald-950/20 dark:to-background", avatarBg: "bg-emerald-100 dark:bg-emerald-900/40", avatarText: "text-emerald-700 dark:text-emerald-300", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-  CHEF_EQUIPE: { heroBg: "from-amber-50 to-white dark:from-amber-950/20 dark:to-background", avatarBg: "bg-amber-100 dark:bg-amber-900/40", avatarText: "text-amber-700 dark:text-amber-300", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
-  DIRECTION_GENERALE: { heroBg: "from-rose-50 to-white dark:from-rose-950/20 dark:to-background", avatarBg: "bg-rose-100 dark:bg-rose-900/40", avatarText: "text-rose-700 dark:text-rose-300", badge: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" },
-};
 
 // ── Indicateur de force du mot de passe ──────────────────────────────────────
 
@@ -172,7 +163,6 @@ export default function ProfilPage() {
     );
   }
 
-  const roleStyle = ROLE_STYLE[profile.role];
   const initials = `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
   const pwdStrength = passwordStrength(newPassword);
   const passwordsMatch = confirmPassword.length > 0 && newPassword === confirmPassword;

@@ -14,7 +14,6 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Topbar } from "@/components/layout/Topbar";
-import { ExportPdfButton } from "@/components/ui/export-pdf-button";
 import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";

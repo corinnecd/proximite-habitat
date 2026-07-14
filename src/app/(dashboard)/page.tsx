@@ -1081,7 +1081,7 @@ export default function DashboardPage() {
             <span className="text-sm font-semibold tracking-tight">Statuts des fiches ({totalFiches})</span>
             {statusOpenMobile ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </button>
-          <div className={`${statusOpenMobile ? "grid" : "hidden"} sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4`}>
+          <div className={`${statusOpenMobile ? "grid" : "hidden"} sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 animate-cascade`}>
             {visibleStatuses.map((status) => (
               <Link key={status} href={`/fiches?status=${status}`}>
                 <Card className={`border border-border border-l-4 shadow-sm ${COUNTER_STYLES[status]} hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200 cursor-pointer`}>

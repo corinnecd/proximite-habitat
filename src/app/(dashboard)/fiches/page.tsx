@@ -413,7 +413,7 @@ export default function FichesPage() {
       <div className="p-4 sm:p-6 lg:p-8 space-y-4">
 
         {/* ═══ HERO FICHES — navy signature avec recherche intégrée ═══════ */}
-        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
+        <div className="hero-surface hero-surface-sm animate-hero-entry rounded-3xl p-6 sm:p-7">
           <div className="relative z-10">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
               <div>

@@ -532,72 +532,93 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
           </div>
         )}
 
-        {/* Stepper visuel */}
-        <div className="mb-8 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] px-6 pt-5 pb-4">
-          <div className="flex items-center">
-            {STEPS.map((s, i) => {
-              const done   = i < currentStep;
-              const active = i === currentStep;
-              return (
-                <div key={i} className="flex items-center flex-1 last:flex-none">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      // U-02 : valider étape 1 avant de sauter en avant
-                      if (i > currentStep && currentStep === 0) {
-                        const result = step1Schema.safeParse(methods.getValues());
-                        if (!result.success) {
-                          result.error.issues.forEach((issue) => {
-                            methods.setError(String(issue.path[0]) as keyof FicheFormData, { type: "manual", message: issue.message });
-                          });
-                          toast.error("Veuillez remplir les champs obligatoires avant de continuer");
-                          return;
-                        }
-                      }
-                      setStepDirection(i > currentStep ? "next" : "prev");
-                      setCurrentStep(i);
-                    }}
-                    aria-current={active ? "step" : undefined}
-                    className="flex flex-col items-center gap-1.5 group"
-                  >
-                    <span className={`
-                      w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-200
-                      ${done   ? "bg-primary border-primary text-white"                                   : ""}
-                      ${active ? "bg-white border-primary text-primary shadow-[0_0_0_4px_rgba(30,58,95,.1)]" : ""}
-                      ${!done && !active ? "bg-card border-border text-muted-foreground group-hover:border-primary/40" : ""}
-                    `}>
-                      {done ? "✓" : i + 1}
+        {/* ═══ HERO STEPPER — voyage 7 chapitres ═══════════════════════════ */}
+        <div className="mb-6 hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
+          <div className="relative z-10">
+            {/* Header : chapitre courant en vedette */}
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
+                    Chapitre {currentStep + 1} sur {STEPS.length}
+                  </span>
+                  {lastSavedAt && (
+                    <span className="flex items-center gap-1 text-[10px] text-emerald-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                      Sauvegardé
                     </span>
-                    <span className={`text-[10px] font-medium hidden sm:block transition-colors whitespace-nowrap
-                      ${done || active ? "text-primary" : "text-muted-foreground"}`}>
-                      {s.title}
-                    </span>
-                  </button>
-                  {i < STEPS.length - 1 && (
-                    <div className={`flex-1 h-[2px] mx-2 mb-4 rounded-full transition-colors duration-300
-                      ${i < currentStep ? "bg-primary" : "bg-border"}`}
-                    />
                   )}
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Barre de progression globale */}
-          <div className="mt-4 space-y-1.5">
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full transition-all duration-400"
-                style={{ width: `${(currentStep / (STEPS.length - 1)) * 100}%` }}
-              />
+                <h2 className="font-heading text-2xl sm:text-3xl text-white tracking-tight leading-none">
+                  {STEPS[currentStep].title}
+                </h2>
+                <p className="text-sm text-white/60 mt-2">
+                  {(() => {
+                    const remaining = STEPS.length - currentStep - 1;
+                    if (remaining === 0) return "Dernier chapitre — signature du prospect.";
+                    const mins = Math.max(1, Math.round(remaining * 1.5));
+                    return `~ ${mins} min restante${mins > 1 ? "s" : ""} · ${remaining} chapitre${remaining > 1 ? "s" : ""} à compléter`;
+                  })()}
+                </p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <div className="font-heading text-3xl sm:text-4xl text-white leading-none tracking-tight">
+                  {Math.round((currentStep / (STEPS.length - 1)) * 100)}<span className="text-lg text-white/60">%</span>
+                </div>
+                <div className="text-[10px] tracking-[1px] uppercase text-white/50 mt-1">complété</div>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <p className="text-xs text-muted-foreground">
-                Étape <span className="font-semibold text-foreground">{currentStep + 1}</span> sur {STEPS.length}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                <span className="font-semibold text-primary">{Math.round((currentStep / (STEPS.length - 1)) * 100)}%</span> complété
-              </p>
+
+            {/* Timeline visuelle 7 chapitres */}
+            <div className="relative">
+              {/* Ligne de fond */}
+              <div className="absolute top-4 left-4 right-4 h-0.5 bg-white/10 rounded-full" />
+              {/* Ligne progressive */}
+              <div
+                className="absolute top-4 left-4 h-0.5 bg-[#F97316] rounded-full transition-all duration-500"
+                style={{ width: `calc((100% - 32px) * ${currentStep / (STEPS.length - 1)})` }}
+              />
+              <div className="relative grid" style={{ gridTemplateColumns: `repeat(${STEPS.length}, minmax(0, 1fr))` }}>
+                {STEPS.map((s, i) => {
+                  const done = i < currentStep;
+                  const active = i === currentStep;
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={async () => {
+                        if (i > currentStep && currentStep === 0) {
+                          const result = step1Schema.safeParse(methods.getValues());
+                          if (!result.success) {
+                            result.error.issues.forEach((issue) => {
+                              methods.setError(String(issue.path[0]) as keyof FicheFormData, { type: "manual", message: issue.message });
+                            });
+                            toast.error("Veuillez remplir les champs obligatoires avant de continuer");
+                            return;
+                          }
+                        }
+                        setStepDirection(i > currentStep ? "next" : "prev");
+                        setCurrentStep(i);
+                      }}
+                      aria-current={active ? "step" : undefined}
+                      className="flex flex-col items-center gap-2 group"
+                    >
+                      <span className={`
+                        relative rounded-full flex items-center justify-center text-xs font-medium transition-all
+                        ${done ? "w-8 h-8 bg-emerald-500 text-white" : ""}
+                        ${active ? "w-9 h-9 bg-[#F97316] text-white ring-4 ring-[#F97316]/20" : ""}
+                        ${!done && !active ? "w-8 h-8 bg-white/8 border border-white/15 text-white/50 group-hover:bg-white/12" : ""}
+                      `}>
+                        {done ? "✓" : i + 1}
+                      </span>
+                      <span className={`text-[10px] font-medium hidden sm:block transition-colors text-center leading-tight
+                        ${active ? "text-white" : done ? "text-white/60" : "text-white/40"}`}>
+                        {s.title.split(" ")[0]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

@@ -181,33 +181,32 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         document.title = `${ficheData.reference} · Proximité Habitat Conseil`;
       }
       setHistory(historyData);
-      // Signed URLs pour bucket privé (expiry 2h)
-      const photosWithUrls = await Promise.all(
-        (photosData ?? []).map(async (p) => {
+      setCommercials(commercialsData);
+
+      // Toutes les requêtes secondaires en parallèle (signed URLs photos, nom créateur, ville, signatures)
+      const orgId = ficheData?.organization_id;
+      const [photosWithUrls, creatorName, villeResult, sigsResult] = await Promise.all([
+        Promise.all((photosData ?? []).map(async (p) => {
           const { data } = await supabase.storage.from("photos").createSignedUrl(p.storage_path, 7200);
           return { ...p, signedUrl: data?.signedUrl ?? "" };
-        })
-      );
-      setPhotos(photosWithUrls);
-      setCommercials(commercialsData);
-      if (ficheData?.created_by) {
-        const name = await getProfileFullName(supabase, ficheData.created_by);
-        if (name) setCreatorName(name);
-      }
-      if (ficheData?.ville_id) {
-        const { data: vData } = await supabase.from("zones_villes").select("*").eq("id", ficheData.ville_id).single();
-        if (vData) setVilleData(vData);
-      } else {
-        setVilleData(null);
-      }
+        })),
+        ficheData?.created_by ? getProfileFullName(supabase, ficheData.created_by) : Promise.resolve(null),
+        ficheData?.ville_id
+          ? supabase.from("zones_villes").select("*").eq("id", ficheData.ville_id).single()
+          : Promise.resolve({ data: null }),
+        orgId
+          ? Promise.all([
+              supabase.storage.from("signatures").createSignedUrl(`${orgId}/${id}/signature.png`, 7200),
+              supabase.storage.from("signatures").createSignedUrl(`${orgId}/${id}/signature_referent.png`, 7200),
+            ])
+          : Promise.resolve(null),
+      ]);
 
-      // Signatures (bucket privé — signed URLs)
-      if (ficheData?.organization_id) {
-        const orgId = ficheData.organization_id;
-        const [{ data: sig }, { data: sigRef }] = await Promise.all([
-          supabase.storage.from("signatures").createSignedUrl(`${orgId}/${id}/signature.png`, 7200),
-          supabase.storage.from("signatures").createSignedUrl(`${orgId}/${id}/signature_referent.png`, 7200),
-        ]);
+      setPhotos(photosWithUrls);
+      if (creatorName) setCreatorName(creatorName);
+      setVilleData(villeResult.data ?? null);
+      if (sigsResult) {
+        const [{ data: sig }, { data: sigRef }] = sigsResult;
         setSignatureUrl(sig?.signedUrl ?? null);
         setReferentSignatureUrl(sigRef?.signedUrl ?? null);
       }

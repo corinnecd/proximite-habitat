@@ -65,7 +65,6 @@ export default function PlanificationPage() {
   const [selectedVilles, setSelectedVilles] = useState<Set<string>>(new Set());
   const [selectedChef, setSelectedChef] = useState<string>("");
   const [saving, setSaving] = useState(false);
-  const [, setLoading] = useState(true);
   const [villeStats, setVilleStats] = useState<Map<string, VilleStats>>(new Map());
   const [showAllPerfVilles, setShowAllPerfVilles] = useState(false);
   const [parcours, setParcours] = useState<RouteData | null>(null);
@@ -96,7 +95,6 @@ export default function PlanificationPage() {
 
   const fetchPlan = useCallback(async () => {
     if (!profile) return;
-    setLoading(true);
 
     // Tout charger en parallèle
     const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
@@ -140,7 +138,6 @@ export default function PlanificationPage() {
     } else {
       setPlanEntries([]);
     }
-    setLoading(false);
   }, [profile, mondayStr, isAdmin, supabase, isDG, selectedBranchId]);
 
   useEffect(() => {

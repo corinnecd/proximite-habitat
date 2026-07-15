@@ -90,9 +90,6 @@ export default function FichesPage() {
 
   const [fiches, setFiches] = useState<FicheRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [, setLoadingMore] = useState(false);
-  const [, setHasMore] = useState(false);
-  const [, setPage] = useState(0);
   const [visibleCount, setVisibleCount] = useState(VISIBLE_INIT);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
@@ -148,7 +145,7 @@ export default function FichesPage() {
   }, [isAdminOrDG, _branchFilterForUsers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchFiches = useCallback(async (pageToLoad = 0, append = false) => {
-    if (append) setLoadingMore(true); else setLoading(true);
+    if (!append) setLoading(true);
 
     // Calculé ici pour éviter les closures périmées
     const role = profile?.role;
@@ -210,15 +207,13 @@ export default function FichesPage() {
       const rows = (data as unknown as FicheRow[]) || [];
       setFiches((prev) => (append ? [...prev, ...rows] : rows));
       if (!append) setVisibleCount(VISIBLE_INIT);
-      setHasMore(rows.length === PAGE_SIZE);
-      setPage(pageToLoad);
       setFetchError(null);
     } catch (err) {
       console.error("fetchFiches error", err);
       setFetchError("Erreur lors du chargement des fiches.");
       toast.error("Erreur lors du chargement des fiches");
     } finally {
-      if (append) setLoadingMore(false); else setLoading(false);
+      if (!append) setLoading(false);
     }
   // supabase est stable (useMemo), pas besoin dans les deps
   }, [statusFilter, search, profile, periodFilter, referentFilter, commercialFilter, selectedBranchId, isDG]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -254,9 +249,16 @@ export default function FichesPage() {
         : isCommercial
         ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
         : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+      // Date de la fiche la plus ancienne (visible pour le rôle courant)
+      let firstQ = supabase.from("fiches").select("created_at").order("created_at", { ascending: true }).limit(1);
+      if (isReferent && profile.id) firstQ = firstQ.eq("created_by", profile.id);
+      else if (isCommercial && profile.id) firstQ = firstQ.eq("assigned_to", profile.id);
+      else firstQ = firstQ.neq("status", "BROUILLON");
+      if (branchFilter) firstQ = firstQ.eq("organization_id", branchFilter);
+
       const counts: Record<string, number> = {};
       let total = 0;
-      await Promise.all(statuses.map(async (s) => {
+      const countPromises = statuses.map(async (s) => {
         let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
         if (isReferent && profile.id) q = q.eq("created_by", profile.id);
         else if (isCommercial && profile.id) q = q.eq("assigned_to", profile.id);
@@ -264,17 +266,10 @@ export default function FichesPage() {
         const { count } = await q;
         counts[s] = count ?? 0;
         total += count ?? 0;
-      }));
+      });
+      const [, { data: firstData }] = await Promise.all([Promise.all(countPromises), firstQ]);
       counts["ALL"] = total;
       setStatusCounts(counts);
-
-      // Date de la fiche la plus ancienne (visible pour le rôle courant)
-      let firstQ = supabase.from("fiches").select("created_at").order("created_at", { ascending: true }).limit(1);
-      if (isReferent && profile.id) firstQ = firstQ.eq("created_by", profile.id);
-      else if (isCommercial && profile.id) firstQ = firstQ.eq("assigned_to", profile.id);
-      else firstQ = firstQ.neq("status", "BROUILLON");
-      if (branchFilter) firstQ = firstQ.eq("organization_id", branchFilter);
-      const { data: firstData } = await firstQ;
       setFirstFicheDate(firstData?.[0]?.created_at ?? null);
     }
     loadStatusCounts();

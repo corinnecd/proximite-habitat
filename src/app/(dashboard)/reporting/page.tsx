@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
@@ -29,7 +29,6 @@ interface ReferentRow { name: string; total: number; submitted: number; accepted
 interface CommercialRow { name: string; assigned: number; accepted: number; refused: number; rate: number; ca: number; }
 interface VilleRow { ville: string; accepted: number; refused: number; total: number; rate: number; }
 interface WeeklyPoint { label: string; creees: number; acceptees: number; }
-interface DelaiInfo { avg: number; min: number; max: number; count: number; }
 
 // ── Palette statuts ───────────────────────────────────────────────────────────
 const STATUS_COLORS_HEX: Record<FicheStatus, string> = {
@@ -113,14 +112,13 @@ export default function ReportingPage() {
   const { profile, loading: profileLoading } = useProfile();
   const { selectedBranchId, isDG } = useBranch();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
   const [referents, setReferents] = useState<ReferentRow[]>([]);
   const [commerciaux, setCommerciaux] = useState<CommercialRow[]>([]);
   const [villes, setVilles] = useState<VilleRow[]>([]);
   const [weeklyData, setWeeklyData] = useState<WeeklyPoint[]>([]);
-  const [, setDelai] = useState<DelaiInfo>({ avg: 0, min: 0, max: 0, count: 0 });
   const [totalFiches, setTotalFiches] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -145,27 +143,29 @@ export default function ReportingPage() {
     const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
     const dates = getPeriodDates(period);
     let ficheIdsForPeriod: string[] | null = null;
+
     if (dates) {
       const from = `${dates.from}T00:00:00Z`;
       const to   = `${dates.to}T23:59:59Z`;
+      // ── Paralléliser les deux requêtes de période ──
       let histQ = supabase
         .from("fiche_history").select("fiche_id")
         .eq("new_status", "SOUMISE").gte("created_at", from).lte("created_at", to);
       if (_branchFilter) histQ = histQ.eq("organization_id", _branchFilter);
-      const { data: histRows } = await histQ;
-      const idSet = new Set((histRows ?? []).map((h: { fiche_id: string }) => h.fiche_id));
       let legacyQ = supabase
         .from("fiches").select("id").neq("status", "BROUILLON")
         .gte("created_at", from).lte("created_at", to);
       if (_branchFilter) legacyQ = legacyQ.eq("organization_id", _branchFilter);
-      const { data: legacyRows } = await legacyQ;
+      const [{ data: histRows }, { data: legacyRows }] = await Promise.all([histQ, legacyQ]);
+      const idSet = new Set<string>();
+      (histRows ?? []).forEach((h: { fiche_id: string }) => idSet.add(h.fiche_id));
       (legacyRows ?? []).forEach((f: { id: string }) => idSet.add(f.id));
       ficheIdsForPeriod = Array.from(idSet);
+
       if (ficheIdsForPeriod.length === 0) {
         setStatusCounts(statuses.map((s) => ({ status: s, count: 0 })));
         setTotalFiches(0);
         setReferents([]);
-        // Still load all commercials even with 0 fiches
         let emptyCommQ = supabase
           .from("profiles").select("id, first_name, last_name")
           .eq("role", "COMMERCIAL").eq("is_active", true);
@@ -176,43 +176,66 @@ export default function ReportingPage() {
         })));
         setVilles([]);
         setWeeklyData([]);
-        setDelai({ avg: 0, min: 0, max: 0, count: 0 });
         setLoading(false);
         return;
       }
     }
 
-    // ── Compteurs par statut ──
-    const countResults = await Promise.all(
-      statuses.map(async (s) => {
-        let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
-        if (isComm) q = q.eq("assigned_to", profileId);
-        if (ficheIdsForPeriod) q = q.in("id", ficheIdsForPeriod);
-        if (_branchFilter) q = q.eq("organization_id", _branchFilter);
-        const { count } = await q;
-        return { status: s, count: count || 0 };
-      })
-    );
-    setStatusCounts(countResults);
-    setTotalFiches(countResults.reduce((a, b) => a + b.count, 0));
-
-    // ── Données détaillées des fiches ──
+    // ── Construire les requêtes indépendantes ──
+    // Pas de JOIN sur profiles ici — on les charge séparément en parallèle (requête beaucoup plus légère)
     let fichesQuery = supabase
       .from("fiches")
-      .select("id, created_by, assigned_to, status, motif_refus, montant_ht, prospect_ville, ville_id, created_at, profiles!created_by(first_name, last_name), assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)")
+      .select("id, created_by, assigned_to, status, motif_refus, montant_ht, prospect_ville, ville_id, created_at")
       .neq("status", "BROUILLON");
     if (isComm) fichesQuery = fichesQuery.eq("assigned_to", profileId);
     if (ficheIdsForPeriod) fichesQuery = fichesQuery.in("id", ficheIdsForPeriod);
     if (_branchFilter) fichesQuery = fichesQuery.eq("organization_id", _branchFilter);
-    const { data: fichesRaw } = await fichesQuery;
+
+    // Une seule requête pour tous les profils actifs — sert à la fois au tableau des commerciaux et à la résolution des noms créateurs
+    let allProfilesQ = supabase
+      .from("profiles").select("id, first_name, last_name, role")
+      .eq("is_active", true);
+    if (_branchFilter) allProfilesQ = allProfilesQ.eq("organization_id", _branchFilter);
+
+    const _planifOrg = _branchFilter ?? profile!.organization_id;
+    let planifQ = supabase
+      .from("planification_hebdo")
+      .select("ville_id, zones_villes!inner(nom)")
+      .eq("organization_id", _planifOrg);
+    if (dates) {
+      const fromDate = new Date(dates.from + "T00:00:00");
+      const fromDay = fromDate.getDay();
+      fromDate.setDate(fromDate.getDate() - (fromDay === 0 ? 6 : fromDay - 1));
+      const mondayOfFrom = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, "0")}-${String(fromDate.getDate()).padStart(2, "0")}`;
+      planifQ = planifQ.gte("semaine_du", mondayOfFrom).lte("semaine_du", dates.to);
+    }
+
+    // ── Tout en parallèle : fiches + tous les profils + planification ──
+    const [{ data: fichesRaw }, { data: allProfilesData }, { data: planifRows }] = await Promise.all([
+      fichesQuery,
+      allProfilesQ,
+      planifQ,
+    ]);
+
+    const allProfiles = allProfilesData ?? [];
+    // Commerciaux actifs pour initialiser les lignes vides du tableau
+    const allCommProfiles = allProfiles.filter((p) => p.role === "COMMERCIAL");
+    // Map id → nom complet pour tous les profils
+    const profileNameMap: Record<string, string> = {};
+    for (const p of allProfiles) profileNameMap[p.id] = `${p.first_name} ${p.last_name}`;
 
     type FicheRow = {
       id: string; created_by: string; assigned_to: string | null; status: string;
       montant_ht: number | null; motif_refus: MotifRefus | null; prospect_ville: string | null; ville_id: string | null; created_at: string;
-      profiles: { first_name: string; last_name: string } | null;
-      assigned_to_profile: { first_name: string; last_name: string } | null;
     };
     const fiches = (fichesRaw ?? []) as unknown as FicheRow[];
+
+    // ── Compter les statuts côté client (remplace 7-8 requêtes COUNT individuelles) ──
+    const statusMap: Record<string, number> = {};
+    for (const f of fiches) statusMap[f.status] = (statusMap[f.status] ?? 0) + 1;
+    const countResults = statuses.map((s) => ({ status: s, count: statusMap[s] ?? 0 }));
+    setStatusCounts(countResults);
+    setTotalFiches(countResults.reduce((a, b) => a + b.count, 0));
 
     // ── Ventilation des refus par motif ──
     const motifCounts: Record<MotifRefus, number> = { RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 };
@@ -229,7 +252,7 @@ export default function ReportingPage() {
       for (const f of fiches) {
         const key = f.created_by;
         if (!refMap[key]) {
-          const name = f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Inconnu";
+          const name = profileNameMap[key] ?? "Inconnu";
           refMap[key] = { name, total: 0, submitted: 0, accepted: 0, ca: 0 };
         }
         refMap[key].total++;
@@ -245,12 +268,6 @@ export default function ReportingPage() {
     // ── 2. Taux d'acceptation par commercial ──
     const commMap: Record<string, CommercialRow> = {};
     const COMM_STATUSES = ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
-    // Fetch all COMMERCIAL profiles so those with 0 fiches also appear
-    const { data: allCommProfiles } = await supabase
-      .from("profiles")
-      .select("id, first_name, last_name")
-      .eq("role", "COMMERCIAL")
-      .eq("is_active", true);
     for (const p of allCommProfiles ?? []) {
       commMap[p.id] = { name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
     }
@@ -258,7 +275,7 @@ export default function ReportingPage() {
       if (!f.assigned_to || !COMM_STATUSES.includes(f.status)) continue;
       const key = f.assigned_to;
       if (!commMap[key]) {
-        const name = f.assigned_to_profile ? `${f.assigned_to_profile.first_name} ${f.assigned_to_profile.last_name}` : "Inconnu";
+        const name = profileNameMap[key] ?? "Inconnu";
         commMap[key] = { name, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
       }
       commMap[key].assigned++;
@@ -274,21 +291,6 @@ export default function ReportingPage() {
     })).sort((a, b) => b.assigned - a.assigned);
     setCommerciaux(commRows);
     setCaTotal(commRows.reduce((sum, c) => sum + c.ca, 0));
-
-    // ── 3. Répartition géographique (basée sur les villes planifiées) ──
-    const _planifOrg = _branchFilter ?? profile!.organization_id;
-    let planifQuery = supabase
-      .from("planification_hebdo")
-      .select("ville_id, zones_villes!inner(nom)")
-      .eq("organization_id", _planifOrg);
-    if (dates) {
-      const fromDate = new Date(dates.from + "T00:00:00");
-      const fromDay = fromDate.getDay();
-      fromDate.setDate(fromDate.getDate() - (fromDay === 0 ? 6 : fromDay - 1));
-      const mondayOfFrom = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, "0")}-${String(fromDate.getDate()).padStart(2, "0")}`;
-      planifQuery = planifQuery.gte("semaine_du", mondayOfFrom).lte("semaine_du", dates.to);
-    }
-    const { data: planifRows } = await planifQuery;
     type PlanifRow = { ville_id: string; zones_villes: { nom: string } };
     // Build a map of planned ville_id → ville name
     const plannedVilleMap = new Map<string, string>();
@@ -350,41 +352,6 @@ export default function ReportingPage() {
       return { label, creees, acceptees };
     });
     setWeeklyData(weekBuckets);
-
-    // ── 5. Délai moyen soumission → validation ──
-    const ficheIds = fiches.map((f) => f.id);
-    if (ficheIds.length > 0) {
-      const { data: histAll } = await supabase
-        .from("fiche_history")
-        .select("fiche_id, new_status, created_at")
-        .in("fiche_id", ficheIds)
-        .in("new_status", ["SOUMISE", "VALIDEE"])
-        .order("created_at", { ascending: true });
-
-      type HistEntry = { fiche_id: string; new_status: string; created_at: string };
-      const firstSoumise = new Map<string, string>();
-      const firstValidee = new Map<string, string>();
-      for (const h of (histAll ?? []) as HistEntry[]) {
-        if (h.new_status === "SOUMISE" && !firstSoumise.has(h.fiche_id)) firstSoumise.set(h.fiche_id, h.created_at);
-        if (h.new_status === "VALIDEE" && !firstValidee.has(h.fiche_id)) firstValidee.set(h.fiche_id, h.created_at);
-      }
-
-      const delais: number[] = [];
-      for (const [ficheId, soumiseDate] of firstSoumise) {
-        const valideeDate = firstValidee.get(ficheId);
-        if (valideeDate) {
-          const diffH = (new Date(valideeDate).getTime() - new Date(soumiseDate).getTime()) / (1000 * 60 * 60);
-          if (diffH >= 0) delais.push(diffH);
-        }
-      }
-
-      if (delais.length > 0) {
-        const avg = delais.reduce((a, b) => a + b, 0) / delais.length;
-        setDelai({ avg: Math.round(avg * 10) / 10, min: Math.round(Math.min(...delais) * 10) / 10, max: Math.round(Math.max(...delais) * 10) / 10, count: delais.length });
-      } else {
-        setDelai({ avg: 0, min: 0, max: 0, count: 0 });
-      }
-    }
 
     setLoading(false);
   }
@@ -452,15 +419,46 @@ export default function ReportingPage() {
     return (
       <>
         <Topbar title="Reporting" />
-        <div className="p-4 sm:p-6 lg:p-8 animate-pulse space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 bg-card rounded-2xl border border-border" />)}
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+          {/* Hero skeleton */}
+          <div className="rounded-3xl bg-[#0F1E3D] p-6 sm:p-7 animate-pulse">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
+              <div className="space-y-2">
+                <div className="h-2.5 w-24 bg-white/10 rounded-full" />
+                <div className="h-9 w-48 bg-white/15 rounded-xl" />
+                <div className="h-3 w-64 bg-white/8 rounded-full" />
+              </div>
+              <div className="h-10 w-28 bg-white/10 rounded-xl" />
+            </div>
+            <div className="pt-5 border-t border-white/10 flex gap-2 flex-wrap">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-7 w-20 bg-white/10 rounded-full" />
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="h-72 bg-card rounded-2xl border border-border" />
-            <div className="h-72 bg-card rounded-2xl border border-border" />
+          {/* KPI cards skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-pulse">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-card rounded-2xl border border-border border-l-4 border-l-muted p-5 space-y-3">
+                <div className="flex justify-between">
+                  <div className="w-10 h-10 bg-muted rounded-xl" />
+                </div>
+                <div className="h-8 w-16 bg-muted rounded-lg" />
+                <div className="h-2.5 w-28 bg-muted rounded-full" />
+              </div>
+            ))}
           </div>
-          <div className="h-64 bg-card rounded-2xl border border-border" />
+          {/* Tables skeleton */}
+          <div className="bg-card rounded-2xl border border-border p-6 animate-pulse space-y-4">
+            <div className="h-5 w-48 bg-muted rounded-full" />
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-8 bg-muted/50 rounded-lg" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-pulse">
+            <div className="bg-card rounded-2xl border border-border h-72" />
+            <div className="bg-card rounded-2xl border border-border h-72" />
+          </div>
         </div>
       </>
     );

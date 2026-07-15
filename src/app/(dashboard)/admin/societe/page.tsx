@@ -21,15 +21,13 @@ export default function SocietePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (profile?.role !== "DIRECTION_GENERALE") { setLoading(false); return; }
     (async () => {
-      const { data: companies } = await supabase.from("companies").select("*").limit(1);
+      const [{ data: companies }, { count: orgCount }, { count: profCount }] = await Promise.all([
+        supabase.from("companies").select("*").limit(1),
+        supabase.from("organizations").select("id", { count: "exact", head: true }),
+        supabase.from("profiles").select("id", { count: "exact", head: true }),
+      ]);
       setCompany(companies?.[0] ?? null);
-      const { count: orgCount } = await supabase
-        .from("organizations")
-        .select("id", { count: "exact", head: true });
       setBranchCount(orgCount ?? 0);
-      const { count: profCount } = await supabase
-        .from("profiles")
-        .select("id", { count: "exact", head: true });
       setUserCount(profCount ?? 0);
       setLoading(false);
     })();

@@ -331,17 +331,19 @@ export default function NotificationsPage() {
       const allRows = append ? [...notifications, ...rows] : rows;
       setNotifications(allRows);
       setHasMore(rows.length === PAGE_SIZE);
+      setPage(pageToLoad);
 
+      // Fetch statuts des fiches en arrière-plan (badge décoratif — non bloquant)
       const ficheIds = [...new Set(allRows.filter((n) => n.fiche_id).map((n) => n.fiche_id!))];
       if (ficheIds.length > 0) {
-        const { data: fiches } = await supabase.from("fiches").select("id, status").in("id", ficheIds);
-        if (fiches) {
-          const map: Record<string, FicheStatus> = {};
-          for (const f of fiches as { id: string; status: FicheStatus }[]) map[f.id] = f.status;
-          setFicheStatuses((prev) => ({ ...prev, ...map }));
-        }
+        void supabase.from("fiches").select("id, status").in("id", ficheIds).then(({ data: fiches }) => {
+          if (fiches) {
+            const map: Record<string, FicheStatus> = {};
+            for (const f of fiches as { id: string; status: FicheStatus }[]) map[f.id] = f.status;
+            setFicheStatuses((prev) => ({ ...prev, ...map }));
+          }
+        });
       }
-      setPage(pageToLoad);
     } catch (e) {
       console.error("[fetchNotifications]", e);
       if (!append) setNotifications([]);

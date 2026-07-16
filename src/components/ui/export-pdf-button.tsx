@@ -90,7 +90,8 @@ export function ExportPdfButton({
       try {
         canvas = await html2canvas(main, {
           scale: 2,
-          useCORS: true,
+          allowTaint: true,
+          useCORS: false,
           backgroundColor: "#ffffff",
           logging: false,
         });

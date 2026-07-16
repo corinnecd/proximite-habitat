@@ -191,6 +191,7 @@ export function RouteMap({
       scrollWheelZoom: true,
       zoomAnimation: false,
       fadeAnimation: false,
+      preferCanvas: true,  // polylines rendues sur canvas → capturables par html2canvas
     });
 
     const plan = L.tileLayer(TILES.plan.url, { attribution: TILES.plan.attr, maxNativeZoom: TILES.plan.maxNative, maxZoom: MAX_ZOOM });

@@ -230,6 +230,13 @@
   }
 }
 
+/* PDF export — ensure hero title not truncated + colors rendered */
+body.pdf-printing .hero-surface {
+  overflow: visible;
+  background-color: #0F1E3D !important;
+  color: #FFFFFF !important;
+}
+
 /* Animation cascade des cartes */
 .animate-cascade > * {
   opacity: 0;

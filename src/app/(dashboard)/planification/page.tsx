@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Topbar } from "@/components/layout/Topbar";
-import { ExportPdfButton } from "@/components/ui/export-pdf-button";
 import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
@@ -416,11 +415,6 @@ export default function PlanificationPage() {
         title="Planification hebdomadaire"
         actions={
           <div className="flex items-center gap-2">
-            <ExportPdfButton
-              title="Planification hebdomadaire"
-              subtitle={`Semaine du ${formatDateFr(currentMonday)} — ${formatDateFr(sunday)}`}
-              filename={`planification-${mondayStr}`}
-            />
             <ExportCsvButton
               filename={`planification-${mondayStr}`}
               getData={() => {

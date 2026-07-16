@@ -90,10 +90,12 @@ export function ExportPdfButton({
       try {
         canvas = await html2canvas(main, {
           scale: 2,
-          allowTaint: true,
-          useCORS: false,
+          useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
+          ignoreElements: (el) => {
+            return el.classList && el.classList.contains("leaflet-container");
+          },
         });
       } finally {
         document.body.classList.remove("pdf-printing");

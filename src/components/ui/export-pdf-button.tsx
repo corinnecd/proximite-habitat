@@ -88,14 +88,15 @@ export function ExportPdfButton({
 
       let canvas;
       try {
+        // Attendre que Leaflet finisse de rendre (500ms minimum)
+        await new Promise((r) => setTimeout(r, 500));
+
         canvas = await html2canvas(main, {
           scale: 2,
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
-          ignoreElements: (el) => {
-            return el.classList && el.classList.contains("leaflet-container");
-          },
+          removeContainer: false,
         });
       } finally {
         document.body.classList.remove("pdf-printing");

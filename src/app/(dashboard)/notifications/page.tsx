@@ -695,7 +695,6 @@ export default function NotificationsPage() {
                       type="button"
                       onClick={() => setHistoryOpen((v) => !v)}
                       aria-expanded={historyOpen}
-                      title={historyOpen ? "Replier l'historique" : "Cliquer ici pour faire apparaître toutes les fiches en historique"}
                       className="flex items-center gap-2 group relative px-2 py-1 rounded-lg hover:bg-muted transition-colors"
                     >
                       <ChevronDown

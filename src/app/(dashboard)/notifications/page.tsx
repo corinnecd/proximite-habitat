@@ -696,7 +696,7 @@ export default function NotificationsPage() {
                       onClick={() => setHistoryOpen((v) => !v)}
                       aria-expanded={historyOpen}
                       title={historyOpen ? "Replier l'historique" : "Cliquer ici pour faire apparaître toutes les fiches en historique"}
-                      className="flex items-center gap-2 group relative"
+                      className="flex items-center gap-2 group relative px-2 py-1 rounded-lg hover:bg-muted transition-colors"
                     >
                       <ChevronDown
                         className={`w-4 h-4 text-muted-foreground/50 transition-transform duration-200 group-hover:text-muted-foreground ${historyOpen ? "rotate-180" : ""}`}

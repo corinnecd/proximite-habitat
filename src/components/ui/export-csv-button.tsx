@@ -34,7 +34,7 @@ export function ExportCsvButton({
   };
 
   return (
-    <Button variant={variant} size={size} className={className} onClick={handleExport} disabled={loading}>
+    <Button variant={variant} size={size} className={className} onClick={handleExport} disabled={loading} data-no-print>
       {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
       <span className="ml-1.5">CSV</span>
     </Button>

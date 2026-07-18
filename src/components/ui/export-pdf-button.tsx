@@ -122,11 +122,9 @@ export function ExportPdfButton({
         el.style.setProperty("overflow", "visible", "important");
       });
 
-      // Masquer les contrôles interactifs
+      // Masquer uniquement les boutons d'export (pas les boutons de contenu)
       main
-        .querySelectorAll<HTMLElement>(
-          "button:not(.leaflet-control button), input, select, [data-no-print]"
-        )
+        .querySelectorAll<HTMLElement>("[data-no-print]")
         .forEach((el) => el.style.setProperty("visibility", "hidden", "important"));
       main
         .querySelectorAll<HTMLElement>(
@@ -171,11 +169,9 @@ export function ExportPdfButton({
             el.style.setProperty("white-space", "normal", "important");
           });
 
-          // Masquer les contrôles dans le clone
+          // Masquer uniquement les boutons d'export dans le clone
           clonedMain
-            .querySelectorAll<HTMLElement>(
-              "button:not(.leaflet-control button), input, select, [data-no-print]"
-            )
+            .querySelectorAll<HTMLElement>("[data-no-print]")
             .forEach((el) => el.style.setProperty("visibility", "hidden", "important"));
           clonedMain
             .querySelectorAll<HTMLElement>(
@@ -216,9 +212,7 @@ export function ExportPdfButton({
         el.style.removeProperty("overflow");
       });
       main
-        .querySelectorAll<HTMLElement>(
-          "button:not(.leaflet-control button), input, select, [data-no-print]"
-        )
+        .querySelectorAll<HTMLElement>("[data-no-print]")
         .forEach((el) => el.style.removeProperty("visibility"));
       main
         .querySelectorAll<HTMLElement>(

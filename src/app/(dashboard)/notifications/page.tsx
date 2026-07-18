@@ -704,7 +704,7 @@ export default function NotificationsPage() {
                         Historique · {totalCount}
                       </h2>
                       {!historyOpen && (
-                        <span className="absolute left-0 -top-8 z-10 hidden group-hover:flex items-center whitespace-nowrap bg-foreground text-background text-[11px] font-medium px-2.5 py-1 rounded-lg shadow-md pointer-events-none">
+                        <span className="absolute left-0 -top-8 z-10 hidden group-hover:flex items-center whitespace-nowrap bg-muted text-muted-foreground border border-border text-[11px] font-medium px-2.5 py-1 rounded-lg shadow-sm pointer-events-none">
                           Cliquer ici pour afficher tout l&apos;historique
                         </span>
                       )}

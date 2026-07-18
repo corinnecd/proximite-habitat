@@ -47,7 +47,7 @@ const CSV_COLUMNS: CsvColumn<FicheCsvRow>[] = [
 ];
 
 const PAGE_SIZE = 100;
-const VISIBLE_INIT = PAGE_SIZE;
+const VISIBLE_INIT = 5;
 
 const STATUS_LABELS_PLURAL: Record<FicheStatus, string> = {
   BROUILLON: "brouillons", SOUMISE: "à valider", VALIDEE: "validées",
@@ -765,24 +765,23 @@ export default function FichesPage() {
           <div className="flex justify-center gap-3">
             {visibleCount < fiches.length ? (
               <Button
-                variant="outline"
-                onClick={() => setVisibleCount((n) => n + VISIBLE_INIT)}
-                className="rounded-xl gap-2"
+                variant="ghost"
+                size="sm"
+                onClick={() => setVisibleCount(fiches.length)}
+                className="rounded-xl gap-1.5 text-muted-foreground hover:text-foreground text-xs"
               >
-                <ChevronDown className="w-4 h-4" />
-                Voir plus
-                <span className="text-xs text-muted-foreground">
-                  ({fiches.length - visibleCount} restante{fiches.length - visibleCount > 1 ? "s" : ""})
-                </span>
+                <ChevronDown className="w-3.5 h-3.5" />
+                Voir plus ({fiches.length - visibleCount})
               </Button>
             ) : null}
             {visibleCount > VISIBLE_INIT ? (
               <Button
-                variant="outline"
+                variant="ghost"
+                size="sm"
                 onClick={() => setVisibleCount(VISIBLE_INIT)}
-                className="rounded-xl gap-2"
+                className="rounded-xl gap-1.5 text-muted-foreground hover:text-foreground text-xs"
               >
-                <ChevronUp className="w-4 h-4" />
+                <ChevronUp className="w-3.5 h-3.5" />
                 Voir moins
               </Button>
             ) : null}

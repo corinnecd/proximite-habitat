@@ -111,7 +111,7 @@ export default function ResetPasswordPage() {
       <div className="flex-1 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-[420px]">
           <div className="lg:hidden flex items-center gap-3 mb-10 justify-center">
-            <div className="w-11 h-11 bg-[#0F1E3D] rounded-xl flex items-center justify-center">
+            <div className="w-11 h-11 bg-[#1B2659] rounded-xl flex items-center justify-center">
               <Building2 className="w-6 h-6 text-orange-400" />
             </div>
             <div>

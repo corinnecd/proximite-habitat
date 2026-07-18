@@ -68,8 +68,8 @@
   --popover-foreground: #1d1d1f;
   --primary: #1B2659;
   --primary-foreground: #FFFFFF;
-  /* Brand tokens centralisés */
-  --hero: #0F1E3D;
+  /* Brand tokens centralisés — hero utilise couleur sidebar pour meilleure visibilité */
+  --hero: #1B2659;
   --hero-foreground: #FFFFFF;
   --brand: #F97316;
   --brand-hover: #EA580C;
@@ -115,8 +115,8 @@
   --popover-foreground: #E2E8F0;
   --primary: #3E6293;
   --primary-foreground: #FFFFFF;
-  /* Brand tokens dark mode */
-  --hero: #0A1428;
+  /* Brand tokens dark mode — hero utilise couleur sidebar pour meilleure visibilité */
+  --hero: #16233A;
   --hero-foreground: #FFFFFF;
   --brand: #F97316;
   --brand-hover: #FB923C;
@@ -178,7 +178,7 @@
   background-color: var(--brand-hover);
 }
 
-/* Hero surface — fond navy signature avec cercles décoratifs */
+/* Hero surface — fond bleu sidebar avec cercles décoratifs */
 .hero-surface {
   background-color: var(--hero);
   color: var(--hero-foreground);
@@ -233,7 +233,7 @@
 /* PDF export — ensure hero title not truncated + colors rendered */
 body.pdf-printing .hero-surface {
   overflow: visible;
-  background-color: #0F1E3D !important;
+  background-color: #1B2659 !important;
   color: #FFFFFF !important;
 }
 

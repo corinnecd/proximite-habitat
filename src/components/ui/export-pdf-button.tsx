@@ -77,9 +77,9 @@ export function ExportPdfButton({
         // onclone = seule méthode fiable pour appliquer des styles avant rendu
         // car html2canvas ne résout pas les CSS custom properties (var(--hero))
         onclone: (_clonedDoc: Document, clonedMain: HTMLElement) => {
-          // ── Hero : fond navy + texte blanc ──────────────────────────────
+          // ── Hero : fond bleu sidebar + texte blanc ────────────────────
           clonedMain.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
-            el.style.setProperty("background-color", "#0F1E3D", "important");
+            el.style.setProperty("background-color", "#1B2659", "important");
             el.style.setProperty("color", "#FFFFFF", "important");
             el.style.setProperty("overflow", "visible", "important");
           });

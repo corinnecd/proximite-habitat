@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import {
   UserPlus, Loader2, Shield, Mail, Phone, Search,
   CheckCircle2, XCircle, Pencil,
-  ChevronDown, ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 
 const VISIBLE_INIT = 5;
@@ -220,7 +220,7 @@ export default function UtilisateursPage() {
       <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* ═══ HERO UTILISATEURS — navy signature ═══════════════════════ */}
-        <div className="hero-surface hero-surface-sm animate-hero-entry rounded-3xl p-6 sm:p-7">
+        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
           <div className="relative z-10">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
               <div>
@@ -312,7 +312,7 @@ export default function UtilisateursPage() {
             </div>
 
             {/* Recherche + filtres rôle intégrés dans le hero */}
-            <div className="flex flex-col sm:flex-row gap-3 mt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-5 border-t border-white/10">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
                 <input
@@ -440,30 +440,16 @@ export default function UtilisateursPage() {
         )}
 
         {!loading && filtered.length > VISIBLE_INIT && (
-          <div className="flex justify-center gap-3">
-            {visibleCount < filtered.length ? (
-              <Button
-                variant="outline"
-                onClick={() => setVisibleCount((n) => n + VISIBLE_INIT)}
-                className="rounded-xl gap-2"
-              >
-                <ChevronDown className="w-4 h-4" />
-                Voir plus
-                <span className="text-xs text-muted-foreground">
-                  ({filtered.length - visibleCount} restant{filtered.length - visibleCount > 1 ? "s" : ""})
-                </span>
-              </Button>
-            ) : null}
-            {visibleCount > VISIBLE_INIT ? (
-              <Button
-                variant="outline"
-                onClick={() => setVisibleCount(VISIBLE_INIT)}
-                className="rounded-xl gap-2"
-              >
-                <ChevronUp className="w-4 h-4" />
-                Voir moins
-              </Button>
-            ) : null}
+          <div className="flex justify-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setVisibleCount((n) => n > VISIBLE_INIT ? VISIBLE_INIT : filtered.length)}
+              className="gap-1.5 text-muted-foreground hover:text-foreground rounded-xl text-xs"
+            >
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${visibleCount > VISIBLE_INIT ? "rotate-180" : ""}`} />
+              {visibleCount > VISIBLE_INIT ? "Voir moins" : `Voir plus (${filtered.length - VISIBLE_INIT})`}
+            </Button>
           </div>
         )}
         {!loading && filtered.length > 0 && (

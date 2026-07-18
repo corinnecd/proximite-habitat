@@ -421,16 +421,16 @@ export default function ReportingPage() {
       <>
         <Topbar title="Reporting" />
         <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
-          <div className="rounded-3xl bg-[#1E3A5F] p-6 sm:p-7 animate-pulse">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
+          <div className="rounded-3xl bg-[#1E3A5F] p-6 sm:p-7">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5 animate-pulse">
               <div className="space-y-2">
                 <div className="h-2.5 w-24 bg-white/10 rounded-full" />
                 <div className="h-9 w-48 bg-white/15 rounded-xl" />
-                <div className="h-3 w-64 bg-white/8 rounded-full" />
+                <div className="h-3 w-64 bg-white/10 rounded-full" />
               </div>
               <div className="h-10 w-28 bg-white/10 rounded-xl" />
             </div>
-            <div className="pt-5 border-t border-white/10 flex gap-2 flex-wrap">
+            <div className="pt-5 border-t border-white/10 flex gap-2 flex-wrap animate-pulse">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="h-7 w-20 bg-white/10 rounded-full" />
               ))}

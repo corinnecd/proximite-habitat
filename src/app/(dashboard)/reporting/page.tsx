@@ -414,13 +414,13 @@ export default function ReportingPage() {
 
 
 
-  // ── Loading ────────────────────────────────────────────────────────────────
-  if (profileLoading || loading) {
+  const isLoading = profileLoading || loading;
+
+  if (isLoading) {
     return (
       <>
         <Topbar title="Reporting" />
         <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-          {/* Hero skeleton */}
           <div className="rounded-3xl bg-[#1E3A5F] p-6 sm:p-7 animate-pulse">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
               <div className="space-y-2">
@@ -436,7 +436,6 @@ export default function ReportingPage() {
               ))}
             </div>
           </div>
-          {/* KPI cards skeleton */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-pulse">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="bg-card rounded-2xl border border-border border-l-4 border-l-muted p-5 space-y-3">
@@ -448,7 +447,6 @@ export default function ReportingPage() {
               </div>
             ))}
           </div>
-          {/* Tables skeleton */}
           <div className="bg-card rounded-2xl border border-border p-6 animate-pulse space-y-4">
             <div className="h-5 w-48 bg-muted rounded-full" />
             {Array.from({ length: 4 }).map((_, i) => (
@@ -484,10 +482,10 @@ export default function ReportingPage() {
           ],
         })} /></div>}
       />
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6" style={{ animation: "fadeIn 0.25s ease both" }}>
 
         {/* ═══ HERO REPORTING — navy signature avec KPI vedette + filtre période ═══ */}
-        <div className="hero-surface hero-surface-sm animate-hero-entry rounded-3xl p-6 sm:p-7">
+        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
           <div className="relative z-10">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
               <div>

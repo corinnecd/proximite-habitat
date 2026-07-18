@@ -789,25 +789,6 @@ export default function FichesPage() {
           </div>
         )}
 
-        {isValidationMode && validationStats.length > 0 && (
-          <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Évolution des validations — Trimestre en cours {quarterLabel}</h3>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={validationStats} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} angle={-35} textAnchor="end" height={60} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{ borderRadius: "0.75rem", border: "1px solid var(--border)", background: "var(--card)" }}
-                  formatter={(value, name) => [value, name]}
-                />
-                <Bar dataKey="soumises" name="À valider" fill="#F97316" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="affectees" name="Validées et affectées" fill="#1B2659" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="validees" name="Acceptation Client" fill="#10B981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
       </div>
     </>
   );

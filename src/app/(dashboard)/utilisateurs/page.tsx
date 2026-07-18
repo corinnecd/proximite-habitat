@@ -27,7 +27,7 @@ import {
   ChevronDown, ChevronUp,
 } from "lucide-react";
 
-const VISIBLE_INIT = 10;
+const VISIBLE_INIT = 5;
 
 // ── Palette rôle ──────────────────────────────────────────────────────────────
 

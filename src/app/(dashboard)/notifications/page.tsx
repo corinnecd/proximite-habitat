@@ -282,7 +282,10 @@ export default function NotificationsPage() {
   const [deleteFicheId, setDeleteFicheId] = useState<string | null>(null);
   const [deleteMotif, setDeleteMotif] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [showAllUnread, setShowAllUnread] = useState(false);
+  const [showAllRead, setShowAllRead] = useState(false);
+
+  const VISIBLE_COUNT = 5;
 
   // Filtres
   const [searchInput, setSearchInput] = useState("");
@@ -673,75 +676,45 @@ export default function NotificationsPage() {
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {sorted.unread.map((n) => (
+                  {(showAllUnread ? sorted.unread : sorted.unread.slice(0, VISIBLE_COUNT)).map((n) => (
                     <NotifCard key={n.id} notif={n} ficheStatus={n.fiche_id ? ficheStatuses[n.fiche_id] : undefined} onClick={handleClick} onMarkRead={markAsRead} onDelete={profile?.role === "ADMIN" ? handleDeleteRequest : undefined} />
                   ))}
                 </div>
+                {sorted.unread.length > VISIBLE_COUNT && (
+                  <div className="flex justify-center mt-3">
+                    <Button variant="ghost" size="sm" onClick={() => setShowAllUnread((v) => !v)} className="gap-1.5 text-muted-foreground hover:text-foreground rounded-xl text-xs">
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAllUnread ? "rotate-180" : ""}`} />
+                      {showAllUnread ? "Voir moins" : `Voir plus (${sorted.unread.length - VISIBLE_COUNT})`}
+                    </Button>
+                  </div>
+                )}
               </section>
             )}
 
-            {/* ── Section : Lues, groupées par date (1ère visible, reste pliée) ── */}
+            {/* ── Section : Lues, groupées par date ── */}
             {!showUnreadOnly && groups.length > 0 && (() => {
-              const latestNotif = groups[0].notifications[0];
-              const totalCount = groups.reduce((acc, g) => acc + g.notifications.length, 0);
-              const restGroups = groups.map((g, gi) => gi === 0
-                ? { ...g, notifications: g.notifications.slice(1) }
-                : g
-              ).filter((g) => g.notifications.length > 0);
-              const hasMore2 = totalCount > 1;
+              const allRead = groups.flatMap((g) => g.notifications);
+              const totalCount = allRead.length;
+              const visibleRead = showAllRead ? allRead : allRead.slice(0, VISIBLE_COUNT);
               return (
                 <section className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setHistoryOpen((v) => !v)}
-                      aria-expanded={historyOpen}
-                      className="flex items-center gap-2 group relative px-2 py-1 rounded-lg hover:bg-muted transition-colors"
-                    >
-                      <ChevronDown
-                        className={`w-4 h-4 text-muted-foreground/50 transition-transform duration-200 group-hover:text-muted-foreground ${historyOpen ? "rotate-180" : ""}`}
-                      />
-                      <h2 className="text-xs font-semibold tracking-widest uppercase text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">
-                        Historique · {totalCount}
-                      </h2>
-                      {!historyOpen && (
-                        <span className="absolute left-0 -top-8 z-10 hidden group-hover:flex items-center whitespace-nowrap bg-muted text-muted-foreground border border-border text-[11px] font-medium px-2.5 py-1 rounded-lg shadow-sm pointer-events-none">
-                          Cliquer ici pour afficher tout l&apos;historique
-                        </span>
-                      )}
-                    </button>
+                    <h2 className="text-xs font-semibold tracking-widest uppercase text-muted-foreground/60">
+                      Historique · {totalCount}
+                    </h2>
                     <div className="flex-1 h-px bg-border/40" />
                   </div>
-
-                  {/* Dernière notification toujours visible */}
-                  <NotifCard
-                    notif={latestNotif}
-                    ficheStatus={latestNotif.fiche_id ? ficheStatuses[latestNotif.fiche_id] : undefined}
-                    onClick={handleClick}
-                    onMarkRead={markAsRead}
-                    onDelete={profile?.role === "ADMIN" ? handleDeleteRequest : undefined}
-                  />
-
-                  {/* Le reste, déplié au clic */}
-                  {historyOpen && hasMore2 && (
-                    <div className="space-y-5">
-                      {restGroups.map((group) => {
-                        const GroupIcon = group.icon;
-                        return (
-                          <div key={group.label}>
-                            <div className="flex items-center gap-2 mb-2">
-                              <GroupIcon className="w-3.5 h-3.5 text-muted-foreground/50" />
-                              <span className="text-xs font-medium text-muted-foreground/60">{group.label}</span>
-                              <div className="flex-1 h-px bg-border/30" />
-                            </div>
-                            <div className="space-y-2">
-                              {group.notifications.map((n) => (
-                                <NotifCard key={n.id} notif={n} ficheStatus={n.fiche_id ? ficheStatuses[n.fiche_id] : undefined} onClick={handleClick} onMarkRead={markAsRead} onDelete={profile?.role === "ADMIN" ? handleDeleteRequest : undefined} />
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
+                  <div className="space-y-2">
+                    {visibleRead.map((n) => (
+                      <NotifCard key={n.id} notif={n} ficheStatus={n.fiche_id ? ficheStatuses[n.fiche_id] : undefined} onClick={handleClick} onMarkRead={markAsRead} onDelete={profile?.role === "ADMIN" ? handleDeleteRequest : undefined} />
+                    ))}
+                  </div>
+                  {totalCount > VISIBLE_COUNT && (
+                    <div className="flex justify-center mt-1">
+                      <Button variant="ghost" size="sm" onClick={() => setShowAllRead((v) => !v)} className="gap-1.5 text-muted-foreground hover:text-foreground rounded-xl text-xs">
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAllRead ? "rotate-180" : ""}`} />
+                        {showAllRead ? "Voir moins" : `Voir plus (${totalCount - VISIBLE_COUNT})`}
+                      </Button>
                     </div>
                   )}
                 </section>

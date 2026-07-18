@@ -76,6 +76,7 @@ export function ExportPdfButton({
     // Tag de style temporaire — nettoyé dans le finally
     const captureStyle = document.createElement("style");
     captureStyle.id = "__pdf-capture-override__";
+    let savedScrollY = 0;
 
     try {
       await preloadPromise;
@@ -98,8 +99,10 @@ export function ExportPdfButton({
       //   aussi dans l'iframe isolée.
       // → !important dans un stylesheet d'auteur bat les animations CSS
       //   et les styles inline sans !important.
+      // Neutralise les animations sur la page live (les <style> survivent au clone)
+      // NB: on n'y met PAS .hero-surface — color:#fff cascaderait aux boutons
+      // et les rendrait invisibles sur fond blanc pendant la capture.
       captureStyle.textContent = `
-        /* Neutraliser toutes les animations pour l'export PDF */
         [class*="animate-"],
         [style*="animation"] {
           animation: none !important;
@@ -108,16 +111,14 @@ export function ExportPdfButton({
           transform: none !important;
           transition: none !important;
         }
-        /* Hero : couleur navy forcée (var(--hero) ne se résout pas dans l'iframe isolée) */
-        .hero-surface {
-          background-color: #1E3A5F !important;
-          color: #FFFFFF !important;
-          overflow: visible !important;
-        }
       `;
       document.head.appendChild(captureStyle);
 
-      // Attendre que le navigateur applique les styles (2 frames ≈ 32ms)
+      // Scroll au top pour que html2canvas capture depuis le début du contenu
+      savedScrollY = window.scrollY;
+      window.scrollTo({ top: 0, behavior: "instant" });
+
+      // Attendre que le navigateur applique les styles + scroll (2 frames ≈ 32ms)
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
       // ── 2. Capture ────────────────────────────────────────────────────────
@@ -127,9 +128,17 @@ export function ExportPdfButton({
         backgroundColor: "#ffffff",
         logging: false,
         removeContainer: false,
+        windowScrollX: 0,
+        windowScrollY: 0,
         onclone: (clonedDoc: Document, clonedMain: HTMLElement) => {
-          // La <style> ci-dessus est déjà dans le clone (cloné avec le <head>).
-          // Les ajustements suivants sont spécifiques au clone.
+          // Hero : var(--hero) ne se résout pas dans l'iframe isolée → couleurs hardcodées.
+          // Fait ici (clone) et non dans captureStyle (page live) pour ne pas
+          // cascader color:#fff sur les boutons de la page réelle.
+          clonedMain.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
+            el.style.setProperty("background-color", "#1E3A5F", "important");
+            el.style.setProperty("color", "#FFFFFF", "important");
+            el.style.setProperty("overflow", "visible", "important");
+          });
 
           // Supprimer la troncature du titre dans la Topbar
           clonedMain.querySelectorAll<HTMLElement>(".truncate").forEach((el) => {
@@ -220,8 +229,8 @@ export function ExportPdfButton({
       console.error("[PDF export]", e);
       showToast("Erreur lors de l'export PDF");
     } finally {
-      // Retirer le style temporaire dans tous les cas (succès ou erreur)
       captureStyle.remove();
+      if (savedScrollY > 0) window.scrollTo({ top: savedScrollY, behavior: "instant" });
       setLoading(false);
     }
   }

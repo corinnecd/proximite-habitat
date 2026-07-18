@@ -68,8 +68,8 @@
   --popover-foreground: #1d1d1f;
   --primary: #1B2659;
   --primary-foreground: #FFFFFF;
-  /* Brand tokens centralisés — hero utilise couleur sidebar pour meilleure visibilité */
-  --hero: #1B2659;
+  /* Brand tokens centralisés — hero = même couleur que sidebar #1E3A5F */
+  --hero: #1E3A5F;
   --hero-foreground: #FFFFFF;
   --brand: #F97316;
   --brand-hover: #EA580C;
@@ -96,7 +96,7 @@
   --chart-4: #F59E0B;
   --chart-5: #6e6e73;
   --radius: 1rem;
-  --sidebar: #1B2659;
+  --sidebar: #1E3A5F;
   --sidebar-foreground: #E2E8F0;
   --sidebar-primary: #F97316;
   --sidebar-primary-foreground: #FFFFFF;
@@ -115,8 +115,8 @@
   --popover-foreground: #E2E8F0;
   --primary: #3E6293;
   --primary-foreground: #FFFFFF;
-  /* Brand tokens dark mode — hero utilise couleur sidebar pour meilleure visibilité */
-  --hero: #16233A;
+  /* Brand tokens dark mode */
+  --hero: #1E3A5F;
   --hero-foreground: #FFFFFF;
   --brand: #F97316;
   --brand-hover: #FB923C;
@@ -233,7 +233,7 @@
 /* PDF export — ensure hero title not truncated + colors rendered */
 body.pdf-printing .hero-surface {
   overflow: visible;
-  background-color: #1B2659 !important;
+  background-color: #1E3A5F !important;
   color: #FFFFFF !important;
 }
 

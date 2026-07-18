@@ -79,7 +79,7 @@ export function ExportPdfButton({
         onclone: (_clonedDoc: Document, clonedMain: HTMLElement) => {
           // ── Hero : fond bleu sidebar + texte blanc ────────────────────
           clonedMain.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
-            el.style.setProperty("background-color", "#1B2659", "important");
+            el.style.setProperty("background-color", "#1E3A5F", "important");
             el.style.setProperty("color", "#FFFFFF", "important");
             el.style.setProperty("overflow", "visible", "important");
           });

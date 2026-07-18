@@ -421,7 +421,7 @@ export default function ReportingPage() {
         <Topbar title="Reporting" />
         <div className="p-4 sm:p-6 lg:p-8 space-y-6">
           {/* Hero skeleton */}
-          <div className="rounded-3xl bg-[#1B2659] p-6 sm:p-7 animate-pulse">
+          <div className="rounded-3xl bg-[#1E3A5F] p-6 sm:p-7 animate-pulse">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
               <div className="space-y-2">
                 <div className="h-2.5 w-24 bg-white/10 rounded-full" />

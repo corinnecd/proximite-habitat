@@ -26,18 +26,6 @@ interface ExportPdfButtonProps {
   printLayout?: "default" | "3col";
 }
 
-// Classes CSS qui démarrent des animations à opacity:0 / transform décalé.
-// Dans l'iframe html2canvas ces animations REDÉMARRENT depuis le début,
-// rendant les éléments invisibles (opacity:0) lors de la capture.
-const ANIMATED_SELECTORS = [
-  ".animate-hero-entry",
-  ".animate-cascade > *",
-  ".animate-counter-pop",
-  ".animate-progress-reveal",
-  ".animate-success-pop",
-  ".animate-chip-tap",
-].join(", ");
-
 export function ExportPdfButton({
   title,
   subtitle,
@@ -84,6 +72,11 @@ export function ExportPdfButton({
   async function handleExport() {
     setLoading(true);
     showToast("Génération du PDF en cours…");
+
+    // Tag de style temporaire — nettoyé dans le finally
+    const captureStyle = document.createElement("style");
+    captureStyle.id = "__pdf-capture-override__";
+
     try {
       await preloadPromise;
       const html2canvas = html2canvasLib!;
@@ -95,54 +88,37 @@ export function ExportPdfButton({
         return;
       }
 
-      // ── 1. Préparer le DOM live avant la capture ─────────────────────────
+      // ── 1. Injecter une feuille de style temporaire dans le <head> live ──
       //
-      // PROBLÈME RACINE : html2canvas crée un clone du DOM puis l'adopte dans
-      // un <iframe> isolé. Toutes les animations CSS (animation: heroEntry,
-      // fadeSlideIn, counterPop…) REDÉMARRENT dans l'iframe, rendant les
-      // éléments invisibles (opacity:0) au moment de la capture.
-      //
-      // SOLUTION : figer les animations + forcer l'état final (opacity:1,
-      // transform:none) EN INLINE STYLE sur les éléments du DOM live.
-      // Ces styles inline sont copiés dans le clone via cloneNode() et
-      // l'iframe hérite donc des valeurs finales, pas de l'état initial.
+      // POURQUOI ce choix plutôt que setProperty() sur les éléments ?
+      // → React peut ré-écraser les styles inline pendant le setTimeout/rAF.
+      // → Une <style> injectée dans document.head n'est pas gérée par React.
+      // → html2canvas clone document.documentElement (incluant <head>) avant
+      //   d'ouvrir l'iframe, donc ce tag voyage dans le clone et s'applique
+      //   aussi dans l'iframe isolée.
+      // → !important dans un stylesheet d'auteur bat les animations CSS
+      //   et les styles inline sans !important.
+      captureStyle.textContent = `
+        /* Neutraliser toutes les animations pour l'export PDF */
+        [class*="animate-"],
+        [style*="animation"] {
+          animation: none !important;
+          animation-delay: 0s !important;
+          opacity: 1 !important;
+          transform: none !important;
+          transition: none !important;
+        }
+        /* Hero : couleur navy forcée (var(--hero) ne se résout pas dans l'iframe isolée) */
+        .hero-surface {
+          background-color: #1E3A5F !important;
+          color: #FFFFFF !important;
+          overflow: visible !important;
+        }
+      `;
+      document.head.appendChild(captureStyle);
 
-      // Figer animations via classe (ex: animate-hero-entry, animate-cascade > *)
-      main.querySelectorAll<HTMLElement>(ANIMATED_SELECTORS).forEach((el) => {
-        el.style.setProperty("animation", "none", "important");
-        el.style.setProperty("animation-delay", "0s", "important");
-        el.style.setProperty("opacity", "1", "important");
-        el.style.setProperty("transform", "none", "important");
-        el.style.setProperty("transition", "none", "important");
-      });
-
-      // Figer animations inline (style="animation: fadeSlideIn…")
-      // Ces éléments n'ont pas de classe animate- mais redémarrent à opacity:0
-      main.querySelectorAll<HTMLElement>("[style*='animation']").forEach((el) => {
-        el.style.setProperty("animation", "none", "important");
-        el.style.setProperty("animation-delay", "0s", "important");
-        el.style.setProperty("opacity", "1", "important");
-        el.style.setProperty("transform", "none", "important");
-      });
-
-      // Hero : fond navy exact (résolution forcée de var(--hero))
-      main.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
-        el.style.setProperty("background-color", "#1E3A5F", "important");
-        el.style.setProperty("color", "#FFFFFF", "important");
-        el.style.setProperty("overflow", "visible", "important");
-      });
-
-      // Les boutons [data-no-print] ne sont masqués QUE dans le clone (onclone)
-      // pour éviter qu'ils disparaissent visuellement à l'écran pendant la capture.
-      main
-        .querySelectorAll<HTMLElement>(
-          ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"
-        )
-        .forEach((el) => el.style.setProperty("display", "none", "important"));
-
-      // Laisser le navigateur repeindre
+      // Attendre que le navigateur applique les styles (2 frames ≈ 32ms)
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-      await new Promise((r) => setTimeout(r, 300));
 
       // ── 2. Capture ────────────────────────────────────────────────────────
       const canvas = await html2canvas(main, {
@@ -152,41 +128,17 @@ export function ExportPdfButton({
         logging: false,
         removeContainer: false,
         onclone: (clonedDoc: Document, clonedMain: HTMLElement) => {
-          // Double sécurité dans le clone (au cas où les styles inline
-          // n'auraient pas été copiés ou auraient été écrasés)
+          // La <style> ci-dessus est déjà dans le clone (cloné avec le <head>).
+          // Les ajustements suivants sont spécifiques au clone.
 
-          // Figer les animations dans le clone (classe)
-          clonedMain.querySelectorAll<HTMLElement>(ANIMATED_SELECTORS).forEach((el) => {
-            el.style.setProperty("animation", "none", "important");
-            el.style.setProperty("animation-delay", "0s", "important");
-            el.style.setProperty("opacity", "1", "important");
-            el.style.setProperty("transform", "none", "important");
-            el.style.setProperty("transition", "none", "important");
-          });
-
-          // Figer les animations inline dans le clone (style="animation: fadeSlideIn…")
-          clonedMain.querySelectorAll<HTMLElement>("[style*='animation']").forEach((el) => {
-            el.style.setProperty("animation", "none", "important");
-            el.style.setProperty("animation-delay", "0s", "important");
-            el.style.setProperty("opacity", "1", "important");
-            el.style.setProperty("transform", "none", "important");
-          });
-
-          // Hero dans le clone
-          clonedMain.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
-            el.style.setProperty("background-color", "#1E3A5F", "important");
-            el.style.setProperty("color", "#FFFFFF", "important");
-            el.style.setProperty("overflow", "visible", "important");
-          });
-
-          // Supprimer la troncature .truncate (ex : titre du Topbar)
+          // Supprimer la troncature du titre dans la Topbar
           clonedMain.querySelectorAll<HTMLElement>(".truncate").forEach((el) => {
             el.style.setProperty("overflow", "visible", "important");
             el.style.setProperty("text-overflow", "unset", "important");
             el.style.setProperty("white-space", "normal", "important");
           });
 
-          // Masquer les éléments [data-no-print] dans le clone (display:none = pas d'espace blanc)
+          // Masquer les éléments non destinés à l'export (display:none = pas d'espace blanc)
           clonedMain
             .querySelectorAll<HTMLElement>("[data-no-print]")
             .forEach((el) => el.style.setProperty("display", "none", "important"));
@@ -195,57 +147,10 @@ export function ExportPdfButton({
               ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"
             )
             .forEach((el) => el.style.setProperty("display", "none", "important"));
-
-          // Injecter une règle globale dans le <head> du clone pour
-          // neutraliser tout reste d'animation non ciblée ci-dessus
-          const noAnim = clonedDoc.createElement("style");
-          noAnim.textContent = `
-            [class*="animate-"],
-            [style*="animation"] {
-              animation: none !important;
-              animation-delay: 0s !important;
-              opacity: 1 !important;
-              transform: none !important;
-              transition: none !important;
-            }
-            .hero-surface {
-              background-color: #1E3A5F !important;
-              color: #FFFFFF !important;
-              overflow: visible !important;
-            }
-          `;
-          clonedDoc.head.appendChild(noAnim);
         },
       });
 
-      // ── 3. Restaurer le DOM ───────────────────────────────────────────────
-      main.querySelectorAll<HTMLElement>(ANIMATED_SELECTORS).forEach((el) => {
-        el.style.removeProperty("animation");
-        el.style.removeProperty("animation-delay");
-        el.style.removeProperty("opacity");
-        el.style.removeProperty("transform");
-        el.style.removeProperty("transition");
-      });
-      // Restaurer les éléments à animation inline
-      main.querySelectorAll<HTMLElement>("[style*='animation']").forEach((el) => {
-        el.style.removeProperty("animation");
-        el.style.removeProperty("animation-delay");
-        el.style.removeProperty("opacity");
-        el.style.removeProperty("transform");
-      });
-      main.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
-        el.style.removeProperty("background-color");
-        el.style.removeProperty("color");
-        el.style.removeProperty("overflow");
-      });
-      // [data-no-print] n'est PAS modifié sur le DOM live — pas de restore nécessaire.
-      main
-        .querySelectorAll<HTMLElement>(
-          ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"
-        )
-        .forEach((el) => el.style.removeProperty("display"));
-
-      // ── 4. Générer le PDF ─────────────────────────────────────────────────
+      // ── 3. Générer le PDF ─────────────────────────────────────────────────
       const imgWidth = 190;
       const pageHeight = 277;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -315,6 +220,8 @@ export function ExportPdfButton({
       console.error("[PDF export]", e);
       showToast("Erreur lors de l'export PDF");
     } finally {
+      // Retirer le style temporaire dans tous les cas (succès ou erreur)
+      captureStyle.remove();
       setLoading(false);
     }
   }

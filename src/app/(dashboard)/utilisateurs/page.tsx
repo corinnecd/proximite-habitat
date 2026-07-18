@@ -62,7 +62,7 @@ export default function UtilisateursPage() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "ALL">("ALL");
-  const [visibleCount, setVisibleCount] = useState(VISIBLE_INIT);
+  const [showAll, setShowAll] = useState(false);
   const [newUser, setNewUser] = useState({
     email: "", password: "", first_name: "", last_name: "",
     role: "PROSPECTEUR" as UserRole, phone: "",
@@ -96,9 +96,9 @@ export default function UtilisateursPage() {
     });
   }, [branchScopedUsers, roleFilter, search]);
 
-  // Reset pagination when filters change (moved out of useMemo per lint rule)
+  // Replier la liste quand les filtres changent
   useEffect(() => {
-    setVisibleCount(VISIBLE_INIT);
+    setShowAll(false);
   }, [branchScopedUsers, roleFilter, search]);
 
   const stats = useMemo(() => ({
@@ -368,7 +368,7 @@ export default function UtilisateursPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {filtered.slice(0, visibleCount).map((user) => {
+            {(showAll ? filtered : filtered.slice(0, VISIBLE_INIT)).map((user) => {
               const s = ROLE_STYLE[user.role];
               const initials = `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
               const isMe = user.id === profile?.id;
@@ -444,17 +444,17 @@ export default function UtilisateursPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setVisibleCount((n) => n > VISIBLE_INIT ? VISIBLE_INIT : filtered.length)}
+              onClick={() => setShowAll((v) => !v)}
               className="gap-1.5 text-muted-foreground hover:text-foreground rounded-xl text-xs"
             >
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${visibleCount > VISIBLE_INIT ? "rotate-180" : ""}`} />
-              {visibleCount > VISIBLE_INIT ? "Voir moins" : `Voir plus (${filtered.length - VISIBLE_INIT})`}
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAll ? "rotate-180" : ""}`} />
+              {showAll ? "Voir moins" : `Voir plus (${filtered.length - VISIBLE_INIT})`}
             </Button>
           </div>
         )}
         {!loading && filtered.length > 0 && (
           <p className="text-xs text-muted-foreground text-center">
-            {Math.min(visibleCount, filtered.length)} utilisateur{Math.min(visibleCount, filtered.length) > 1 ? "s" : ""} affiché{Math.min(visibleCount, filtered.length) > 1 ? "s" : ""} sur {filtered.length}
+            {showAll ? filtered.length : Math.min(VISIBLE_INIT, filtered.length)} utilisateur{filtered.length > 1 ? "s" : ""} affiché{filtered.length > 1 ? "s" : ""} sur {filtered.length}
             {filtered.length !== users.length && ` (${users.length} au total)`}
           </p>
         )}

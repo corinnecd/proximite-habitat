@@ -710,7 +710,7 @@ export default function DashboardPage() {
   if (profileLoading || loading) {
     return (
       <>
-        <Topbar title="Tableau de bord" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" />{!isReferent && <ExportCsvButton filename="dashboard" getData={getDashboardCsvData} />}</div>} />
+        <Topbar title="Tableau de bord" actions={!isReferent ? <div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" /><ExportCsvButton filename="dashboard" getData={getDashboardCsvData} />}</div>} />
         <div className="p-4 sm:p-6 lg:p-8 space-y-8 animate-pulse">
           {/* Greeting */}
           <div className="flex items-center justify-between">
@@ -835,7 +835,7 @@ export default function DashboardPage() {
   if (fetchError) {
     return (
       <>
-        <Topbar title="Tableau de bord" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" />{!isReferent && <ExportCsvButton filename="dashboard" getData={getDashboardCsvData} />}</div>} />
+        <Topbar title="Tableau de bord" actions={!isReferent ? <div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" /><ExportCsvButton filename="dashboard" getData={getDashboardCsvData} />}</div>} />
         <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[40vh]">
           <div className="text-center space-y-3">
             <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
@@ -917,7 +917,7 @@ export default function DashboardPage() {
       </Dialog>
 
       {deleteDialog}
-      <Topbar title="Tableau de bord" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" />{!isReferent && <ExportCsvButton filename="dashboard" getData={getDashboardCsvData} />}</div>} />
+      <Topbar title="Tableau de bord" actions={!isReferent ? <div className="flex items-center gap-2"><ExportPdfButton title="Tableau de bord" subtitle={getPeriodLabel(dashPeriod) ? `Période : ${DASH_PERIOD_LABELS[dashPeriod]} (${getPeriodLabel(dashPeriod)})` : undefined} filename="dashboard" /><ExportCsvButton filename="dashboard" getData={getDashboardCsvData} />}</div>} />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* ═══════════════════════════════════════════════════════════════════

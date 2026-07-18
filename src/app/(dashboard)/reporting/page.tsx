@@ -482,7 +482,7 @@ export default function ReportingPage() {
           ],
         })} /></div>}
       />
-      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6" style={{ animation: "fadeIn 0.25s ease both" }}>
+      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* ═══ HERO REPORTING — navy signature avec KPI vedette + filtre période ═══ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">

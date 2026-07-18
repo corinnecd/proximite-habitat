@@ -14,7 +14,7 @@ import { ROLE_LABELS } from "@/lib/permissions";
 import { toast } from "sonner";
 import {
   User, Lock, Loader2, Eye, EyeOff, Mail, Phone,
-  CheckCircle2, AlertCircle, Shield, FileText, TrendingUp, Clock, Star,
+  CheckCircle2, AlertCircle, Shield, Clock,
 } from "lucide-react";
 
 // ── Palette rôle ─────────────────────────────────────────────────────────────
@@ -38,14 +38,6 @@ function passwordStrength(pwd: string): { score: number; label: string; color: s
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-interface UserStats {
-  total: number;
-  soumises: number;
-  acceptees: number;
-  refusees: number;
-  lastActivity: string | null;
-}
-
 export default function ProfilPage() {
   const { profile, loading } = useProfile();
   const [firstName, setFirstName] = useState("");
@@ -60,7 +52,6 @@ export default function ProfilPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
-  const [stats, setStats] = useState<UserStats | null>(null);
   const [lastLogin, setLastLogin] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
@@ -80,25 +71,6 @@ export default function ProfilPage() {
       setLastName(profile.last_name);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setPhone(profile.phone || "");
-
-      // Fetch personal stats (non critique — silencieux en cas d'erreur)
-      void (async () => {
-        try {
-          const { data, error } = await supabase
-            .from("fiches")
-            .select("status, created_at")
-            .eq("created_by", profile.id)
-            .order("created_at", { ascending: false });
-          if (error || !data) return;
-          setStats({
-            total: data.length,
-            soumises: data.filter((f) => f.status !== "BROUILLON").length,
-            acceptees: data.filter((f) => f.status === "ACCEPTEE").length,
-            refusees: data.filter((f) => f.status === "REFUSEE").length,
-            lastActivity: data[0]?.created_at ?? null,
-          });
-        } catch { /* stats non critiques */ }
-      })();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
@@ -139,21 +111,12 @@ export default function ProfilPage() {
 
   // ── Loading ────────────────────────────────────────────────────────────────
 
+  const isProspecteur = profile?.role === "PROSPECTEUR";
+
   if (loading || !profile) {
     return (
       <>
-        <Topbar title="Mon profil" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Mon profil" filename="profil" /><ExportCsvButton filename="profil" getData={() => ({
-          columns: [
-            { key: "champ", label: "Champ" },
-            { key: "valeur", label: "Valeur" },
-          ] as { key: keyof { champ: string; valeur: string }; label: string }[],
-          rows: [
-            { champ: "Nom", valeur: profile?.last_name || "" },
-            { champ: "Prénom", valeur: profile?.first_name || "" },
-            { champ: "Email", valeur: profile?.email || "" },
-            { champ: "Rôle", valeur: profile ? ROLE_LABELS[profile.role] || profile.role : "" },
-          ],
-        })} /></div>} />
+        <Topbar title="Mon profil" />
         <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto animate-pulse space-y-4">
           <div className="h-36 bg-card rounded-2xl border border-border" />
           <div className="h-64 bg-card rounded-2xl border border-border" />
@@ -170,7 +133,7 @@ export default function ProfilPage() {
 
   return (
     <>
-      <Topbar title="Mon profil" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Mon profil" filename="profil" /><ExportCsvButton filename="profil" getData={() => ({
+      <Topbar title="Mon profil" actions={!isProspecteur ? <div className="flex items-center gap-2"><ExportPdfButton title="Mon profil" filename="profil" /><ExportCsvButton filename="profil" getData={() => ({
           columns: [
             { key: "champ", label: "Champ" },
             { key: "valeur", label: "Valeur" },
@@ -181,7 +144,7 @@ export default function ProfilPage() {
             { champ: "Email", valeur: profile?.email || "" },
             { champ: "Rôle", valeur: profile ? ROLE_LABELS[profile.role] || profile.role : "" },
           ],
-        })} /></div>} />
+        })} /></div> : undefined} />
       <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
 
         {/* ── Hero navy signature ─────────────────────────────────────────── */}
@@ -209,64 +172,19 @@ export default function ProfilPage() {
                   </div>
                 )}
               </div>
+              {lastLogin && (
+                <div className="mt-3 inline-flex items-center gap-2 bg-white/10 rounded-xl px-3 py-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#F97316] shrink-0" />
+                  <span className="text-xs text-white font-medium">
+                    Dernière connexion : {new Date(lastLogin).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })} à {new Date(lastLogin).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* ── Statistiques personnelles ──────────────────────────────────── */}
-        {stats && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              {
-                icon: FileText,
-                label: "Fiches créées",
-                value: stats.total,
-                sub: "au total",
-                color: "text-primary",
-                bg: "bg-primary/10",
-              },
-              {
-                icon: TrendingUp,
-                label: "Soumises",
-                value: stats.soumises,
-                sub: "au traitement",
-                color: "text-blue-600",
-                bg: "bg-blue-50 dark:bg-blue-950/30",
-              },
-              {
-                icon: Star,
-                label: "Acceptées",
-                value: stats.acceptees,
-                sub: stats.soumises > 0 ? `${Math.round((stats.acceptees / stats.soumises) * 100)}% de conversion` : "aucune soumise",
-                color: "text-emerald-600",
-                bg: "bg-emerald-50 dark:bg-emerald-950/30",
-              },
-              {
-                icon: Clock,
-                label: "Dernière connexion",
-                value: lastLogin
-                  ? new Date(lastLogin).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
-                  : "—",
-                sub: lastLogin
-                  ? new Date(lastLogin).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-                  : "—",
-                color: "text-orange-600",
-                bg: "bg-orange-50 dark:bg-orange-950/30",
-              },
-            ].map(({ icon: Icon, label, value, sub, color, bg }) => (
-              <div key={label} className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 space-y-2" style={{ animation: "fadeSlideIn 0.25s ease both" }}>
-                <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center`}>
-                  <Icon className={`w-4 h-4 ${color}`} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold font-heading">{value}</p>
-                  <p className="text-xs text-muted-foreground">{label}</p>
-                  <p className="text-[10px] text-muted-foreground/70 mt-0.5">{sub}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Statistiques — masquées pour les référents (info connexion déjà dans le hero) */}
 
         {/* ── Informations personnelles ──────────────────────────────────── */}
         <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-5">

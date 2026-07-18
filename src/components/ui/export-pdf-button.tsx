@@ -79,6 +79,12 @@ export function ExportPdfButton({
         body.pdf-printing .leaflet-control-layers,
         body.pdf-printing .leaflet-control-attribution,
         body.pdf-printing [data-fs-btn] { display: none !important; }
+        body.pdf-printing .hero-surface {
+          background-color: #0F1E3D !important;
+          color: #FFFFFF !important;
+          overflow: visible !important;
+        }
+        body.pdf-printing .hero-surface * { color: inherit; }
       `;
       document.head.appendChild(style);
       document.body.classList.add("pdf-printing");
@@ -92,7 +98,7 @@ export function ExportPdfButton({
         await new Promise((r) => setTimeout(r, 500));
 
         canvas = await html2canvas(main, {
-          scale: 2,
+          scale: 1.5,
           useCORS: true,
           backgroundColor: "#ffffff",
           logging: false,
@@ -140,9 +146,9 @@ export function ExportPdfButton({
         const ctx = sliceCanvas.getContext("2d")!;
         ctx.drawImage(canvas, 0, srcY * (canvas.height / imgHeight), canvas.width, sliceCanvasHeight, 0, 0, canvas.width, sliceCanvasHeight);
 
-        const sliceData = sliceCanvas.toDataURL("image/png");
+        const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.85);
         const y = srcY === 0 ? startY : 10;
-        pdf.addImage(sliceData, "PNG", 10, y, imgWidth, sliceHeight);
+        pdf.addImage(sliceData, "JPEG", 10, y, imgWidth, sliceHeight);
 
         remainingHeight -= sliceHeight;
         srcY += sliceHeight;

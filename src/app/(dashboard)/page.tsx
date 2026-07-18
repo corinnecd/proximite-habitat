@@ -477,7 +477,9 @@ export default function DashboardPage() {
       const statuses: FicheStatus[] = ["BROUILLON", "SOUMISE", "AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
       for (const s of statuses) {
         keys.push(`prosp_${s}`);
-        promises.push(supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", s).order("created_at", { ascending: false }));
+        let rq = supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", s);
+        if (periodDates) rq = rq.gte("updated_at", `${periodDates.from}T00:00:00Z`).lte("updated_at", `${periodDates.to}T23:59:59Z`);
+        promises.push(rq.order("created_at", { ascending: false }));
       }
     }
 
@@ -1049,8 +1051,8 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Filtre période intégré (direction uniquement) */}
-            {!isReferent && (
+            {/* Filtre période intégré */}
+            {(
               <div className="pt-5 border-t border-white/10">
                 <div className="flex items-center gap-2 mb-3">
                   <CalendarDays className="w-3.5 h-3.5 text-white/50" />
@@ -1113,6 +1115,9 @@ export default function DashboardPage() {
                         ? <span className="inline-flex items-center rounded-full px-2 py-0.5 font-medium bg-orange-100 text-orange-700">À traiter</span>
                         : <FicheStatusBadge status={status} short />}
                     </div>
+                    <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                      {dashPeriod === "ALL" ? "Toutes les dates" : getPeriodLabel(dashPeriod)}
+                    </p>
                   </CardContent>
                 </Card>
               </Link>

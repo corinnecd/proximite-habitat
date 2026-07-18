@@ -117,7 +117,7 @@ export default function ProfilPage() {
     return (
       <>
         <Topbar title="Mon profil" />
-        <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto animate-pulse space-y-4">
+        <div className="p-4 sm:p-6 lg:p-8 animate-pulse space-y-4">
           <div className="h-36 bg-card rounded-2xl border border-border" />
           <div className="h-64 bg-card rounded-2xl border border-border" />
           <div className="h-48 bg-card rounded-2xl border border-border" />
@@ -145,7 +145,7 @@ export default function ProfilPage() {
             { champ: "Rôle", valeur: profile ? ROLE_LABELS[profile.role] || profile.role : "" },
           ],
         })} /></div> : undefined} />
-      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* ── Hero navy signature ─────────────────────────────────────────── */}
         <div className="hero-surface hero-surface-sm animate-hero-entry rounded-3xl p-6 sm:p-8">

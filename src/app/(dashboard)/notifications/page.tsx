@@ -501,7 +501,7 @@ export default function NotificationsPage() {
         ] as { key: keyof { date: string; titre: string; message: string; lu: string }; label: string }[],
         rows: notifications.map((n) => ({ date: n.created_at?.slice(0, 10) || "", titre: n.title, message: n.message || "", lu: n.read ? "Oui" : "Non" })),
       })} /></div> : undefined} />
-      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-4">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4">
 
         {/* ═══ HERO NOTIFICATIONS — navy signature ═══════════════════════ */}
         <div className="hero-surface hero-surface-sm animate-hero-entry rounded-3xl p-6 sm:p-7">

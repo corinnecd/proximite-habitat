@@ -89,6 +89,20 @@ export function ExportPdfButton({
       document.head.appendChild(style);
       document.body.classList.add("pdf-printing");
 
+      // Forcer le fond navy sur .hero-surface en style inline (html2canvas
+      // ne résout pas toujours les CSS custom properties correctement)
+      const heroEls = Array.from(document.querySelectorAll<HTMLElement>(".hero-surface"));
+      const heroOriginalStyles = heroEls.map((el) => ({
+        bg: el.style.backgroundColor,
+        color: el.style.color,
+        overflow: el.style.overflow,
+      }));
+      heroEls.forEach((el) => {
+        el.style.backgroundColor = "#0F1E3D";
+        el.style.color = "#FFFFFF";
+        el.style.overflow = "visible";
+      });
+
       // Attendre 1 frame pour laisser le repaint
       await new Promise((r) => requestAnimationFrame(() => r(null)));
 
@@ -107,6 +121,12 @@ export function ExportPdfButton({
       } finally {
         document.body.classList.remove("pdf-printing");
         style.remove();
+        // Restaurer les styles inline originaux des hero-surface
+        heroEls.forEach((el, i) => {
+          el.style.backgroundColor = heroOriginalStyles[i].bg;
+          el.style.color = heroOriginalStyles[i].color;
+          el.style.overflow = heroOriginalStyles[i].overflow;
+        });
       }
 
       const imgWidth = 190;

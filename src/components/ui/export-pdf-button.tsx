@@ -65,69 +65,41 @@ export function ExportPdfButton({
       const main = document.querySelector("main") as HTMLElement | null;
       if (!main) { setLoading(false); return; }
 
-      // Capture directement le DOM live (sans cloner) afin de préserver
-      // les transforms CSS Leaflet — la SVG polyline apparaît alors dans le PDF.
-      // On masque temporairement les éléments interactifs via une classe CSS.
-      const style = document.createElement("style");
-      style.setAttribute("data-pdf-print-style", "1");
-      style.textContent = `
-        body.pdf-printing button:not(.leaflet-control button):not([data-fs-btn]),
-        body.pdf-printing input,
-        body.pdf-printing select,
-        body.pdf-printing [data-no-print] { visibility: hidden !important; }
-        body.pdf-printing .leaflet-control-zoom,
-        body.pdf-printing .leaflet-control-layers,
-        body.pdf-printing .leaflet-control-attribution,
-        body.pdf-printing [data-fs-btn] { display: none !important; }
-        body.pdf-printing .hero-surface {
-          background-color: #0F1E3D !important;
-          color: #FFFFFF !important;
-          overflow: visible !important;
-        }
-        body.pdf-printing .hero-surface * { color: inherit; }
-      `;
-      document.head.appendChild(style);
-      document.body.classList.add("pdf-printing");
+      // Attendre que Leaflet finisse de rendre (500ms minimum)
+      await new Promise((r) => setTimeout(r, 500));
 
-      // Forcer le fond navy sur .hero-surface en style inline (html2canvas
-      // ne résout pas toujours les CSS custom properties correctement)
-      const heroEls = Array.from(document.querySelectorAll<HTMLElement>(".hero-surface"));
-      const heroOriginalStyles = heroEls.map((el) => ({
-        bg: el.style.backgroundColor,
-        color: el.style.color,
-        overflow: el.style.overflow,
-      }));
-      heroEls.forEach((el) => {
-        el.style.backgroundColor = "#0F1E3D";
-        el.style.color = "#FFFFFF";
-        el.style.overflow = "visible";
+      const canvas = await html2canvas(main, {
+        scale: 1.5,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        removeContainer: false,
+        // onclone = seule méthode fiable pour appliquer des styles avant rendu
+        // car html2canvas ne résout pas les CSS custom properties (var(--hero))
+        onclone: (_clonedDoc: Document, clonedMain: HTMLElement) => {
+          // ── Hero : fond navy + texte blanc ──────────────────────────────
+          clonedMain.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
+            el.style.setProperty("background-color", "#0F1E3D", "important");
+            el.style.setProperty("color", "#FFFFFF", "important");
+            el.style.setProperty("overflow", "visible", "important");
+          });
+          // Forcer le blanc sur tous les textes à l'intérieur du hero
+          clonedMain.querySelectorAll<HTMLElement>(".hero-surface *").forEach((el) => {
+            const computed = window.getComputedStyle(el).color;
+            // Ne pas écraser les éléments qui ont délibérément une couleur spécifique (orange brand)
+            if (!computed.includes("249") && !computed.includes("247")) {
+              el.style.setProperty("color", "#FFFFFF", "important");
+            }
+          });
+          // ── Masquer les contrôles interactifs ────────────────────────────
+          clonedMain.querySelectorAll<HTMLElement>(
+            "button:not(.leaflet-control button), input, select, [data-no-print]"
+          ).forEach((el) => { el.style.visibility = "hidden"; });
+          clonedMain.querySelectorAll<HTMLElement>(
+            ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"
+          ).forEach((el) => { el.style.display = "none"; });
+        },
       });
-
-      // Attendre 1 frame pour laisser le repaint
-      await new Promise((r) => requestAnimationFrame(() => r(null)));
-
-      let canvas;
-      try {
-        // Attendre que Leaflet finisse de rendre (500ms minimum)
-        await new Promise((r) => setTimeout(r, 500));
-
-        canvas = await html2canvas(main, {
-          scale: 1.5,
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          logging: false,
-          removeContainer: false,
-        });
-      } finally {
-        document.body.classList.remove("pdf-printing");
-        style.remove();
-        // Restaurer les styles inline originaux des hero-surface
-        heroEls.forEach((el, i) => {
-          el.style.backgroundColor = heroOriginalStyles[i].bg;
-          el.style.color = heroOriginalStyles[i].color;
-          el.style.overflow = heroOriginalStyles[i].overflow;
-        });
-      }
 
       const imgWidth = 190;
       const pageHeight = 277;
@@ -138,20 +110,17 @@ export function ExportPdfButton({
         day: "2-digit", month: "long", year: "numeric",
       });
 
-      pdf.setFontSize(14);
-      pdf.setTextColor(30, 58, 95);
-      pdf.text(title, 10, 12);
+      // Ligne orange séparatrice (le titre est déjà dans le hero capturé)
       if (subtitle) {
         pdf.setFontSize(9);
         pdf.setTextColor(120, 120, 120);
-        pdf.text(subtitle, 10, 18);
+        pdf.text(subtitle, 10, 11);
       }
-
       pdf.setDrawColor(249, 115, 22);
       pdf.setLineWidth(0.5);
-      pdf.line(10, subtitle ? 20 : 15, 200, subtitle ? 20 : 15);
+      pdf.line(10, subtitle ? 14 : 8, 200, subtitle ? 14 : 8);
 
-      const startY = subtitle ? 23 : 18;
+      const startY = subtitle ? 17 : 11;
       let remainingHeight = imgHeight;
       let srcY = 0;
 

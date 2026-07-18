@@ -679,47 +679,68 @@ export default function NotificationsPage() {
               </section>
             )}
 
-            {/* ── Section : Lues, groupées par date (repliée par défaut) ── */}
-            {!showUnreadOnly && groups.length > 0 && (
-              <section className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => setHistoryOpen((v) => !v)}
-                  aria-expanded={historyOpen}
-                  className="w-full flex items-center gap-3 group"
-                >
-                  <ChevronDown
-                    className={`w-4 h-4 text-muted-foreground/50 transition-transform duration-200 group-hover:text-muted-foreground ${historyOpen ? "rotate-180" : ""}`}
-                  />
-                  <h2 className="text-xs font-semibold tracking-widest uppercase text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">
-                    Historique · {groups.reduce((acc, g) => acc + g.notifications.length, 0)}
-                  </h2>
-                  <div className="flex-1 h-px bg-border/40" />
-                </button>
-
-                {historyOpen && (
-                  <div className="space-y-5">
-                    {groups.map((group) => {
-                      const GroupIcon = group.icon;
-                      return (
-                        <div key={group.label}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <GroupIcon className="w-3.5 h-3.5 text-muted-foreground/50" />
-                            <span className="text-xs font-medium text-muted-foreground/60">{group.label}</span>
-                            <div className="flex-1 h-px bg-border/30" />
-                          </div>
-                          <div className="space-y-2">
-                            {group.notifications.map((n) => (
-                              <NotifCard key={n.id} notif={n} ficheStatus={n.fiche_id ? ficheStatuses[n.fiche_id] : undefined} onClick={handleClick} onMarkRead={markAsRead} onDelete={profile?.role === "ADMIN" ? handleDeleteRequest : undefined} />
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
+            {/* ── Section : Lues, groupées par date (1ère visible, reste pliée) ── */}
+            {!showUnreadOnly && groups.length > 0 && (() => {
+              const latestNotif = groups[0].notifications[0];
+              const totalCount = groups.reduce((acc, g) => acc + g.notifications.length, 0);
+              const restGroups = groups.map((g, gi) => gi === 0
+                ? { ...g, notifications: g.notifications.slice(1) }
+                : g
+              ).filter((g) => g.notifications.length > 0);
+              const hasMore2 = totalCount > 1;
+              return (
+                <section className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryOpen((v) => !v)}
+                      aria-expanded={historyOpen}
+                      className="flex items-center gap-2 group"
+                    >
+                      <ChevronDown
+                        className={`w-4 h-4 text-muted-foreground/50 transition-transform duration-200 group-hover:text-muted-foreground ${historyOpen ? "rotate-180" : ""}`}
+                      />
+                      <h2 className="text-xs font-semibold tracking-widest uppercase text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">
+                        Historique · {totalCount}
+                      </h2>
+                    </button>
+                    <div className="flex-1 h-px bg-border/40" />
                   </div>
-                )}
-              </section>
-            )}
+
+                  {/* Dernière notification toujours visible */}
+                  <NotifCard
+                    notif={latestNotif}
+                    ficheStatus={latestNotif.fiche_id ? ficheStatuses[latestNotif.fiche_id] : undefined}
+                    onClick={handleClick}
+                    onMarkRead={markAsRead}
+                    onDelete={profile?.role === "ADMIN" ? handleDeleteRequest : undefined}
+                  />
+
+                  {/* Le reste, déplié au clic */}
+                  {historyOpen && hasMore2 && (
+                    <div className="space-y-5">
+                      {restGroups.map((group) => {
+                        const GroupIcon = group.icon;
+                        return (
+                          <div key={group.label}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <GroupIcon className="w-3.5 h-3.5 text-muted-foreground/50" />
+                              <span className="text-xs font-medium text-muted-foreground/60">{group.label}</span>
+                              <div className="flex-1 h-px bg-border/30" />
+                            </div>
+                            <div className="space-y-2">
+                              {group.notifications.map((n) => (
+                                <NotifCard key={n.id} notif={n} ficheStatus={n.fiche_id ? ficheStatuses[n.fiche_id] : undefined} onClick={handleClick} onMarkRead={markAsRead} onDelete={profile?.role === "ADMIN" ? handleDeleteRequest : undefined} />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              );
+            })()}
 
             {/* Charger plus */}
             {hasMore && (

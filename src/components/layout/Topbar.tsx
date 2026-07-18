@@ -115,9 +115,9 @@ export function Topbar({ title, actions }: { title?: string; actions?: React.Rea
       <div className="flex items-start sm:items-center justify-between min-h-16 px-4 lg:px-8 gap-2 py-2.5 sm:py-0">
         <div className="lg:pl-0 pl-14 min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
           {title && <h1 className="font-heading text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">{title}</h1>}
-          {actions && <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0">{actions}</div>}
+          {actions && <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0" data-no-print>{actions}</div>}
         </div>
-        <div className="flex items-center gap-1 shrink-0 pt-1 sm:pt-0">
+        <div className="flex items-center gap-1 shrink-0 pt-1 sm:pt-0" data-no-print>
           <button
             type="button"
             onClick={openSearch}

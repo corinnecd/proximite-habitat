@@ -107,12 +107,22 @@ export function ExportPdfButton({
       // Ces styles inline sont copiés dans le clone via cloneNode() et
       // l'iframe hérite donc des valeurs finales, pas de l'état initial.
 
-      // Figer toutes les animations custom
+      // Figer animations via classe (ex: animate-hero-entry, animate-cascade > *)
       main.querySelectorAll<HTMLElement>(ANIMATED_SELECTORS).forEach((el) => {
         el.style.setProperty("animation", "none", "important");
+        el.style.setProperty("animation-delay", "0s", "important");
         el.style.setProperty("opacity", "1", "important");
         el.style.setProperty("transform", "none", "important");
         el.style.setProperty("transition", "none", "important");
+      });
+
+      // Figer animations inline (style="animation: fadeSlideIn…")
+      // Ces éléments n'ont pas de classe animate- mais redémarrent à opacity:0
+      main.querySelectorAll<HTMLElement>("[style*='animation']").forEach((el) => {
+        el.style.setProperty("animation", "none", "important");
+        el.style.setProperty("animation-delay", "0s", "important");
+        el.style.setProperty("opacity", "1", "important");
+        el.style.setProperty("transform", "none", "important");
       });
 
       // Hero : fond navy exact (résolution forcée de var(--hero))
@@ -122,10 +132,8 @@ export function ExportPdfButton({
         el.style.setProperty("overflow", "visible", "important");
       });
 
-      // Masquer uniquement les boutons d'export (pas les boutons de contenu)
-      main
-        .querySelectorAll<HTMLElement>("[data-no-print]")
-        .forEach((el) => el.style.setProperty("visibility", "hidden", "important"));
+      // Les boutons [data-no-print] ne sont masqués QUE dans le clone (onclone)
+      // pour éviter qu'ils disparaissent visuellement à l'écran pendant la capture.
       main
         .querySelectorAll<HTMLElement>(
           ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"
@@ -147,12 +155,21 @@ export function ExportPdfButton({
           // Double sécurité dans le clone (au cas où les styles inline
           // n'auraient pas été copiés ou auraient été écrasés)
 
-          // Figer les animations dans le clone
+          // Figer les animations dans le clone (classe)
           clonedMain.querySelectorAll<HTMLElement>(ANIMATED_SELECTORS).forEach((el) => {
             el.style.setProperty("animation", "none", "important");
+            el.style.setProperty("animation-delay", "0s", "important");
             el.style.setProperty("opacity", "1", "important");
             el.style.setProperty("transform", "none", "important");
             el.style.setProperty("transition", "none", "important");
+          });
+
+          // Figer les animations inline dans le clone (style="animation: fadeSlideIn…")
+          clonedMain.querySelectorAll<HTMLElement>("[style*='animation']").forEach((el) => {
+            el.style.setProperty("animation", "none", "important");
+            el.style.setProperty("animation-delay", "0s", "important");
+            el.style.setProperty("opacity", "1", "important");
+            el.style.setProperty("transform", "none", "important");
           });
 
           // Hero dans le clone
@@ -169,10 +186,10 @@ export function ExportPdfButton({
             el.style.setProperty("white-space", "normal", "important");
           });
 
-          // Masquer uniquement les boutons d'export dans le clone
+          // Masquer les éléments [data-no-print] dans le clone (display:none = pas d'espace blanc)
           clonedMain
             .querySelectorAll<HTMLElement>("[data-no-print]")
-            .forEach((el) => el.style.setProperty("visibility", "hidden", "important"));
+            .forEach((el) => el.style.setProperty("display", "none", "important"));
           clonedMain
             .querySelectorAll<HTMLElement>(
               ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"
@@ -183,8 +200,10 @@ export function ExportPdfButton({
           // neutraliser tout reste d'animation non ciblée ci-dessus
           const noAnim = clonedDoc.createElement("style");
           noAnim.textContent = `
-            [class*="animate-"] {
+            [class*="animate-"],
+            [style*="animation"] {
               animation: none !important;
+              animation-delay: 0s !important;
               opacity: 1 !important;
               transform: none !important;
               transition: none !important;
@@ -202,18 +221,24 @@ export function ExportPdfButton({
       // ── 3. Restaurer le DOM ───────────────────────────────────────────────
       main.querySelectorAll<HTMLElement>(ANIMATED_SELECTORS).forEach((el) => {
         el.style.removeProperty("animation");
+        el.style.removeProperty("animation-delay");
         el.style.removeProperty("opacity");
         el.style.removeProperty("transform");
         el.style.removeProperty("transition");
+      });
+      // Restaurer les éléments à animation inline
+      main.querySelectorAll<HTMLElement>("[style*='animation']").forEach((el) => {
+        el.style.removeProperty("animation");
+        el.style.removeProperty("animation-delay");
+        el.style.removeProperty("opacity");
+        el.style.removeProperty("transform");
       });
       main.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
         el.style.removeProperty("background-color");
         el.style.removeProperty("color");
         el.style.removeProperty("overflow");
       });
-      main
-        .querySelectorAll<HTMLElement>("[data-no-print]")
-        .forEach((el) => el.style.removeProperty("visibility"));
+      // [data-no-print] n'est PAS modifié sur le DOM live — pas de restore nécessaire.
       main
         .querySelectorAll<HTMLElement>(
           ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"

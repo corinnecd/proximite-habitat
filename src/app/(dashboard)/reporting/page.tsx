@@ -420,7 +420,7 @@ export default function ReportingPage() {
     return (
       <>
         <Topbar title="Reporting" />
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
           <div className="rounded-3xl bg-[#1E3A5F] p-6 sm:p-7 animate-pulse">
             <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
               <div className="space-y-2">
@@ -482,7 +482,7 @@ export default function ReportingPage() {
           ],
         })} /></div>}
       />
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6" style={{ animation: "fadeIn 0.25s ease both" }}>
+      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6" style={{ animation: "fadeIn 0.25s ease both" }}>
 
         {/* ═══ HERO REPORTING — navy signature avec KPI vedette + filtre période ═══ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">

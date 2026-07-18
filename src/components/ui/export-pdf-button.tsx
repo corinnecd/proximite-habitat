@@ -128,8 +128,8 @@ export function ExportPdfButton({
         backgroundColor: "#ffffff",
         logging: false,
         removeContainer: false,
-        windowScrollX: 0,
-        windowScrollY: 0,
+        scrollX: 0,
+        scrollY: 0,
         onclone: (clonedDoc: Document, clonedMain: HTMLElement) => {
           // Hero : var(--hero) ne se résout pas dans l'iframe isolée → couleurs hardcodées.
           // Fait ici (clone) et non dans captureStyle (page live) pour ne pas

@@ -366,7 +366,7 @@ export default function DashboardPage() {
       if (isReferent) q = q.eq("created_by", profile.id);
       if (isCommercial) q = q.eq("assigned_to", profile.id);
       if (branchFilter) q = q.eq("organization_id", branchFilter);
-      if (periodDates) q = q.gte("created_at", `${periodDates.from}T00:00:00Z`).lte("created_at", `${periodDates.to}T23:59:59Z`);
+      if (periodDates) q = q.gte("updated_at", `${periodDates.from}T00:00:00Z`).lte("updated_at", `${periodDates.to}T23:59:59Z`);
       keys.push("statusCounts");
       promises.push(q);
     }

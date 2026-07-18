@@ -695,7 +695,8 @@ export default function NotificationsPage() {
                       type="button"
                       onClick={() => setHistoryOpen((v) => !v)}
                       aria-expanded={historyOpen}
-                      className="flex items-center gap-2 group"
+                      title={historyOpen ? "Replier l'historique" : "Cliquer ici pour faire apparaître toutes les fiches en historique"}
+                      className="flex items-center gap-2 group relative"
                     >
                       <ChevronDown
                         className={`w-4 h-4 text-muted-foreground/50 transition-transform duration-200 group-hover:text-muted-foreground ${historyOpen ? "rotate-180" : ""}`}
@@ -703,6 +704,11 @@ export default function NotificationsPage() {
                       <h2 className="text-xs font-semibold tracking-widest uppercase text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">
                         Historique · {totalCount}
                       </h2>
+                      {!historyOpen && (
+                        <span className="absolute left-0 -top-8 z-10 hidden group-hover:flex items-center whitespace-nowrap bg-foreground text-background text-[11px] font-medium px-2.5 py-1 rounded-lg shadow-md pointer-events-none">
+                          Cliquer ici pour afficher tout l&apos;historique
+                        </span>
+                      )}
                     </button>
                     <div className="flex-1 h-px bg-border/40" />
                   </div>

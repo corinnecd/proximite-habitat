@@ -479,6 +479,21 @@ export default function NotificationsPage() {
   const groups = useMemo(() => groupByDate(sorted.read), [sorted.read]);
 
   const unreadCount    = notifications.filter((n) => !n.read).length;
+  const isFiltered     = !!(search || period !== "all" || selectedTypes.length > 0 || showUnreadOnly);
+  const totalDisplayed = displayed.length;
+  const isReferent     = profile?.role === "PROSPECTEUR";
+
+  return (
+    <>
+      <Topbar title="Notifications" actions={!isReferent ? <div className="flex items-center gap-2"><ExportPdfButton title="Notifications" filename="notifications" /><ExportCsvButton filename="notifications" getData={() => ({
+        columns: [
+          { key: "date", label: "Date" },
+          { key: "titre", label: "Titre" },
+          { key: "message", label: "Message" },
+          { key: "lu", label: "Lu" },
+        ] as { key: keyof { date: string; titre: string; message: string; lu: string }; label: string }[],
+        rows: notifications.map((n) => ({ date: n.created_at?.slice(0, 10) || "", titre: n.title, message: n.message || "", lu: n.read ? "Oui" : "Non" })),
+      })} /></div> : undefined} />
       <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-4">
 
         {/* ═══ HERO NOTIFICATIONS — navy signature ═══════════════════════ */}

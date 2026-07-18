@@ -7,12 +7,13 @@ import { useState, useEffect, useRef } from "react";
 // Preloaded libs — cached after first load
 let html2canvasLib: typeof import("html2canvas-pro")["default"] | null = null;
 let jsPDFLib: typeof import("jspdf")["jsPDF"] | null = null;
-const preloadPromise = typeof window !== "undefined"
-  ? Promise.all([import("html2canvas-pro"), import("jspdf")]).then(([h, j]) => {
-      html2canvasLib = h.default;
-      jsPDFLib = j.jsPDF;
-    })
-  : null;
+const preloadPromise =
+  typeof window !== "undefined"
+    ? Promise.all([import("html2canvas-pro"), import("jspdf")]).then(([h, j]) => {
+        html2canvasLib = h.default;
+        jsPDFLib = j.jsPDF;
+      })
+    : null;
 
 interface ExportPdfButtonProps {
   title: string;
@@ -36,22 +37,36 @@ export function ExportPdfButton({
   const [loading, setLoading] = useState(false);
   const toastRef = useRef<HTMLDivElement | null>(null);
 
-  // Preload libs on mount (no-op if already loaded)
-  useEffect(() => { preloadPromise; }, []);
+  useEffect(() => {
+    preloadPromise;
+  }, []);
 
   function showToast(message: string) {
     if (toastRef.current) toastRef.current.remove();
     const el = document.createElement("div");
     el.textContent = message;
     Object.assign(el.style, {
-      position: "fixed", bottom: "24px", left: "50%", transform: "translateX(-50%)",
-      background: "#1e3a5f", color: "#fff", padding: "10px 24px", borderRadius: "8px",
-      fontSize: "14px", fontWeight: "500", zIndex: "9999", boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-      transition: "opacity 0.3s", opacity: "1",
+      position: "fixed",
+      bottom: "24px",
+      left: "50%",
+      transform: "translateX(-50%)",
+      background: "#1e3a5f",
+      color: "#fff",
+      padding: "10px 24px",
+      borderRadius: "8px",
+      fontSize: "14px",
+      fontWeight: "500",
+      zIndex: "9999",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+      transition: "opacity 0.3s",
+      opacity: "1",
     });
     document.body.appendChild(el);
     toastRef.current = el;
-    setTimeout(() => { el.style.opacity = "0"; setTimeout(() => el.remove(), 300); }, 2500);
+    setTimeout(() => {
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 300);
+    }, 2500);
   }
 
   async function handleExport() {
@@ -63,54 +78,103 @@ export function ExportPdfButton({
       const jsPDF = jsPDFLib!;
 
       const main = document.querySelector("main") as HTMLElement | null;
-      if (!main) { setLoading(false); return; }
+      if (!main) {
+        setLoading(false);
+        return;
+      }
 
-      // Attendre que Leaflet finisse de rendre (500ms minimum)
-      await new Promise((r) => setTimeout(r, 500));
+      // ── 1. Appliquer les styles pré-capture sur le DOM live ───────────────
+      // Les styles inline voyagent avec l'élément dans le clone html2canvas,
+      // ce qui est plus fiable que les CSS variables (non résolues par html2canvas).
 
+      // Hero : fond navy exact + texte blanc + débordement visible
+      main.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
+        el.style.setProperty("background-color", "#1E3A5F", "important");
+        el.style.setProperty("color", "#FFFFFF", "important");
+        el.style.setProperty("overflow", "visible", "important");
+      });
+
+      // Masquer les contrôles interactifs
+      main
+        .querySelectorAll<HTMLElement>(
+          "button:not(.leaflet-control button), input, select, [data-no-print]"
+        )
+        .forEach((el) => el.style.setProperty("visibility", "hidden", "important"));
+      main
+        .querySelectorAll<HTMLElement>(
+          ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"
+        )
+        .forEach((el) => el.style.setProperty("display", "none", "important"));
+
+      // Attendre que le navigateur applique les styles + Leaflet
+      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+      await new Promise((r) => setTimeout(r, 400));
+
+      // ── 2. Capture ────────────────────────────────────────────────────────
       const canvas = await html2canvas(main, {
         scale: 1.5,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
         removeContainer: false,
-        // onclone = seule méthode fiable pour appliquer des styles avant rendu
-        // car html2canvas ne résout pas les CSS custom properties (var(--hero))
         onclone: (_clonedDoc: Document, clonedMain: HTMLElement) => {
-          // ── Hero : fond bleu sidebar + texte blanc ────────────────────
+          // Double sécurité : ré-appliquer sur le clone
           clonedMain.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
             el.style.setProperty("background-color", "#1E3A5F", "important");
             el.style.setProperty("color", "#FFFFFF", "important");
             el.style.setProperty("overflow", "visible", "important");
           });
-          // Forcer le blanc sur tous les textes à l'intérieur du hero
-          clonedMain.querySelectorAll<HTMLElement>(".hero-surface *").forEach((el) => {
-            const computed = window.getComputedStyle(el).color;
-            // Ne pas écraser les éléments qui ont délibérément une couleur spécifique (orange brand)
-            if (!computed.includes("249") && !computed.includes("247")) {
-              el.style.setProperty("color", "#FFFFFF", "important");
-            }
+
+          // Supprimer la troncature sur les titres (class "truncate" du Topbar)
+          clonedMain.querySelectorAll<HTMLElement>(".truncate").forEach((el) => {
+            el.style.setProperty("overflow", "visible", "important");
+            el.style.setProperty("text-overflow", "unset", "important");
+            el.style.setProperty("white-space", "normal", "important");
           });
-          // ── Masquer les contrôles interactifs ────────────────────────────
-          clonedMain.querySelectorAll<HTMLElement>(
-            "button:not(.leaflet-control button), input, select, [data-no-print]"
-          ).forEach((el) => { el.style.visibility = "hidden"; });
-          clonedMain.querySelectorAll<HTMLElement>(
-            ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"
-          ).forEach((el) => { el.style.display = "none"; });
+
+          // Masquer contrôles dans le clone
+          clonedMain
+            .querySelectorAll<HTMLElement>(
+              "button:not(.leaflet-control button), input, select, [data-no-print]"
+            )
+            .forEach((el) => el.style.setProperty("visibility", "hidden", "important"));
+          clonedMain
+            .querySelectorAll<HTMLElement>(
+              ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"
+            )
+            .forEach((el) => el.style.setProperty("display", "none", "important"));
         },
       });
 
+      // ── 3. Restaurer le DOM ───────────────────────────────────────────────
+      main.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
+        el.style.removeProperty("background-color");
+        el.style.removeProperty("color");
+        el.style.removeProperty("overflow");
+      });
+      main
+        .querySelectorAll<HTMLElement>(
+          "button:not(.leaflet-control button), input, select, [data-no-print]"
+        )
+        .forEach((el) => el.style.removeProperty("visibility"));
+      main
+        .querySelectorAll<HTMLElement>(
+          ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"
+        )
+        .forEach((el) => el.style.removeProperty("display"));
+
+      // ── 4. Générer le PDF ─────────────────────────────────────────────────
       const imgWidth = 190;
       const pageHeight = 277;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
       const pdf = new jsPDF("p", "mm", "a4");
       const dateStr = new Date().toLocaleDateString("fr-FR", {
-        day: "2-digit", month: "long", year: "numeric",
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
       });
 
-      // Ligne orange séparatrice (le titre est déjà dans le hero capturé)
       if (subtitle) {
         pdf.setFontSize(9);
         pdf.setTextColor(120, 120, 120);
@@ -133,7 +197,17 @@ export function ExportPdfButton({
         sliceCanvas.width = canvas.width;
         sliceCanvas.height = sliceCanvasHeight;
         const ctx = sliceCanvas.getContext("2d")!;
-        ctx.drawImage(canvas, 0, srcY * (canvas.height / imgHeight), canvas.width, sliceCanvasHeight, 0, 0, canvas.width, sliceCanvasHeight);
+        ctx.drawImage(
+          canvas,
+          0,
+          srcY * (canvas.height / imgHeight),
+          canvas.width,
+          sliceCanvasHeight,
+          0,
+          0,
+          canvas.width,
+          sliceCanvasHeight
+        );
 
         const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.85);
         const y = srcY === 0 ? startY : 10;
@@ -141,7 +215,6 @@ export function ExportPdfButton({
 
         remainingHeight -= sliceHeight;
         srcY += sliceHeight;
-
         if (remainingHeight > 0) pdf.addPage();
       }
 

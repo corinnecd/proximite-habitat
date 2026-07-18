@@ -26,6 +26,18 @@ interface ExportPdfButtonProps {
   printLayout?: "default" | "3col";
 }
 
+// Classes CSS qui démarrent des animations à opacity:0 / transform décalé.
+// Dans l'iframe html2canvas ces animations REDÉMARRENT depuis le début,
+// rendant les éléments invisibles (opacity:0) lors de la capture.
+const ANIMATED_SELECTORS = [
+  ".animate-hero-entry",
+  ".animate-cascade > *",
+  ".animate-counter-pop",
+  ".animate-progress-reveal",
+  ".animate-success-pop",
+  ".animate-chip-tap",
+].join(", ");
+
 export function ExportPdfButton({
   title,
   subtitle,
@@ -83,11 +95,27 @@ export function ExportPdfButton({
         return;
       }
 
-      // ── 1. Appliquer les styles pré-capture sur le DOM live ───────────────
-      // Les styles inline voyagent avec l'élément dans le clone html2canvas,
-      // ce qui est plus fiable que les CSS variables (non résolues par html2canvas).
+      // ── 1. Préparer le DOM live avant la capture ─────────────────────────
+      //
+      // PROBLÈME RACINE : html2canvas crée un clone du DOM puis l'adopte dans
+      // un <iframe> isolé. Toutes les animations CSS (animation: heroEntry,
+      // fadeSlideIn, counterPop…) REDÉMARRENT dans l'iframe, rendant les
+      // éléments invisibles (opacity:0) au moment de la capture.
+      //
+      // SOLUTION : figer les animations + forcer l'état final (opacity:1,
+      // transform:none) EN INLINE STYLE sur les éléments du DOM live.
+      // Ces styles inline sont copiés dans le clone via cloneNode() et
+      // l'iframe hérite donc des valeurs finales, pas de l'état initial.
 
-      // Hero : fond navy exact + texte blanc + débordement visible
+      // Figer toutes les animations custom
+      main.querySelectorAll<HTMLElement>(ANIMATED_SELECTORS).forEach((el) => {
+        el.style.setProperty("animation", "none", "important");
+        el.style.setProperty("opacity", "1", "important");
+        el.style.setProperty("transform", "none", "important");
+        el.style.setProperty("transition", "none", "important");
+      });
+
+      // Hero : fond navy exact (résolution forcée de var(--hero))
       main.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
         el.style.setProperty("background-color", "#1E3A5F", "important");
         el.style.setProperty("color", "#FFFFFF", "important");
@@ -106,9 +134,9 @@ export function ExportPdfButton({
         )
         .forEach((el) => el.style.setProperty("display", "none", "important"));
 
-      // Attendre que le navigateur applique les styles + Leaflet
+      // Laisser le navigateur repeindre
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-      await new Promise((r) => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, 300));
 
       // ── 2. Capture ────────────────────────────────────────────────────────
       const canvas = await html2canvas(main, {
@@ -117,22 +145,33 @@ export function ExportPdfButton({
         backgroundColor: "#ffffff",
         logging: false,
         removeContainer: false,
-        onclone: (_clonedDoc: Document, clonedMain: HTMLElement) => {
-          // Double sécurité : ré-appliquer sur le clone
+        onclone: (clonedDoc: Document, clonedMain: HTMLElement) => {
+          // Double sécurité dans le clone (au cas où les styles inline
+          // n'auraient pas été copiés ou auraient été écrasés)
+
+          // Figer les animations dans le clone
+          clonedMain.querySelectorAll<HTMLElement>(ANIMATED_SELECTORS).forEach((el) => {
+            el.style.setProperty("animation", "none", "important");
+            el.style.setProperty("opacity", "1", "important");
+            el.style.setProperty("transform", "none", "important");
+            el.style.setProperty("transition", "none", "important");
+          });
+
+          // Hero dans le clone
           clonedMain.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
             el.style.setProperty("background-color", "#1E3A5F", "important");
             el.style.setProperty("color", "#FFFFFF", "important");
             el.style.setProperty("overflow", "visible", "important");
           });
 
-          // Supprimer la troncature sur les titres (class "truncate" du Topbar)
+          // Supprimer la troncature .truncate (ex : titre du Topbar)
           clonedMain.querySelectorAll<HTMLElement>(".truncate").forEach((el) => {
             el.style.setProperty("overflow", "visible", "important");
             el.style.setProperty("text-overflow", "unset", "important");
             el.style.setProperty("white-space", "normal", "important");
           });
 
-          // Masquer contrôles dans le clone
+          // Masquer les contrôles dans le clone
           clonedMain
             .querySelectorAll<HTMLElement>(
               "button:not(.leaflet-control button), input, select, [data-no-print]"
@@ -143,10 +182,34 @@ export function ExportPdfButton({
               ".leaflet-control-zoom, .leaflet-control-layers, .leaflet-control-attribution, [data-fs-btn]"
             )
             .forEach((el) => el.style.setProperty("display", "none", "important"));
+
+          // Injecter une règle globale dans le <head> du clone pour
+          // neutraliser tout reste d'animation non ciblée ci-dessus
+          const noAnim = clonedDoc.createElement("style");
+          noAnim.textContent = `
+            [class*="animate-"] {
+              animation: none !important;
+              opacity: 1 !important;
+              transform: none !important;
+              transition: none !important;
+            }
+            .hero-surface {
+              background-color: #1E3A5F !important;
+              color: #FFFFFF !important;
+              overflow: visible !important;
+            }
+          `;
+          clonedDoc.head.appendChild(noAnim);
         },
       });
 
       // ── 3. Restaurer le DOM ───────────────────────────────────────────────
+      main.querySelectorAll<HTMLElement>(ANIMATED_SELECTORS).forEach((el) => {
+        el.style.removeProperty("animation");
+        el.style.removeProperty("opacity");
+        el.style.removeProperty("transform");
+        el.style.removeProperty("transition");
+      });
       main.querySelectorAll<HTMLElement>(".hero-surface").forEach((el) => {
         el.style.removeProperty("background-color");
         el.style.removeProperty("color");

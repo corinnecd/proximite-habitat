@@ -385,15 +385,29 @@ export default function DashboardPage() {
       promises.push(getActiveCommercialsAndAdmins(supabase));
 
       keys.push("pending");
-      promises.push(bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "SOUMISE")).order("created_at", { ascending: false }).limit(30));
+      let pq = bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "SOUMISE"));
+      if (periodDates) pq = pq.gte("created_at", `${periodDates.from}T00:00:00Z`).lte("created_at", `${periodDates.to}T23:59:59Z`);
+      promises.push(pq.order("created_at", { ascending: false }).limit(30));
+
       keys.push("affecteesAdmin");
-      promises.push(bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "AFFECTEE")).order("updated_at", { ascending: false }).limit(30));
+      let aq = bq(supabase.from("fiches").select(ficheAdminCols).eq("status", "AFFECTEE"));
+      if (periodDates) aq = aq.gte("updated_at", `${periodDates.from}T00:00:00Z`).lte("updated_at", `${periodDates.to}T23:59:59Z`);
+      promises.push(aq.order("updated_at", { ascending: false }).limit(30));
+
       keys.push("acceptees");
-      promises.push(bq(supabase.from("fiches").select(ficheAdminColsLight).eq("status", "ACCEPTEE")).order("updated_at", { ascending: false }).limit(30));
+      let accq = bq(supabase.from("fiches").select(ficheAdminColsLight).eq("status", "ACCEPTEE"));
+      if (periodDates) accq = accq.gte("updated_at", `${periodDates.from}T00:00:00Z`).lte("updated_at", `${periodDates.to}T23:59:59Z`);
+      promises.push(accq.order("updated_at", { ascending: false }).limit(30));
+
       keys.push("refusees");
-      promises.push(bq(supabase.from("fiches").select(ficheAdminColsLight).eq("status", "REFUSEE")).order("updated_at", { ascending: false }).limit(30));
+      let rq = bq(supabase.from("fiches").select(ficheAdminColsLight).eq("status", "REFUSEE"));
+      if (periodDates) rq = rq.gte("updated_at", `${periodDates.from}T00:00:00Z`).lte("updated_at", `${periodDates.to}T23:59:59Z`);
+      promises.push(rq.order("updated_at", { ascending: false }).limit(30));
+
       keys.push("archivees");
-      promises.push(bq(supabase.from("fiches").select(ficheAdminColsLight).eq("status", "ARCHIVEE")).order("updated_at", { ascending: false }).limit(30));
+      let arq = bq(supabase.from("fiches").select(ficheAdminColsLight).eq("status", "ARCHIVEE"));
+      if (periodDates) arq = arq.gte("updated_at", `${periodDates.from}T00:00:00Z`).lte("updated_at", `${periodDates.to}T23:59:59Z`);
+      promises.push(arq.order("updated_at", { ascending: false }).limit(30));
     }
 
     // Ventes (ADMIN + COMMERCIAL)
@@ -427,12 +441,18 @@ export default function DashboardPage() {
         "id, reference, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, updated_at, created_by, montant_ht, " +
         "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name)";
       keys.push("commAffectees", "commRetract", "commAcceptees", "commRefusees", "commArchivees");
+
+      const addPeriodFilter = (q: any) => {
+        if (periodDates) q = q.gte("updated_at", `${periodDates.from}T00:00:00Z`).lte("updated_at", `${periodDates.to}T23:59:59Z`);
+        return q;
+      };
+
       promises.push(
-        supabase.from("fiches").select(commCols).eq("status", "AFFECTEE").eq("assigned_to", profile.id).order("updated_at", { ascending: true }),
-        supabase.from("fiches").select(commCols).eq("status", "RETRACTATION").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
-        supabase.from("fiches").select(commCols).eq("status", "ACCEPTEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
-        supabase.from("fiches").select(commCols).eq("status", "REFUSEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
-        supabase.from("fiches").select(commCols).eq("status", "ARCHIVEE").eq("assigned_to", profile.id).order("updated_at", { ascending: false }).limit(50),
+        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "AFFECTEE").eq("assigned_to", profile.id)).order("updated_at", { ascending: true }),
+        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "RETRACTATION").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }).limit(50),
+        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "ACCEPTEE").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }).limit(50),
+        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "REFUSEE").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }).limit(50),
+        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "ARCHIVEE").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }).limit(50),
       );
     }
 

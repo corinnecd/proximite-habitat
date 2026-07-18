@@ -148,7 +148,7 @@ export default function ProfilPage() {
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* ── Hero navy signature ─────────────────────────────────────────── */}
-        <div className="hero-surface hero-surface-sm animate-hero-entry rounded-3xl p-6 sm:p-8">
+        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-8">
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-5">
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#F97316] flex items-center justify-center text-3xl sm:text-4xl font-heading text-white shrink-0 select-none tracking-tight">
               {initials}

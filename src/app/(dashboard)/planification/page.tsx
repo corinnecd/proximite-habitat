@@ -475,7 +475,7 @@ export default function PlanificationPage() {
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* ═══ HERO PLANIFICATION — navy signature ══════════════════════════ */}
-        <div className="hero-surface hero-surface-sm animate-hero-entry rounded-3xl p-6 sm:p-7">
+        <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
           <div className="relative z-10">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div>

@@ -416,57 +416,11 @@ export default function ReportingPage() {
 
   const isLoading = profileLoading || loading;
 
-  if (isLoading) {
-    return (
-      <>
-        <Topbar title="Reporting" />
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-          <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5 animate-pulse">
-              <div>
-                <div className="h-3.5 w-24 bg-white/10 rounded-full" />
-                <div className="h-10 w-48 bg-white/15 rounded-xl mt-1.5" />
-                <div className="h-5 w-64 bg-white/10 rounded-full mt-2" />
-              </div>
-              <div className="h-10 w-28 bg-white/10 rounded-xl" />
-            </div>
-            <div className="pt-5 border-t border-white/10 flex gap-2 flex-wrap animate-pulse">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-7 w-20 bg-white/10 rounded-full" />
-              ))}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-pulse">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-card rounded-2xl border border-border border-l-4 border-l-muted p-5 space-y-3">
-                <div className="flex justify-between">
-                  <div className="w-10 h-10 bg-muted rounded-xl" />
-                </div>
-                <div className="h-8 w-16 bg-muted rounded-lg" />
-                <div className="h-2.5 w-28 bg-muted rounded-full" />
-              </div>
-            ))}
-          </div>
-          <div className="bg-card rounded-2xl border border-border p-6 animate-pulse space-y-4">
-            <div className="h-5 w-48 bg-muted rounded-full" />
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-8 bg-muted/50 rounded-lg" />
-            ))}
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-pulse">
-            <div className="bg-card rounded-2xl border border-border h-72" />
-            <div className="bg-card rounded-2xl border border-border h-72" />
-          </div>
-        </div>
-      </>
-    );
-  }
-
   return (
     <>
       <Topbar
         title={isCommercial ? "Mon reporting" : "Reporting direction"}
-        actions={<div className="flex items-center gap-2"><ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${_pl ? `${PERIOD_LABELS[periodFilter]} (${_pl})` : PERIOD_LABELS[periodFilter]}`} filename="reporting" /><ExportCsvButton filename="reporting" getData={() => ({
+        actions={isLoading ? undefined : <div className="flex items-center gap-2"><ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${_pl ? `${PERIOD_LABELS[periodFilter]} (${_pl})` : PERIOD_LABELS[periodFilter]}`} filename="reporting" /><ExportCsvButton filename="reporting" getData={() => ({
           columns: [
             { key: "indicateur", label: "Indicateur" },
             { key: "valeur", label: "Valeur" },
@@ -484,79 +438,120 @@ export default function ReportingPage() {
       />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
-        {/* ═══ HERO REPORTING — navy signature avec KPI vedette + filtre période ═══ */}
+        {/* ═══ HERO REPORTING — toujours le même container pour éviter le flash ═══ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
-          <div className="relative z-10">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
-              <div>
-                <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
-                  {isCommercial ? "Vue personnelle" : "Vue consolidée"}
-                </span>
-                <h1 className="font-heading text-3xl sm:text-4xl text-white tracking-tight leading-none mt-1.5">
-                  {isCommercial ? "Mon reporting" : "Reporting"}
-                </h1>
-                <p className="text-sm text-white/60 mt-2">
-                  {isCommercial
-                    ? "Statistiques personnelles — vos fiches affectées"
-                    : "Vue globale — tous commerciaux et référents réunis"}
-                </p>
-              </div>
-              {/* KPI vedette CA total */}
-              {caTotal > 0 && (
-                <div className="text-right flex-shrink-0">
-                  <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
-                    CA HT · {PERIOD_LABELS[periodFilter]}
-                  </div>
-                  <div className="font-heading text-3xl sm:text-4xl text-white leading-none tracking-tight">
-                    {(caTotal / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}<span className="text-xl">&nbsp;K€</span>
-                  </div>
+          {isLoading ? (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5 animate-pulse">
+                <div>
+                  <div className="h-3.5 w-24 bg-white/10 rounded-full" />
+                  <div className="h-10 w-48 bg-white/15 rounded-xl mt-1.5" />
+                  <div className="h-5 w-64 bg-white/10 rounded-full mt-2" />
                 </div>
-              )}
-            </div>
-
-            {/* Filtre période intégré */}
-            <div className="pt-5 border-t border-white/10">
-              <div className="flex items-center gap-2 mb-3">
-                <CalendarDays className="w-3.5 h-3.5 text-white/50" />
-                <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">Période de soumission</span>
-                {getReportPeriodLabel(periodFilter) && (
-                  <span className="text-[11px] text-white/70">· {getReportPeriodLabel(periodFilter)}</span>
-                )}
-                <button
-                  type="button"
-                  disabled={refreshing}
-                  onClick={async () => {
-                    if (!profile) return;
-                    setRefreshing(true);
-                    await loadData(profile.id, profile.role, periodFilter);
-                    setRefreshing(false);
-                  }}
-                  className="ml-auto flex items-center gap-1.5 text-[11px] text-white/60 hover:text-white transition-colors"
-                >
-                  <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
-                  {refreshing ? "Actualisation…" : "Actualiser"}
-                </button>
+                <div className="h-10 w-28 bg-white/10 rounded-xl" />
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    aria-pressed={periodFilter === p}
-                    onClick={() => setPeriodFilter(p)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                      periodFilter === p
-                        ? "bg-[#F97316] text-white"
-                        : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"
-                    }`}
-                  >
-                    {PERIOD_LABELS[p]}
-                  </button>
+              <div className="pt-5 border-t border-white/10 flex gap-2 flex-wrap animate-pulse">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="h-7 w-20 bg-white/10 rounded-full" />
                 ))}
               </div>
+            </>
+          ) : (
+            <div className="relative z-10">
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
+                <div>
+                  <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
+                    {isCommercial ? "Vue personnelle" : "Vue consolidée"}
+                  </span>
+                  <h1 className="font-heading text-3xl sm:text-4xl text-white tracking-tight leading-none mt-1.5">
+                    {isCommercial ? "Mon reporting" : "Reporting"}
+                  </h1>
+                  <p className="text-sm text-white/60 mt-2">
+                    {isCommercial
+                      ? "Statistiques personnelles — vos fiches affectées"
+                      : "Vue globale — tous commerciaux et référents réunis"}
+                  </p>
+                </div>
+                {caTotal > 0 && (
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
+                      CA HT · {PERIOD_LABELS[periodFilter]}
+                    </div>
+                    <div className="font-heading text-3xl sm:text-4xl text-white leading-none tracking-tight">
+                      {(caTotal / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}<span className="text-xl">&nbsp;K€</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="pt-5 border-t border-white/10">
+                <div className="flex items-center gap-2 mb-3">
+                  <CalendarDays className="w-3.5 h-3.5 text-white/50" />
+                  <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">Période de soumission</span>
+                  {getReportPeriodLabel(periodFilter) && (
+                    <span className="text-[11px] text-white/70">· {getReportPeriodLabel(periodFilter)}</span>
+                  )}
+                  <button
+                    type="button"
+                    disabled={refreshing}
+                    onClick={async () => {
+                      if (!profile) return;
+                      setRefreshing(true);
+                      await loadData(profile.id, profile.role, periodFilter);
+                      setRefreshing(false);
+                    }}
+                    className="ml-auto flex items-center gap-1.5 text-[11px] text-white/60 hover:text-white transition-colors"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
+                    {refreshing ? "Actualisation…" : "Actualiser"}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      aria-pressed={periodFilter === p}
+                      onClick={() => setPeriodFilter(p)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        periodFilter === p
+                          ? "bg-[#F97316] text-white"
+                          : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"
+                      }`}
+                    >
+                      {PERIOD_LABELS[p]}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
+
+        {isLoading && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-pulse">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-card rounded-2xl border border-border border-l-4 border-l-muted p-5 space-y-3">
+                  <div className="w-10 h-10 bg-muted rounded-xl" />
+                  <div className="h-8 w-16 bg-muted rounded-lg" />
+                  <div className="h-2.5 w-28 bg-muted rounded-full" />
+                </div>
+              ))}
+            </div>
+            <div className="bg-card rounded-2xl border border-border p-6 animate-pulse space-y-4">
+              <div className="h-5 w-48 bg-muted rounded-full" />
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-8 bg-muted/50 rounded-lg" />
+              ))}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-pulse">
+              <div className="bg-card rounded-2xl border border-border h-72" />
+              <div className="bg-card rounded-2xl border border-border h-72" />
+            </div>
+          </>
+        )}
+
+        {!isLoading && (<>
 
         {/* ── KPIs (6 indicateurs clés — 2 lignes de 3) ────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1117,7 +1112,7 @@ export default function ReportingPage() {
             )}
           </div>
         )}
-
+        </>)}
       </div>
     </>
   );

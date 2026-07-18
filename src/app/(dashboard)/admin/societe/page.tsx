@@ -62,7 +62,7 @@ export default function SocietePage() {
         ) : (
           <>
             {/* ═══ HERO SOCIÉTÉ — navy signature ═══════════════════════ */}
-            <div className="hero-surface hero-surface-sm animate-hero-entry rounded-3xl p-6 sm:p-8">
+            <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-8">
               <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-5">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#F97316] flex items-center justify-center shrink-0">
                   <Building className="w-8 h-8 sm:w-10 sm:h-10 text-white" />

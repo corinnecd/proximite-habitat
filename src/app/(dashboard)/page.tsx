@@ -725,50 +725,32 @@ export default function DashboardPage() {
             </div>
           ) : undefined}
         />
-        <div className="p-4 sm:p-6 lg:p-8 space-y-8 animate-pulse">
-          {/* Greeting */}
-          <div className="flex items-center justify-between">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+          {/* Hero — même classe que le vrai hero pour éviter le remontage DOM */}
+          <div className="hero-surface rounded-3xl p-6 sm:p-8 animate-pulse">
             <div className="space-y-2">
-              <div className="h-5 bg-card rounded w-48" />
-              <div className="h-3.5 bg-card rounded w-32" />
+              <div className="h-3.5 bg-white/10 rounded-full w-20" />
+              <div className="h-12 bg-white/15 rounded-xl w-44 mt-1" />
+              <div className="h-4 bg-white/10 rounded-full w-36 mt-2" />
             </div>
-            <div className="h-9 bg-card rounded-xl w-36" />
+            <div className="mt-6 pt-5 border-t border-white/10 flex gap-2 flex-wrap">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="h-7 w-20 bg-white/10 rounded-full" />
+              ))}
+            </div>
           </div>
           {/* Compteurs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-28 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] border-l-4 border-l-muted" style={{ animationDelay: `${i * 50}ms` }} />
+              <div key={i} className="h-28 bg-card rounded-2xl border border-border border-l-4 border-l-muted" />
             ))}
           </div>
-          {/* Bloc ventes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="h-48 bg-card rounded-2xl border border-border" />
-            <div className="h-48 bg-card rounded-2xl border border-border" />
+          {/* Fiches */}
+          <div className="space-y-3 animate-pulse">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-20 bg-card rounded-2xl border border-border" />
+            ))}
           </div>
-          {/* StatusBlocks */}
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-card rounded-xl" />
-                  <div className="h-4 bg-card rounded w-28" />
-                  <div className="h-5 bg-card rounded-full w-8" />
-                </div>
-                <div className="h-7 bg-card rounded-xl w-24" />
-              </div>
-              <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden">
-                {Array.from({ length: 2 }).map((_, j) => (
-                  <div key={j} className={`px-5 py-4 flex items-start gap-3 ${j > 0 ? "border-t border-border" : ""}`}>
-                    <div className="flex-1 space-y-2">
-                      <div className="h-3.5 bg-muted rounded w-1/3" />
-                      <div className="h-3 bg-muted rounded w-1/2" />
-                    </div>
-                    <div className="h-3 bg-muted rounded w-16" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
         </div>
       </>
     );
@@ -879,72 +861,6 @@ export default function DashboardPage() {
 
   return (
     <>
-      {assignDialog}
-
-      {/* Dialog traitement rapide (commercial) */}
-      <Dialog open={!!ficheToTraiter} onOpenChange={(open) => { if (!open) { setFicheToTraiter(null); setTraiterComment(""); setTraiterDecision("RETRACTATION"); } }}>
-        <DialogContent showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>Traiter la fiche</DialogTitle>
-            <DialogDescription>
-              <span className="font-semibold text-foreground">Fiche de {ficheToTraiter?.nom}</span>
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Décision */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setTraiterDecision("RETRACTATION")}
-              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                traiterDecision === "RETRACTATION"
-                  ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30"
-                  : "border-border hover:border-purple-300"
-              }`}
-            >
-              <CheckCircle2 className={`w-6 h-6 ${traiterDecision === "RETRACTATION" ? "text-purple-600" : "text-muted-foreground"}`} />
-              <span className={`text-sm font-medium ${traiterDecision === "RETRACTATION" ? "text-purple-700 dark:text-purple-400" : "text-muted-foreground"}`}>Attente Validation</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTraiterDecision("REFUSEE")}
-              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                traiterDecision === "REFUSEE"
-                  ? "border-red-500 bg-red-50 dark:bg-red-950/30"
-                  : "border-border hover:border-red-300"
-              }`}
-            >
-              <XCircle className={`w-6 h-6 ${traiterDecision === "REFUSEE" ? "text-red-500" : "text-muted-foreground"}`} />
-              <span className={`text-sm font-medium ${traiterDecision === "REFUSEE" ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>Refusée</span>
-            </button>
-          </div>
-
-          {/* Commentaire */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Commentaire <span className="text-muted-foreground font-normal">(optionnel)</span></label>
-            <Textarea
-              value={traiterComment}
-              onChange={(e) => setTraiterComment(e.target.value)}
-              placeholder={traiterDecision === "REFUSEE" ? "Motif du refus…" : "Notes sur la visite / attente client…"}
-              className="min-h-[80px] rounded-xl resize-none"
-            />
-          </div>
-
-          <DialogFooter>
-            <DialogClose render={<Button variant="outline" className="rounded-xl" />}>Annuler</DialogClose>
-            <Button
-              onClick={handleTraiter}
-              disabled={traiting}
-              className={`rounded-xl gap-2 text-white ${traiterDecision === "RETRACTATION" ? "bg-purple-600 hover:bg-purple-700" : "bg-red-500 hover:bg-red-600"}`}
-            >
-              {traiting ? <Loader2 className="w-4 h-4 animate-spin" /> : traiterDecision === "RETRACTATION" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-              {traiterDecision === "RETRACTATION" ? "Mettre en attente" : "Refuser"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {deleteDialog}
       <Topbar
         title="Tableau de bord"
         actions={!isReferent ? (
@@ -966,7 +882,7 @@ export default function DashboardPage() {
             HERO DASHBOARD — bloc navy signature avec greeting + KPI vedette
             + filtre période intégré + sélecteur succursale DG
         ═══════════════════════════════════════════════════════════════════ */}
-        <div className="hero-surface animate-hero-entry rounded-3xl p-6 sm:p-8">
+        <div className="hero-surface rounded-3xl p-6 sm:p-8">
           <div className="relative z-10">
             {/* Sélecteur succursale (DG uniquement) */}
             {isDG && (
@@ -1950,6 +1866,66 @@ export default function DashboardPage() {
         )}
 
       </div>
+
+      {assignDialog}
+      {/* Dialog traitement rapide (commercial) */}
+      <Dialog open={!!ficheToTraiter} onOpenChange={(open) => { if (!open) { setFicheToTraiter(null); setTraiterComment(""); setTraiterDecision("RETRACTATION"); } }}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Traiter la fiche</DialogTitle>
+            <DialogDescription>
+              <span className="font-semibold text-foreground">Fiche de {ficheToTraiter?.nom}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setTraiterDecision("RETRACTATION")}
+              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                traiterDecision === "RETRACTATION"
+                  ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30"
+                  : "border-border hover:border-purple-300"
+              }`}
+            >
+              <CheckCircle2 className={`w-6 h-6 ${traiterDecision === "RETRACTATION" ? "text-purple-600" : "text-muted-foreground"}`} />
+              <span className={`text-sm font-medium ${traiterDecision === "RETRACTATION" ? "text-purple-700 dark:text-purple-400" : "text-muted-foreground"}`}>Attente Validation</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setTraiterDecision("REFUSEE")}
+              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                traiterDecision === "REFUSEE"
+                  ? "border-red-500 bg-red-50 dark:bg-red-950/30"
+                  : "border-border hover:border-red-300"
+              }`}
+            >
+              <XCircle className={`w-6 h-6 ${traiterDecision === "REFUSEE" ? "text-red-500" : "text-muted-foreground"}`} />
+              <span className={`text-sm font-medium ${traiterDecision === "REFUSEE" ? "text-red-600 dark:text-red-400" : "text-muted-foreground"}`}>Refusée</span>
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Commentaire <span className="text-muted-foreground font-normal">(optionnel)</span></label>
+            <Textarea
+              value={traiterComment}
+              onChange={(e) => setTraiterComment(e.target.value)}
+              placeholder={traiterDecision === "REFUSEE" ? "Motif du refus…" : "Notes sur la visite / attente client…"}
+              className="min-h-[80px] rounded-xl resize-none"
+            />
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" className="rounded-xl" />}>Annuler</DialogClose>
+            <Button
+              onClick={handleTraiter}
+              disabled={traiting}
+              className={`rounded-xl gap-2 text-white ${traiterDecision === "RETRACTATION" ? "bg-purple-600 hover:bg-purple-700" : "bg-red-500 hover:bg-red-600"}`}
+            >
+              {traiting ? <Loader2 className="w-4 h-4 animate-spin" /> : traiterDecision === "RETRACTATION" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+              {traiterDecision === "RETRACTATION" ? "Mettre en attente" : "Refuser"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {deleteDialog}
     </>
   );
 }

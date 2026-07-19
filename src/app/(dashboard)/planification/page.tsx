@@ -525,18 +525,7 @@ export default function PlanificationPage() {
         </div>
 
         {/* Skeleton pendant chargement du profil */}
-        {(profileLoading || !profile) && (
-          <div className="space-y-6">
-            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
-              <div className="h-5 w-48 bg-muted rounded animate-pulse" />
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-20 bg-muted/50 rounded-xl animate-pulse" />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        {(profileLoading || !profile) && null}
 
         {/* Contenu principal — visible après chargement du profil */}
         {profile && <>
@@ -855,13 +844,7 @@ export default function PlanificationPage() {
           )}
 
           <div className="overflow-y-auto -mx-6 px-6 flex-1">
-            {loadingSavedParcours ? (
-              <div className="space-y-2 py-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-20 bg-muted rounded-xl animate-pulse" />
-                ))}
-              </div>
-            ) : savedParcoursList.length === 0 ? (
+            {loadingSavedParcours ? null : savedParcoursList.length === 0 ? (
               <div className="text-center py-10 space-y-2">
                 <Route className="w-10 h-10 mx-auto text-muted-foreground opacity-40" />
                 <p className="text-sm font-medium">Aucun trajet enregistré</p>

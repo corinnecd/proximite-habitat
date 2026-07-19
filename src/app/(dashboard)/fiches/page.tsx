@@ -521,16 +521,7 @@ export default function FichesPage() {
         </div>
 
         {/* Filtres direction / période */}
-        {!profile && (
-          <div className="space-y-4 animate-pulse">
-            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 h-[72px]" />
-            <div className="flex gap-2">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="h-10 rounded-xl bg-card border border-border" style={{ width: `${80 + (i % 3) * 30}px` }} />
-              ))}
-            </div>
-          </div>
-        )}
+        {!profile && null}
         {isAdminOrDG && (
           <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-4 space-y-3">
             {!isValidationMode && (
@@ -697,27 +688,7 @@ export default function FichesPage() {
         )}
 
         {/* Liste des fiches */}
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-4 bg-card border border-border border-l-4 border-l-muted rounded-xl px-5 py-4 animate-pulse"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                <div className="w-10 h-10 rounded-xl bg-muted shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3.5 bg-muted rounded w-1/3" />
-                  <div className="h-3 bg-muted rounded w-1/2" />
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="h-5 w-20 bg-muted rounded-full hidden sm:block" />
-                  <div className="h-4 w-16 bg-muted rounded hidden sm:block" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : fetchError ? (
+        {loading ? null : fetchError ? (
           <div className="text-center py-16 bg-card rounded-2xl border border-border space-y-3">
             <AlertCircle className="w-10 h-10 mx-auto text-destructive opacity-60" />
             <p className="font-medium text-sm text-foreground">Erreur de chargement</p>

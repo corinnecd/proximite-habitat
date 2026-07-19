@@ -635,13 +635,7 @@ export default function NotificationsPage() {
         )}
 
         {/* ── Contenu ───────────────────────────────────────────────────── */}
-        {!initialLoaded ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-20 bg-card rounded-xl animate-pulse" />
-            ))}
-          </div>
-        ) : (
+        {!initialLoaded ? null : (
         <div style={{ opacity: loading ? 0.4 : 1, transition: "opacity 150ms ease", pointerEvents: loading ? "none" : undefined }}>
         {displayed.length === 0 ? (
           <Card className="border-0 shadow-sm">

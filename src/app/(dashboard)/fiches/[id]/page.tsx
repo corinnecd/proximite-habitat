@@ -614,11 +614,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     return (
       <>
         <Topbar title="Détail de la fiche" />
-        <div className="p-4 sm:p-6 lg:p-8 space-y-4 animate-pulse">
-          <div className="h-36 bg-card rounded-2xl border border-border" />
-          <div className="h-48 bg-card rounded-2xl border border-border" />
-          <div className="h-32 bg-card rounded-2xl border border-border" />
-        </div>
+        <div className="p-4 sm:p-6 lg:p-8" />
       </>
     );
   }

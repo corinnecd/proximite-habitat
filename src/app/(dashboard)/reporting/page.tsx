@@ -440,23 +440,7 @@ export default function ReportingPage() {
 
         {/* ═══ HERO REPORTING — toujours le même container pour éviter le flash ═══ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
-          {isLoading ? (
-            <>
-              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5 animate-pulse">
-                <div>
-                  <div className="h-3.5 w-24 bg-white/10 rounded-full" />
-                  <div className="h-10 w-48 bg-white/15 rounded-xl mt-1.5" />
-                  <div className="h-5 w-64 bg-white/10 rounded-full mt-2" />
-                </div>
-                <div className="h-10 w-28 bg-white/10 rounded-xl" />
-              </div>
-              <div className="pt-5 border-t border-white/10 flex gap-2 flex-wrap animate-pulse">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-7 w-20 bg-white/10 rounded-full" />
-                ))}
-              </div>
-            </>
-          ) : (
+          {isLoading ? null : (
             <div className="relative z-10">
               <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
                 <div>
@@ -527,29 +511,7 @@ export default function ReportingPage() {
           )}
         </div>
 
-        {isLoading && (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-pulse">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-card rounded-2xl border border-border border-l-4 border-l-muted p-5 space-y-3">
-                  <div className="w-10 h-10 bg-muted rounded-xl" />
-                  <div className="h-8 w-16 bg-muted rounded-lg" />
-                  <div className="h-2.5 w-28 bg-muted rounded-full" />
-                </div>
-              ))}
-            </div>
-            <div className="bg-card rounded-2xl border border-border p-6 animate-pulse space-y-4">
-              <div className="h-5 w-48 bg-muted rounded-full" />
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-8 bg-muted/50 rounded-lg" />
-              ))}
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-pulse">
-              <div className="bg-card rounded-2xl border border-border h-72" />
-              <div className="bg-card rounded-2xl border border-border h-72" />
-            </div>
-          </>
-        )}
+        {isLoading && null}
 
         {!isLoading && (<>
 

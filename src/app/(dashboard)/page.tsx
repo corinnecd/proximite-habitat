@@ -725,33 +725,7 @@ export default function DashboardPage() {
             </div>
           ) : undefined}
         />
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-          {/* Hero — même classe que le vrai hero pour éviter le remontage DOM */}
-          <div className="hero-surface rounded-3xl p-6 sm:p-8 animate-pulse">
-            <div className="space-y-2">
-              <div className="h-3.5 bg-white/10 rounded-full w-20" />
-              <div className="h-12 bg-white/15 rounded-xl w-44 mt-1" />
-              <div className="h-4 bg-white/10 rounded-full w-36 mt-2" />
-            </div>
-            <div className="mt-6 pt-5 border-t border-white/10 flex gap-2 flex-wrap">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="h-7 w-20 bg-white/10 rounded-full" />
-              ))}
-            </div>
-          </div>
-          {/* Compteurs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-pulse">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-28 bg-card rounded-2xl border border-border border-l-4 border-l-muted" />
-            ))}
-          </div>
-          {/* Fiches */}
-          <div className="space-y-3 animate-pulse">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-20 bg-card rounded-2xl border border-border" />
-            ))}
-          </div>
-        </div>
+        <div className="p-4 sm:p-6 lg:p-8" />
       </>
     );
   }

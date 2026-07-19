@@ -178,10 +178,7 @@ export default function UtilisateursPage() {
     return (
       <>
         <Topbar title="Utilisateurs" />
-        <div className="p-4 sm:p-6 lg:p-8 space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-20 bg-card rounded-2xl border border-border animate-pulse" />
-          ))}
+        <div className="p-4 sm:p-6 lg:p-8">
         </div>
       </>
     );
@@ -343,13 +340,7 @@ export default function UtilisateursPage() {
         </div>
 
         {/* ── Liste ────────────────────────────────────────────────────────── */}
-        {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-20 bg-card rounded-2xl border border-border animate-pulse" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
+        {loading ? null : filtered.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border">
             <EmptyState
               illustration="fiches"

@@ -117,11 +117,7 @@ export default function ProfilPage() {
     return (
       <>
         <Topbar title="Mon profil" />
-        <div className="p-4 sm:p-6 lg:p-8 animate-pulse space-y-4">
-          <div className="h-36 bg-card rounded-2xl border border-border" />
-          <div className="h-64 bg-card rounded-2xl border border-border" />
-          <div className="h-48 bg-card rounded-2xl border border-border" />
-        </div>
+        <div className="p-4 sm:p-6 lg:p-8" />
       </>
     );
   }

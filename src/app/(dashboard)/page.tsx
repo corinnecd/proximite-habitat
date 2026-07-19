@@ -359,8 +359,8 @@ export default function DashboardPage() {
 
     // Compteurs par statut — une seule requête au lieu de 6-7
     const statusesToCount: FicheStatus[] = isReferent
-      ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
-      : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+      ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+      : ["SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
     {
       let q = supabase.from("fiches").select("status").in("status", statusesToCount);
       if (isReferent) q = q.eq("created_by", profile.id);
@@ -1155,7 +1155,7 @@ export default function DashboardPage() {
 
             {/* KPI Cards secondaires */}
             {(() => {
-              const inProgress = counts.SOUMISE + counts.AFFECTEE + counts.RETRACTATION;
+              const inProgress = counts.SOUMISE + counts.VALIDEE + counts.AFFECTEE + counts.RETRACTATION;
               // Dénominateur commun hors archivées → les 3 taux somment à 100%
               const baseActive = counts.ACCEPTEE + counts.REFUSEE + inProgress;
               const acceptanceRate = baseActive > 0 ? Math.round((counts.ACCEPTEE / baseActive) * 100) : 0;

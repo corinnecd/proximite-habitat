@@ -267,7 +267,7 @@ export default function ReportingPage() {
 
     // ── 2. Taux d'acceptation par commercial ──
     const commMap: Record<string, CommercialRow> = {};
-    const COMM_STATUSES = ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+    const COMM_STATUSES = ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE"]; // hors ARCHIVEE → cohérent avec baseActive
     for (const p of allCommProfiles ?? []) {
       commMap[p.id] = { name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
     }
@@ -317,7 +317,7 @@ export default function ReportingPage() {
         if (plannedNamesUpper.has(nameKey)) matchKey = plannedNamesUpper.get(nameKey)!;
       }
       if (!matchKey) continue;
-      villeMap[matchKey].total++;
+      if (f.status !== "ARCHIVEE") villeMap[matchKey].total++; // hors ARCHIVEE → cohérent avec baseActive
       if (f.status === "ACCEPTEE") villeMap[matchKey].accepted++;
       if (f.status === "REFUSEE") villeMap[matchKey].refused++;
     }

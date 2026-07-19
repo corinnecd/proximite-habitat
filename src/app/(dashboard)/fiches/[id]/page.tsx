@@ -533,30 +533,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           .single();
 
         if (commProfile) {
-          // Notification → commercial : fiche affectée
-          await createNotifications(supabase, [{
-            user_id: commercialId,
-            organization_id: orgId,
-            type: "FICHE_AFFECTEE",
-            title: "Nouvelle fiche affectée",
-            message: `La fiche ${ref} vous a été affectée par la direction.`,
-            fiche_id: fiche.id,
-          }]);
-          // Email au commercial
+          // Email au commercial (la notification est gérée par le RPC transition_fiche)
           await sendEmailFicheAffectee(fiche.id);
-        }
-
-        // Notification → référent : sa fiche a été validée et affectée
-        if (fiche.created_by) {
-          const commName = commProfile ? `${commProfile.first_name} ${commProfile.last_name}` : "un commercial";
-          await createNotifications(supabase, [{
-            user_id: fiche.created_by,
-            organization_id: orgId,
-            type: "FICHE_AFFECTEE",
-            title: "Fiche validée et affectée",
-            message: `Votre fiche ${ref} a été validée par la direction et affectée à ${commName}.`,
-            fiche_id: fiche.id,
-          }]);
         }
       } catch { /* silencieux */ }
     })();

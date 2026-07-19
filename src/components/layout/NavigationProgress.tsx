@@ -48,27 +48,7 @@ function Progress() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams]);
 
-  if (!visible) return null;
-
-  return (
-    <div
-      aria-hidden
-      style={{
-        position: "fixed",
-        inset: "0 auto auto 0",
-        height: 3,
-        width: `${progress}%`,
-        background: "#F97316",
-        zIndex: 9999,
-        pointerEvents: "none",
-        transition: progress === 100
-          ? "width 150ms ease-out"
-          : "width 80ms linear",
-        borderRadius: "0 2px 2px 0",
-        boxShadow: "0 0 8px rgba(249,115,22,0.6)",
-      }}
-    />
-  );
+  return null;
 }
 
 export function NavigationProgress() {

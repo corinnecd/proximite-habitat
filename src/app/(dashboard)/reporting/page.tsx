@@ -416,11 +416,20 @@ export default function ReportingPage() {
 
   const isLoading = profileLoading || loading;
 
+  if (isLoading) {
+    return (
+      <>
+        <Topbar title={isCommercial ? "Mon reporting" : "Reporting direction"} />
+        <div className="p-4 sm:p-6 lg:p-8" />
+      </>
+    );
+  }
+
   return (
     <>
       <Topbar
         title={isCommercial ? "Mon reporting" : "Reporting direction"}
-        actions={isLoading ? undefined : <div className="flex items-center gap-2"><ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${_pl ? `${PERIOD_LABELS[periodFilter]} (${_pl})` : PERIOD_LABELS[periodFilter]}`} filename="reporting" /><ExportCsvButton filename="reporting" getData={() => ({
+        actions={<div className="flex items-center gap-2"><ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${_pl ? `${PERIOD_LABELS[periodFilter]} (${_pl})` : PERIOD_LABELS[periodFilter]}`} filename="reporting" /><ExportCsvButton filename="reporting" getData={() => ({
           columns: [
             { key: "indicateur", label: "Indicateur" },
             { key: "valeur", label: "Valeur" },
@@ -438,10 +447,9 @@ export default function ReportingPage() {
       />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
-        {/* ═══ HERO REPORTING — toujours le même container pour éviter le flash ═══ */}
+        {/* ═══ HERO REPORTING ═══ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
-          {isLoading ? null : (
-            <div className="relative z-10">
+          <div className="relative z-10">
               <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
                 <div>
                   <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
@@ -508,12 +516,9 @@ export default function ReportingPage() {
                 </div>
               </div>
             </div>
-          )}
         </div>
 
-        {isLoading && null}
-
-        {!isLoading && (<>
+        <>
 
         {/* ── KPIs (6 indicateurs clés — 2 lignes de 3) ────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1074,7 +1079,7 @@ export default function ReportingPage() {
             )}
           </div>
         )}
-        </>)}
+        </>
       </div>
     </>
   );

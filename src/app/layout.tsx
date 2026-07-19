@@ -38,7 +38,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <NextTopLoader color="#F97316" height={3} showSpinner={false} shadow="0 0 10px #F97316,0 0 5px #F97316" />
+          <NextTopLoader color="#ffffff" height={3} showSpinner={false} shadow="0 0 10px rgba(255,255,255,0.6),0 0 5px rgba(255,255,255,0.4)" />
           {children}
           <Toaster richColors position="top-right" />
         </ThemeProvider>

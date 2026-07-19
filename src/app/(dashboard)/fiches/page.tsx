@@ -170,9 +170,15 @@ export default function FichesPage() {
       query = query.neq("status", "BROUILLON");
     }
 
-    // Référent : ne voit que ses propres fiches
+    // Référent : ne voit que ses propres fiches + filtre période
     if (_isReferent && profile?.id) {
       query = query.eq("created_by", profile.id);
+      const dates = getPeriodDates(periodFilter);
+      if (dates) {
+        query = query
+          .gte("updated_at", `${dates.from}T00:00:00Z`)
+          .lte("updated_at", `${dates.to}T23:59:59Z`);
+      }
     }
 
     // Commercial : ne voit que les fiches qui lui sont affectées

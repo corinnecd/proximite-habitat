@@ -471,6 +471,46 @@ export default function FichesPage() {
                 className="w-full h-11 pl-10 pr-4 bg-white/8 border border-white/10 rounded-full text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-1 focus:ring-[#F97316]/50 focus:border-[#F97316]/30 transition-all"
               />
             </div>
+
+            {/* Filtre période — référents uniquement (admin l'a dans le panneau filtres) */}
+            {isReferent && (
+              <div className="pt-4 border-t border-white/10 mt-4">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <CalendarDays className="w-3.5 h-3.5 text-white/50" />
+                  <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">Période d&apos;activité</span>
+                  {getPeriodLabel(periodFilter) && (
+                    <span className="text-[11px] text-white/70">· {getPeriodLabel(periodFilter)}</span>
+                  )}
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {(Object.keys(PERIOD_LABELS) as PeriodFilter[]).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPeriodFilter(p)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        periodFilter === p
+                          ? "bg-[#F97316] text-white"
+                          : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"
+                      }`}
+                    >
+                      {PERIOD_LABELS[p]}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => { setPeriodFilter("ALL"); setStatusFilter("ARCHIVEE"); }}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium transition-all bg-white/8 text-white/70 hover:bg-white/15 border border-white/10 inline-flex items-center gap-1.5"
+                  >
+                    <Archive className="w-3 h-3" />
+                    Antérieures
+                    {anterieures.length > 0 && (
+                      <span className="bg-[#F97316]/20 text-[#F97316] text-[10px] font-bold px-1.5 py-0.5 rounded-full">{anterieures.length}</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

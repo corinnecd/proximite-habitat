@@ -130,7 +130,7 @@ export function EmptyState({ illustration = "fiches", title, description, action
   return (
     <div
       className="flex flex-col items-center justify-center py-16 px-6 text-center space-y-5"
-      style={{ animation: "fadeIn 0.4s ease both" }}
+      style={undefined}
     >
       <Illu />
       <div className="space-y-2 max-w-sm">

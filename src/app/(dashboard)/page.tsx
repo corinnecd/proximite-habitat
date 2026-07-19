@@ -419,7 +419,7 @@ export default function DashboardPage() {
       ).eq("status", "ACCEPTEE");
       if (isCommercial) vq = vq.eq("assigned_to", profile.id);
       if (branchFilter) vq = vq.eq("organization_id", branchFilter);
-      if (periodDates) vq = vq.gte("updated_at", `${periodDates.from}T00:00:00`).lte("updated_at", `${periodDates.to}T23:59:59`);
+      if (periodDates) vq = vq.gte("updated_at", `${periodDates.from}T00:00:00Z`).lte("updated_at", `${periodDates.to}T23:59:59Z`);
       keys.push("ventes");
       promises.push(vq);
     }
@@ -449,10 +449,10 @@ export default function DashboardPage() {
 
       promises.push(
         addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "AFFECTEE").eq("assigned_to", profile.id)).order("updated_at", { ascending: true }),
-        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "RETRACTATION").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }).limit(50),
-        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "ACCEPTEE").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }).limit(50),
-        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "REFUSEE").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }).limit(50),
-        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "ARCHIVEE").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }).limit(50),
+        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "RETRACTATION").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }),
+        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "ACCEPTEE").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }),
+        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "REFUSEE").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }),
+        addPeriodFilter(supabase.from("fiches").select(commCols).eq("status", "ARCHIVEE").eq("assigned_to", profile.id)).order("updated_at", { ascending: false }),
       );
     }
 
@@ -562,9 +562,14 @@ export default function DashboardPage() {
     if (isCommercial) {
       setFichesAffectees((r.get("commAffectees")?.data as unknown as FicheAffectee[]) ?? []);
       setFichesRetractationComm((r.get("commRetract")?.data as unknown as FicheAffectee[]) ?? []);
-      setFichesAcceptees((r.get("commAcceptees")?.data as unknown as FicheAffectee[]) ?? []);
+      const commAccepteesRows = (r.get("commAcceptees")?.data as unknown as FicheAffectee[]) ?? [];
+      setFichesAcceptees(commAccepteesRows);
       setFichesRefusees((r.get("commRefusees")?.data as unknown as FicheAffectee[]) ?? []);
       setFichesArchivees((r.get("commArchivees")?.data as unknown as FicheAffectee[]) ?? []);
+      // Recalcule KPIs commercial depuis la même source que le tableau de détail
+      const commCA = commAccepteesRows.reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0);
+      setMesVentes(commAccepteesRows.length);
+      setCaTotal(commCA);
     }
 
     if (!isReferent) setAnterieures((r.get("anterieures")?.data as typeof anterieures) ?? []);
@@ -1035,7 +1040,7 @@ export default function DashboardPage() {
             <span className="text-sm font-semibold tracking-tight">Statuts des fiches ({totalFiches})</span>
             {statusOpenMobile ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </button>
-          <div className={`${statusOpenMobile ? "grid" : "hidden"} sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 animate-cascade`}>
+          <div className={`${statusOpenMobile ? "grid" : "hidden"} sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4`}>
             {visibleStatuses.map((status) => (
               <Link key={status} href={`/fiches?status=${status}`}>
                 <Card className={`border border-border border-l-4 shadow-sm ${COUNTER_STYLES[status]} hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200 cursor-pointer`}>
@@ -1150,11 +1155,12 @@ export default function DashboardPage() {
 
             {/* KPI Cards secondaires */}
             {(() => {
-              const assignedBase = counts.AFFECTEE + counts.RETRACTATION + counts.ACCEPTEE + counts.REFUSEE + counts.ARCHIVEE;
-              const refusalRate = assignedBase > 0 ? Math.round((counts.REFUSEE / assignedBase) * 100) : 0;
               const inProgress = counts.SOUMISE + counts.AFFECTEE + counts.RETRACTATION;
-              const totalAll = Object.values(counts).reduce((a, b) => a + b, 0);
-              const inProgressRate = totalAll > 0 ? Math.round((inProgress / totalAll) * 100) : 0;
+              // Dénominateur commun hors archivées → les 3 taux somment à 100%
+              const baseActive = counts.ACCEPTEE + counts.REFUSEE + inProgress;
+              const acceptanceRate = baseActive > 0 ? Math.round((counts.ACCEPTEE / baseActive) * 100) : 0;
+              const refusalRate    = baseActive > 0 ? Math.round((counts.REFUSEE   / baseActive) * 100) : 0;
+              const inProgressRate = baseActive > 0 ? Math.round((inProgress        / baseActive) * 100) : 0;
               return (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
@@ -1163,9 +1169,9 @@ export default function DashboardPage() {
                         <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                       </div>
                     </div>
-                    <p className="text-2xl sm:text-3xl font-bold tabular-nums">{assignedBase > 0 ? Math.round((counts.ACCEPTEE / assignedBase) * 100) : 0}%</p>
+                    <p className="text-2xl sm:text-3xl font-bold tabular-nums">{acceptanceRate}%</p>
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global d'acceptation" : <>Taux d&apos;acceptation<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{counts.ACCEPTEE} acceptée{counts.ACCEPTEE > 1 ? "s" : ""} / {assignedBase} affectée{assignedBase > 1 ? "s" : ""}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{counts.ACCEPTEE} acceptée{counts.ACCEPTEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>
                   </div>
                   <div className="bg-card border border-border border-l-4 border-l-red-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
                     <div className="flex items-center justify-between mb-3">
@@ -1175,7 +1181,7 @@ export default function DashboardPage() {
                     </div>
                     <p className="text-2xl sm:text-3xl font-bold tabular-nums">{refusalRate}%</p>
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global de refus" : <>Taux de refus<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{counts.REFUSEE} refusée{counts.REFUSEE > 1 ? "s" : ""} / {assignedBase} affectée{assignedBase > 1 ? "s" : ""}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{counts.REFUSEE} refusée{counts.REFUSEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>
                   </div>
                   <div className="bg-card border border-border border-l-4 border-l-orange-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
                     <div className="flex items-center justify-between mb-3">
@@ -1507,7 +1513,9 @@ export default function DashboardPage() {
                     <span className="text-sm font-bold">Total</span>
                     <span />
                     <span className="text-sm font-bold text-right tabular-nums text-amber-600">
-                      {caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                      {fichesAcceptees
+                        .reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0)
+                        .toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
                     </span>
                   </div>
                 </div>

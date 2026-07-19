@@ -19,7 +19,7 @@ export function ScrollToTop() {
       aria-label="Retour en haut"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       className="fixed bottom-6 right-6 z-40 w-10 h-10 rounded-full bg-primary text-white shadow-lg hover:bg-primary/90 flex items-center justify-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
-      style={{ animation: "fadeIn 0.2s ease" }}
+      style={undefined}
     >
       <ChevronUp className="w-5 h-5" />
     </button>

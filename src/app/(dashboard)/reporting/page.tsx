@@ -290,7 +290,8 @@ export default function ReportingPage() {
       rate: c.assigned > 0 ? Math.round((c.accepted / c.assigned) * 100) : 0,
     })).sort((a, b) => b.assigned - a.assigned);
     setCommerciaux(commRows);
-    setCaTotal(commRows.reduce((sum, c) => sum + c.ca, 0));
+    // CA total depuis la source primaire (toutes les fiches ACCEPTEE du dataset filtré)
+    setCaTotal(fiches.filter((f) => f.status === "ACCEPTEE").reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0));
     type PlanifRow = { ville_id: string; zones_villes: { nom: string } };
     // Build a map of planned ville_id → ville name
     const plannedVilleMap = new Map<string, string>();
@@ -377,10 +378,11 @@ export default function ReportingPage() {
   const retractation  = statusCounts.find((s) => s.status === "RETRACTATION")?.count ?? 0;
   // En cours = tout sauf acceptees, refusées, archivées
   const inProgress    = soumises + validees + affectees + retractation;
-  const assignedBase  = affectees + retractation + accepted + refused + archived;
-  const acceptanceRate = assignedBase > 0 ? Math.round((accepted / assignedBase) * 100) : 0;
-  const refusalRate = assignedBase > 0 ? Math.round((refused / assignedBase) * 100) : 0;
-  const inProgressRate = totalFiches > 0 ? Math.round((inProgress / totalFiches) * 100) : 0;
+  // Dénominateur commun : fiches actives hors archivées → les 3 taux somment à 100%
+  const baseActive    = accepted + refused + inProgress;
+  const acceptanceRate = baseActive > 0 ? Math.round((accepted / baseActive) * 100) : 0;
+  const refusalRate    = baseActive > 0 ? Math.round((refused / baseActive) * 100) : 0;
+  const inProgressRate = baseActive > 0 ? Math.round((inProgress / baseActive) * 100) : 0;
   const _pl = getReportPeriodLabel(periodFilter);
   const periodSuffix = _pl ? ` (${_pl})` : "";
   const isAllPeriod = periodFilter === "ALL";
@@ -543,7 +545,7 @@ export default function ReportingPage() {
           />
           <KpiCard
             label={(isAllPeriod ? "Taux global de refus" : "Taux de refus") + periodSuffix} value={`${refusalRate}%`}
-            sub={`${refused} refusée${refused > 1 ? "s" : ""} / ${assignedBase} affectée${assignedBase > 1 ? "s" : ""}`}
+            sub={`${refused} refusée${refused > 1 ? "s" : ""} / ${baseActive} affectée${baseActive > 1 ? "s" : ""}`}
             Icon={XCircle} iconBg="bg-red-100 dark:bg-red-900/30" iconColor="text-red-500"
             border="border-l-red-500"
           />
@@ -910,7 +912,7 @@ export default function ReportingPage() {
                 <div>
                   <h3 className="font-semibold text-sm">{isAllPeriod ? "Analyse globale des refus" : "Analyse des refus"}{periodSuffix}</h3>
                   <p className="text-[11px] text-muted-foreground">
-                    {refused} refus sur {assignedBase} fiche{assignedBase > 1 ? "s" : ""} affectée{assignedBase > 1 ? "s" : ""} — taux global de {refusalRate}%
+                    {refused} refus sur {baseActive} fiche{baseActive > 1 ? "s" : ""} affectée{baseActive > 1 ? "s" : ""} — taux global de {refusalRate}%
                   </p>
                 </div>
               </div>

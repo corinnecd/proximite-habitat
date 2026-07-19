@@ -92,7 +92,7 @@ export function CommandPalette({ open, onClose }: Props) {
       {/* Panel */}
       <div
         className="relative w-full max-w-xl mx-4 bg-card rounded-2xl shadow-2xl border border-border overflow-hidden"
-        style={{ animation: "fadeSlideIn 0.18s ease both" }}
+        style={undefined}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Input row */}

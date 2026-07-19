@@ -730,10 +730,7 @@ export default function FichesPage() {
                   <div
                     className={`flex items-center gap-4 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_8px_rgba(0,0,0,0.03)] border-l-4 ${s.border} rounded-2xl px-5 py-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer ${isHighlighted ? "ring-2 ring-[#F97316] bg-[#F97316]/5 animate-[highlightPulse_1.5s_ease-in-out]" : ""}`}
                     style={{
-                      animation: isHighlighted
-                        ? "fadeSlideIn 0.25s ease both, highlightPulse 1.5s ease-in-out"
-                        : "fadeSlideIn 0.25s ease both",
-                      animationDelay: `${Math.min(idx, 10) * 40}ms`,
+                      animation: isHighlighted ? "highlightPulse 1.5s ease-in-out" : undefined,
                     }}
                   >
                     <div className={`w-10 h-10 rounded-xl ${s.iconBg} flex items-center justify-center shrink-0`}>

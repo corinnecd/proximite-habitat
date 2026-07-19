@@ -208,7 +208,7 @@ function StatusBlock({
               <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
                 <div
                   className={`px-5 py-4 transition-colors cursor-pointer ${hoverColor} ${idx < shown.length - 1 ? "border-b border-border" : ""}`}
-                  style={{ animation: "fadeSlideIn 0.22s ease both", animationDelay: `${idx * 35}ms` }}
+                  style={undefined}
                 >
                   {/* Ligne principale */}
                   <div className="flex items-start gap-3">

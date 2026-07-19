@@ -1576,7 +1576,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                       <div
                         key={entry.id}
                         className="relative pl-6"
-                        style={{ animation: "fadeSlideIn 0.2s ease both", animationDelay: `${idx * 50}ms` }}
+                        style={undefined}
                       >
                         {idx < history.length - 1 && (
                           <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />

@@ -8,6 +8,6 @@ export const VilleMapDynamic = dynamic(
   () => import("./VilleMap").then((mod) => mod.VilleMap),
   {
     ssr: false,
-    loading: () => <div className="h-[200px] rounded-xl bg-muted animate-pulse" />,
+    loading: () => <div className="h-[200px] rounded-xl bg-muted" />,
   },
 );

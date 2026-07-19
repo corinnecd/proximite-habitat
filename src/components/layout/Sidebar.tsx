@@ -197,18 +197,7 @@ export function Sidebar() {
 
       {/* Navigation principale */}
       <nav className="flex-1 px-3 pt-3 pb-2 overflow-y-auto">
-        {profileLoading ? (
-          /* Skeleton complet pendant le chargement du profil — évite les secousses */
-          <div className="space-y-1 animate-pulse">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="px-4 py-2.5"><div className="h-4 rounded bg-white/10" style={{ width: `${60 + (i % 3) * 20}%` }} /></div>
-            ))}
-            <div className="px-4 pt-4 pb-1"><div className="h-2 w-20 rounded bg-white/10" /></div>
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={`b${i}`} className="px-4 py-2.5"><div className="h-4 rounded bg-white/10" style={{ width: `${50 + (i % 2) * 25}%` }} /></div>
-            ))}
-          </div>
-        ) : (
+        {profileLoading ? null : (
           <>
             <div className="space-y-0.5">
               {/* Tableau de bord */}
@@ -322,19 +311,7 @@ export function Sidebar() {
             </button>
           </>
         ) : (
-          <>
-            <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl">
-              <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse shrink-0" />
-              <div className="flex-1 space-y-1.5">
-                <div className="h-3.5 w-28 bg-white/10 rounded animate-pulse" />
-                <div className="h-2.5 w-16 bg-white/10 rounded animate-pulse" />
-              </div>
-            </div>
-            <div className="flex items-center gap-3 px-4 py-2.5">
-              <div className="h-4 w-4 bg-white/10 rounded animate-pulse" />
-              <div className="h-3.5 w-24 bg-white/10 rounded animate-pulse" />
-            </div>
-          </>
+          null
         )}
       </div>
     </div>

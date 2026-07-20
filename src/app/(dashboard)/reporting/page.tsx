@@ -137,8 +137,8 @@ export default function ReportingPage() {
   async function loadData(profileId: string, role: string, period: PeriodFilter = "ALL") {
     const isComm = role === "COMMERCIAL";
     const statuses: FicheStatus[] = isComm
-      ? ["AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
-      : ["SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+      ? ["AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+      : ["SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
     const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
     const dates = getPeriodDates(period);
@@ -147,24 +147,19 @@ export default function ReportingPage() {
     if (dates) {
       const from = `${dates.from}T00:00:00Z`;
       const to   = `${dates.to}T23:59:59Z`;
-      // ── Paralléliser les deux requêtes de période ──
-      let histQ = supabase
-        .from("fiche_history").select("fiche_id")
-        .eq("new_status", "SOUMISE").gte("created_at", from).lte("created_at", to);
-      if (_branchFilter) histQ = histQ.eq("organization_id", _branchFilter);
-      let legacyQ = supabase
+      let ficheQ = supabase
         .from("fiches").select("id").neq("status", "BROUILLON")
-        .gte("created_at", from).lte("created_at", to);
-      if (_branchFilter) legacyQ = legacyQ.eq("organization_id", _branchFilter);
-      const [{ data: histRows }, { data: legacyRows }] = await Promise.all([histQ, legacyQ]);
-      const idSet = new Set<string>();
-      (histRows ?? []).forEach((h: { fiche_id: string }) => idSet.add(h.fiche_id));
-      (legacyRows ?? []).forEach((f: { id: string }) => idSet.add(f.id));
-      ficheIdsForPeriod = Array.from(idSet);
+        .gte("updated_at", from).lte("updated_at", to);
+      if (isComm) ficheQ = ficheQ.eq("assigned_to", profileId);
+      if (_branchFilter) ficheQ = ficheQ.eq("organization_id", _branchFilter);
+      const { data: ficheRows } = await ficheQ;
+      ficheIdsForPeriod = (ficheRows ?? []).map((f: { id: string }) => f.id);
 
       if (ficheIdsForPeriod.length === 0) {
         setStatusCounts(statuses.map((s) => ({ status: s, count: 0 })));
         setTotalFiches(0);
+        setCaTotal(0);
+        setMotifRefusCounts({ RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 });
         setReferents([]);
         let emptyCommQ = supabase
           .from("profiles").select("id, first_name, last_name")
@@ -483,16 +478,6 @@ export default function ReportingPage() {
                       : "Vue globale — tous commerciaux et référents réunis"}
                   </p>
                 </div>
-                {caTotal > 0 && (
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
-                      CA HT · {PERIOD_LABELS[periodFilter]}
-                    </div>
-                    <div className="font-heading text-3xl sm:text-4xl text-white leading-none tracking-tight">
-                      {(caTotal / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}<span className="text-xl">&nbsp;K€</span>
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="pt-5 border-t border-white/10">
                 <div className="flex items-center gap-2 mb-3">

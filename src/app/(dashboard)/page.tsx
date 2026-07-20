@@ -56,7 +56,7 @@ const COUNTER_STYLES: Record<FicheStatus, string> = {
   SOUMISE:      "border-l-blue-500    text-blue-600   dark:text-blue-400",
   VALIDEE:      "border-l-emerald-500 text-emerald-600 dark:text-emerald-400",
   AFFECTEE:         "border-l-orange-500  text-orange-600 dark:text-orange-400",
-  RDV_A_REPRENDRE:  "border-l-amber-500   text-amber-600  dark:text-amber-400",
+  RDV_A_REPRENDRE:  "border-l-[#F97316]  text-[#F97316]  dark:text-[#F97316]",
   ACCEPTEE:         "border-l-emerald-500 text-emerald-600 dark:text-emerald-400",
   RETRACTATION: "border-l-purple-500  text-purple-600 dark:text-purple-400",
   REFUSEE:      "border-l-red-500     text-red-600    dark:text-red-400",
@@ -362,8 +362,8 @@ export default function DashboardPage() {
 
     // Compteurs par statut — une seule requête au lieu de 6-7
     const statusesToCount: FicheStatus[] = isReferent
-      ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
-      : ["SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+      ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+      : ["SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
     {
       let q = supabase.from("fiches").select("status").in("status", statusesToCount);
       if (isReferent) q = q.eq("created_by", profile.id);
@@ -937,58 +937,6 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* KPI vedette (droite) : CA HT pour Direction/DG, ventes pour Commercial, fiches acceptées pour Referent */}
-              <div className="text-right flex-shrink-0">
-                {isCommercial ? (
-                  <>
-                    <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
-                      Contrats signés
-                    </div>
-                    <div className="font-heading text-4xl sm:text-5xl text-white leading-none tracking-tight">
-                      {counts.ACCEPTEE}
-                    </div>
-                    <div className="text-[11px] text-emerald-300 mt-1">
-                      sur {counts.AFFECTEE + counts.ACCEPTEE + counts.REFUSEE + counts.RETRACTATION} fiches reçues
-                    </div>
-                  </>
-                ) : isReferent ? (
-                  <>
-                    <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
-                      Fiches acceptées
-                    </div>
-                    <div className="font-heading text-4xl sm:text-5xl text-white leading-none tracking-tight">
-                      {counts.ACCEPTEE}
-                    </div>
-                    <div className="text-[11px] text-white/50 mt-1">
-                      sur {totalFiches} fiche{totalFiches > 1 ? "s" : ""} créée{totalFiches > 1 ? "s" : ""}
-                    </div>
-                  </>
-                ) : caTotal > 0 ? (
-                  <>
-                    <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
-                      CA HT · {DASH_PERIOD_LABELS[dashPeriod]}
-                    </div>
-                    <div className="font-heading text-4xl sm:text-5xl text-white leading-none tracking-tight">
-                      {(caTotal / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}<span className="text-2xl sm:text-3xl">&nbsp;K€</span>
-                    </div>
-                    <div className="text-[11px] text-emerald-300 mt-1">
-                      {counts.ACCEPTEE} contrat{counts.ACCEPTEE > 1 ? "s" : ""} signé{counts.ACCEPTEE > 1 ? "s" : ""}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium mb-1">
-                      Fiches totales
-                    </div>
-                    <div className="font-heading text-4xl sm:text-5xl text-white leading-none tracking-tight">
-                      {totalFiches}
-                    </div>
-                    <div className="text-[11px] text-white/50 mt-1">
-                      {counts.SOUMISE} à valider · {counts.AFFECTEE} affectée{counts.AFFECTEE > 1 ? "s" : ""}
-                    </div>
-                  </>
-                )}
-              </div>
             </div>
 
             {/* Filtre période intégré */}
@@ -1043,7 +991,7 @@ export default function DashboardPage() {
             <span className="text-sm font-semibold tracking-tight">Statuts des fiches ({totalFiches})</span>
             {statusOpenMobile ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </button>
-          <div className={`${statusOpenMobile ? "grid" : "hidden"} sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4`}>
+          <div className={`${statusOpenMobile ? "grid" : "hidden"} sm:grid grid-flow-col auto-cols-fr gap-3`}>
             {visibleStatuses.map((status) => (
               <Link key={status} href={`/fiches?status=${status}`}>
                 <Card className={`border border-border border-l-4 shadow-sm ${COUNTER_STYLES[status]} hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200 cursor-pointer`}>
@@ -1628,7 +1576,7 @@ export default function DashboardPage() {
             { status: "BROUILLON",    label: "Mes brouillons",           fiches: prospBrouillons, color: "border-l-slate-400",   badgeBg: "bg-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800/40",    iconColor: "text-slate-500",   hoverBg: "hover:bg-slate-50/60",   emptyMsg: "Aucun brouillon en cours." },
             { status: "SOUMISE",      label: "À valider par la direction", fiches: prospSoumises,   color: "border-l-blue-500",    badgeBg: "bg-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",       iconColor: "text-blue-500",    hoverBg: "hover:bg-blue-50/40",    emptyMsg: "Aucune fiche en attente." },
             { status: "AFFECTEE",         label: "Fiches affectées",                        fiches: prospAffectees,       color: "border-l-orange-500",  badgeBg: "bg-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",   iconColor: "text-orange-500",  hoverBg: "hover:bg-orange-50/40",  emptyMsg: "Aucune fiche affectée." },
-            { status: "RDV_A_REPRENDRE",  label: "RDV à reprendre — client absent",         fiches: prospRdvAReprendre,   color: "border-l-amber-500",   badgeBg: "bg-amber-500",   iconBg: "bg-amber-50 dark:bg-amber-950/40",     iconColor: "text-amber-600",   hoverBg: "hover:bg-amber-50/40",   emptyMsg: "Aucun RDV à reprendre." },
+            { status: "RDV_A_REPRENDRE",  label: "RDV à reprendre — client absent",         fiches: prospRdvAReprendre,   color: "border-l-[#F97316]",   badgeBg: "bg-[#F97316]",   iconBg: "bg-orange-50 dark:bg-orange-950/40",   iconColor: "text-[#F97316]",   hoverBg: "hover:bg-orange-50/40",  emptyMsg: "Aucun RDV à reprendre." },
             { status: "RETRACTATION",     label: "En attente de validation par le client",  fiches: prospRetractees,      color: "border-l-purple-500",  badgeBg: "bg-purple-500",  iconBg: "bg-purple-50 dark:bg-purple-950/40",   iconColor: "text-purple-500",  hoverBg: "hover:bg-purple-50/40",  emptyMsg: "Aucune fiche en attente de validation client." },
             { status: "ACCEPTEE",     label: "Validées par le client",                    fiches: prospAcceptees,  color: "border-l-emerald-500", badgeBg: "bg-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", iconColor: "text-emerald-500", hoverBg: "hover:bg-emerald-50/40", emptyMsg: "Aucune fiche validée." },
             { status: "REFUSEE",      label: "Refusées par le client",    fiches: prospRefusees,   color: "border-l-red-500",     badgeBg: "bg-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",         iconColor: "text-red-500",     hoverBg: "hover:bg-red-50/40",     emptyMsg: "Aucune fiche refusée." },

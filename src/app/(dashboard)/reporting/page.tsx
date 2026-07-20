@@ -418,7 +418,7 @@ export default function ReportingPage() {
 
   const isLoading = profileLoading || loading;
 
-  if (isLoading) {
+  if (profileLoading || !profile) {
     return (
       <>
         <Topbar title={isCommercial ? "Mon reporting" : "Reporting direction"} />
@@ -447,7 +447,10 @@ export default function ReportingPage() {
           ],
         })} /></div>}
       />
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      <div
+        className="p-4 sm:p-6 lg:p-8 space-y-6"
+        style={{ opacity: loading ? 0.55 : 1, transition: "opacity 200ms ease", pointerEvents: loading ? "none" : undefined }}
+      >
 
         {/* ═══ HERO REPORTING ═══ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">

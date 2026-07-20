@@ -712,7 +712,7 @@ export default function DashboardPage() {
     : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
   // ── Skeleton ─────────────────────────────────────────────────────────────
-  if (profileLoading || loading) {
+  if (profileLoading || !profile) {
     return (
       <>
         <Topbar
@@ -855,7 +855,10 @@ export default function DashboardPage() {
           </div>
         ) : undefined}
       />
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      <div
+        className="p-4 sm:p-6 lg:p-8 space-y-6"
+        style={{ opacity: loading ? 0.55 : 1, transition: "opacity 200ms ease", pointerEvents: loading ? "none" : undefined }}
+      >
 
         {/* ═══════════════════════════════════════════════════════════════════
             HERO DASHBOARD — bloc navy signature avec greeting + KPI vedette

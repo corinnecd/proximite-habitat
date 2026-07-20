@@ -418,31 +418,12 @@ export default function ReportingPage() {
 
   const isLoading = profileLoading || loading;
 
-  if (profileLoading || loading) {
+  // ── Guard profil uniquement (local, < 100 ms) ───────────────────────────
+  if (profileLoading || !profile) {
     return (
       <>
         <Topbar title={isCommercial ? "Mon reporting" : "Reporting direction"} />
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-          {/* Hero */}
-          <div className="rounded-3xl bg-[#1E3A5F] h-44 animate-pulse" />
-          {/* 6 KPI cards sur 2 lignes × 3 colonnes */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-28 bg-muted rounded-2xl animate-pulse" />
-            ))}
-          </div>
-          {/* Tableau commerciaux (direction) ou vide (commercial) */}
-          {!isCommercial && (
-            <div className="h-64 bg-muted rounded-2xl animate-pulse" />
-          )}
-          {/* Pie chart + performance */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="h-72 bg-muted rounded-2xl animate-pulse" />
-            <div className="h-72 bg-muted rounded-2xl animate-pulse" />
-          </div>
-          {/* Section supplémentaire */}
-          <div className="h-60 bg-muted rounded-2xl animate-pulse" />
-        </div>
+        <div className="p-4 sm:p-6 lg:p-8" />
       </>
     );
   }
@@ -467,7 +448,10 @@ export default function ReportingPage() {
           ],
         })} /></div>}
       />
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      <div
+        className="p-4 sm:p-6 lg:p-8 space-y-6"
+        style={loading ? { opacity: 0, pointerEvents: "none" } : { opacity: 1, transition: "opacity 250ms ease" }}
+      >
 
         {/* ═══ HERO REPORTING ═══ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">

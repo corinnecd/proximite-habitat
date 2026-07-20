@@ -711,42 +711,12 @@ export default function DashboardPage() {
     ? ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
     : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
-  // ── Skeleton ─────────────────────────────────────────────────────────────
-  if (profileLoading || loading) {
-    const role = profile?.role;
-    const cardCount = role === "COMMERCIAL" ? 5 : role === "PROSPECTEUR" ? 6 : 6;
-    const sectionCount = role === "COMMERCIAL" ? 4 : role === "PROSPECTEUR" ? 4 : 2;
+  // ── Guard profil uniquement (local, < 100 ms) ───────────────────────────
+  if (profileLoading || !profile) {
     return (
       <>
         <Topbar title="Tableau de bord" />
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-          {/* Hero */}
-          <div className="rounded-3xl bg-[#1E3A5F] h-52 animate-pulse" />
-          {/* Compteurs statut */}
-          <div className={`grid grid-cols-2 ${cardCount <= 5 ? "lg:grid-cols-3 xl:grid-cols-5" : "lg:grid-cols-3 xl:grid-cols-6"} gap-4`}>
-            {Array.from({ length: cardCount }).map((_, i) => (
-              <div key={i} className="h-28 bg-muted rounded-2xl animate-pulse" />
-            ))}
-          </div>
-          {/* KPI / section spécifique rôle */}
-          {role !== "PROSPECTEUR" && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[0, 1, 2].map((i) => <div key={i} className="h-28 bg-muted rounded-2xl animate-pulse" />)}
-            </div>
-          )}
-          {/* Sections fiches */}
-          {Array.from({ length: sectionCount }).map((_, i) => (
-            <div key={i} className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-muted rounded-xl animate-pulse" />
-                <div className="h-5 bg-muted rounded-lg animate-pulse w-44" />
-              </div>
-              <div className="space-y-2">
-                {[0, 1, 2].map((j) => <div key={j} className="h-20 bg-muted rounded-2xl animate-pulse" />)}
-              </div>
-            </div>
-          ))}
-        </div>
+        <div className="p-4 sm:p-6 lg:p-8" />
       </>
     );
   }
@@ -871,7 +841,10 @@ export default function DashboardPage() {
           </div>
         ) : undefined}
       />
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+      <div
+        className="p-4 sm:p-6 lg:p-8 space-y-6"
+        style={loading ? { opacity: 0, pointerEvents: "none" } : { opacity: 1, transition: "opacity 250ms ease" }}
+      >
 
         {/* ═══════════════════════════════════════════════════════════════════
             HERO DASHBOARD — bloc navy signature avec greeting + KPI vedette

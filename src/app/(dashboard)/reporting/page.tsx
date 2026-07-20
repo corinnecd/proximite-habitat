@@ -521,7 +521,11 @@ export default function ReportingPage() {
             </div>
         </div>
 
-        {!loading && (<>
+        {loading ? (
+          <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
+            Chargement des données…
+          </div>
+        ) : (<>
 
         {/* ── KPIs (6 indicateurs clés — 2 lignes de 3) ────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

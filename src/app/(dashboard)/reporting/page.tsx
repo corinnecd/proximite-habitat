@@ -521,7 +521,7 @@ export default function ReportingPage() {
             </div>
         </div>
 
-        <>
+        {!loading && (<>
 
         {/* ── KPIs (6 indicateurs clés — 2 lignes de 3) ────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1082,7 +1082,7 @@ export default function ReportingPage() {
             )}
           </div>
         )}
-        </>
+        </>)}
       </div>
     </>
   );

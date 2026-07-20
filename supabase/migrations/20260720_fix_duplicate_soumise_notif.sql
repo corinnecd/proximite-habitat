@@ -162,6 +162,13 @@ begin
     delete from public.notifications where fiche_id = p_fiche_id and type = 'FICHE_AFFECTEE';
   end if;
 
+  -- ACCEPTEE → purger l'ancienne VENTE_REALISEE (re-acceptation via RETRACTATION),
+  -- puis insérer la nouvelle
+  if p_new_status = 'ACCEPTEE' and v_fiche.created_by is not null and v_fiche.created_by <> v_uid then
+    delete from public.notifications
+    where fiche_id = p_fiche_id and type = 'VENTE_REALISEE' and user_id = v_fiche.created_by;
+  end if;
+
   -- ACCEPTEE → vente + prime éventuelle
   if p_new_status = 'ACCEPTEE' and v_fiche.created_by is not null and v_fiche.created_by <> v_uid then
     select count(*) into v_ventes_count
@@ -183,8 +190,12 @@ begin
     end if;
   end if;
 
-  -- REFUSEE → notifier le prospecteur
+  -- REFUSEE → purger l'ancienne notif de refus (re-refus après re-affectation),
+  -- puis notifier le prospecteur
   if p_new_status = 'REFUSEE' and v_fiche.created_by is not null and v_fiche.created_by <> v_uid then
+    delete from public.notifications
+    where fiche_id = p_fiche_id and type = 'FICHE_REFUSEE' and user_id = v_fiche.created_by;
+
     insert into public.notifications (user_id, organization_id, type, title, message, fiche_id)
     values (v_fiche.created_by, v_org, 'FICHE_REFUSEE', 'Fiche refusée',
       'Votre fiche ' || coalesce(v_fiche.reference, '') || ' a été refusée le ' || v_date_heure || '.',

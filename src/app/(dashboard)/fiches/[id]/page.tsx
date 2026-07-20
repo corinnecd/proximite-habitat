@@ -998,6 +998,14 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   )}
                 </div>
               )}
+              {/* Badge statique RDV_A_REPRENDRE pour le commercial (aucune transition disponible) */}
+              {profile?.role === "COMMERCIAL" && fiche.status === "RDV_A_REPRENDRE" && availableTransitions.length === 0 && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F97316] text-white text-sm font-medium">
+                  <UserX className="w-4 h-4" />
+                  RDV à reprendre
+                </div>
+              )}
+
               {/* Boutons classiques pour le référent */}
               {availableTransitions.length > 0 && (profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && fiche.created_by === profile?.id && availableTransitions.map((status) => (
                 <Button key={status}

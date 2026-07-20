@@ -8,7 +8,7 @@ function Progress() {
   const searchParams = useSearchParams();
   const [progress, setProgress] = useState(0);
   const [visible, setVisible] = useState(false);
-  const timer = useRef<ReturnType<typeof setInterval>>();
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const started = useRef(false);
 
   // Démarrer la barre immédiatement au clic sur un lien interne
@@ -22,7 +22,7 @@ function Progress() {
       if (href === pathname || href === `${pathname}?${searchParams}`) return;
 
       started.current = false;
-      clearInterval(timer.current);
+      if (timer.current) clearInterval(timer.current);
       setVisible(true);
       let p = 8;
       setProgress(p);
@@ -39,7 +39,7 @@ function Progress() {
   useEffect(() => {
     if (started.current) {
       // Navigation terminée : compléter jusqu'à 100 puis masquer
-      clearInterval(timer.current);
+      if (timer.current) clearInterval(timer.current);
       setProgress(100);
       const t = setTimeout(() => { setVisible(false); setProgress(0); }, 350);
       return () => clearTimeout(t);

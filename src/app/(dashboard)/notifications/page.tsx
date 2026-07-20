@@ -16,7 +16,7 @@ import {
 import {
   CheckCheck, FileText, Check, Loader2, Search, X, Calendar,
   SendHorizonal, UserCheck, ThumbsUp, ThumbsDown, RotateCcw,
-  Bell, BellOff, Clock, AlertCircle, Trash2, ChevronDown,
+  Bell, BellOff, Clock, AlertCircle, Trash2, ChevronDown, UserX,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { deleteFicheCascade } from "@/lib/data/fiches";
@@ -65,7 +65,7 @@ function getDateRange(period: PeriodFilter, customFrom: string, customTo: string
 }
 
 // ── Types de notification ─────────────────────────────────────────────────────
-type NotifType = "FICHE_SOUMISE" | "FICHE_AFFECTEE" | "FICHE_ACCEPTEE" | "FICHE_REFUSEE" | "FICHE_REJETEE";
+type NotifType = "FICHE_SOUMISE" | "FICHE_AFFECTEE" | "FICHE_ACCEPTEE" | "FICHE_REFUSEE" | "FICHE_REJETEE" | "CLIENT_ABSENT";
 
 const TYPE_CONFIG: Record<NotifType, {
   label: string;
@@ -121,13 +121,23 @@ const TYPE_CONFIG: Record<NotifType, {
     badgeCls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
     priority: 2,
   },
+  CLIENT_ABSENT:  {
+    label: "RDV à reprendre",
+    icon: UserX,
+    filterColor: "text-amber-500",
+    iconBg: "bg-amber-100 dark:bg-amber-900/40",
+    iconColor: "text-amber-600 dark:text-amber-400",
+    badgeCls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    priority: 1,
+  },
 };
 
 // Statuts disponibles par rôle (filtre)
 const STATUS_BY_ROLE: Record<string, NotifType[]> = {
   ADMIN:       ["FICHE_SOUMISE", "FICHE_ACCEPTEE", "FICHE_REFUSEE"],
   COMMERCIAL:  ["FICHE_AFFECTEE", "FICHE_ACCEPTEE", "FICHE_REFUSEE"],
-  PROSPECTEUR: ["FICHE_SOUMISE", "FICHE_AFFECTEE", "FICHE_REJETEE", "FICHE_ACCEPTEE", "FICHE_REFUSEE"],
+  PROSPECTEUR: ["FICHE_SOUMISE", "FICHE_AFFECTEE", "FICHE_REJETEE", "FICHE_ACCEPTEE", "FICHE_REFUSEE", "CLIENT_ABSENT"],
+  CHEF_EQUIPE: ["FICHE_SOUMISE", "FICHE_AFFECTEE", "FICHE_REJETEE", "FICHE_ACCEPTEE", "FICHE_REFUSEE", "CLIENT_ABSENT"],
 };
 
 // ── Groupement temporel ───────────────────────────────────────────────────────

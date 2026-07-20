@@ -8,6 +8,7 @@ export type FicheStatus =
   | "SOUMISE"
   | "VALIDEE"
   | "AFFECTEE"
+  | "RDV_A_REPRENDRE"
   | "ACCEPTEE"
   | "RETRACTATION"
   | "REFUSEE"

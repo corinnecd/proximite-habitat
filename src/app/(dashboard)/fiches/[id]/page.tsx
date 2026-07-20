@@ -35,7 +35,7 @@ import {
   User, Home, Flame, Wind, Shield, Camera, FileText,
   Clock, ArrowLeft, UserCheck, Loader2, Pencil, Trash2,
   Phone, MapPin, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, Copy, ChevronDown, ChevronUp, PenTool,
-  Send, Archive,
+  Send, Archive, UserX,
 } from "lucide-react";
 import { DownloadFicheButton } from "@/components/pdf/DownloadFicheButton";
 import { VilleMapDynamic } from "@/components/ui/VilleMapDynamic";
@@ -62,7 +62,8 @@ const STATUS_HERO: Record<FicheStatus, { border: string; iconBg: string; icon: s
   BROUILLON:    { border: "border-l-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800",       icon: "text-slate-500",                        Icon: Clock },
   SOUMISE:      { border: "border-l-blue-500",    iconBg: "bg-blue-100 dark:bg-blue-950/50",      icon: "text-blue-600 dark:text-blue-400",      Icon: Send },
   VALIDEE:      { border: "border-l-emerald-500", iconBg: "bg-emerald-100 dark:bg-emerald-950/50",icon: "text-emerald-600 dark:text-emerald-400",Icon: CheckCircle2 },
-  AFFECTEE:     { border: "border-l-orange-500",  iconBg: "bg-orange-100 dark:bg-orange-950/50",  icon: "text-orange-600 dark:text-orange-400",  Icon: UserCheck },
+  AFFECTEE:         { border: "border-l-orange-500",  iconBg: "bg-orange-100 dark:bg-orange-950/50",  icon: "text-orange-600 dark:text-orange-400",  Icon: UserCheck },
+  RDV_A_REPRENDRE:  { border: "border-l-amber-500",  iconBg: "bg-amber-100 dark:bg-amber-950/50",    icon: "text-amber-600 dark:text-amber-400",    Icon: UserX },
   ACCEPTEE:     { border: "border-l-emerald-500", iconBg: "bg-emerald-100 dark:bg-emerald-950/50",icon: "text-emerald-700 dark:text-emerald-300",Icon: CheckCircle2 },
   RETRACTATION: { border: "border-l-purple-500",  iconBg: "bg-purple-100 dark:bg-purple-950/50",  icon: "text-purple-600 dark:text-purple-400",  Icon: AlertTriangle },
   REFUSEE:      { border: "border-l-red-500",     iconBg: "bg-red-100 dark:bg-red-950/50",        icon: "text-red-600 dark:text-red-400",        Icon: Ban },
@@ -975,6 +976,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                           ACCEPTEE: "Acceptation Client",
                           REFUSEE: "Refus Client",
                           ARCHIVEE: "Archivé",
+                          RDV_A_REPRENDRE: "Client absent — RDV à reprendre",
                         };
                         const dropdownColors: Partial<Record<FicheStatus, string>> = {
                           RETRACTATION: "text-purple-600",
@@ -982,6 +984,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                           REFUSEE: "text-red-600",
                           ARCHIVEE: "text-slate-500",
                           SOUMISE: "text-blue-600",
+                          RDV_A_REPRENDRE: "text-amber-600",
                         };
                         return (
                           <button key={status} type="button"
@@ -1013,6 +1016,23 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-2 w-full sm:w-auto">
                   {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : (<><CheckCircle2 className="w-4 h-4" />Valider la fiche</>)}
                 </Button>
+              )}
+
+              {/* Section RDV à reprendre — référent uniquement */}
+              {fiche.status === "RDV_A_REPRENDRE" && (profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE" || profile?.role === "ADMIN") && (
+                <div className="w-full bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 rounded-2xl px-4 py-3 space-y-2">
+                  <p className="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-2">
+                    <UserX className="w-4 h-4" /> Client absent — RDV à reprendre
+                  </p>
+                  <p className="text-sm text-amber-800 dark:text-amber-300">
+                    Le commercial n&apos;a pas pu rencontrer le client. Mettez à jour la date de rendez-vous sur la fiche puis confirmez ci-dessous.
+                  </p>
+                  <Button size="sm" disabled={transitioning}
+                    onClick={() => { setPendingStatus("AFFECTEE"); setStatusComment(""); }}
+                    className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white gap-2 mt-1">
+                    {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : (<><Calendar className="w-4 h-4" />Nouveau RDV fixé</>)}
+                  </Button>
+                </div>
               )}
 
               {/* Bouton vert "Affecter à un commercial" — ADMIN + VALIDEE uniquement */}
@@ -1826,7 +1846,9 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                     ? "text-emerald-600 dark:text-emerald-400"
                     : pendingStatus === "ARCHIVEE"
                       ? "text-slate-600 dark:text-slate-400"
-                      : "text-foreground"
+                      : pendingStatus === "RDV_A_REPRENDRE" || (pendingStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE")
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-foreground"
             }`}>
               {pendingStatus === "REFUSEE"
                 ? <><Ban className="w-5 h-5" />Refus Client</>
@@ -1838,7 +1860,11 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                       ? <><CheckCircle2 className="w-5 h-5" />Acceptation Client</>
                       : pendingStatus === "ARCHIVEE"
                         ? <><ShieldCheck className="w-5 h-5" />Archiver la fiche</>
-                        : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
+                        : pendingStatus === "RDV_A_REPRENDRE"
+                          ? <><UserX className="w-5 h-5" />Client absent — RDV à reprendre</>
+                          : pendingStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE"
+                            ? <><Calendar className="w-5 h-5" />Confirmer le nouveau RDV</>
+                            : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
               }
             </DialogTitle>
             <DialogDescription>

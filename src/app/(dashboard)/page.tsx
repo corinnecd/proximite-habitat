@@ -22,7 +22,7 @@ import {
   FileText, FilePlus, Clock, CheckCircle2, XCircle, Send,
   UserCheck, Archive, Trash2, AlertCircle, ArrowRight,
   CalendarDays, User, Trophy, TrendingUp, Star,
-  ChevronDown, ChevronUp, Loader2, Euro, BarChart3, Building2,
+  ChevronDown, ChevronUp, Loader2, Euro, BarChart3, Building2, UserX,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -43,8 +43,9 @@ const STATUS_ICONS: Record<FicheStatus, React.ReactNode> = {
   BROUILLON:    <Clock className="w-5 h-5" />,
   SOUMISE:      <Send className="w-5 h-5" />,
   VALIDEE:      <CheckCircle2 className="w-5 h-5" />,
-  AFFECTEE:     <UserCheck className="w-5 h-5" />,
-  ACCEPTEE:     <CheckCircle2 className="w-5 h-5" />,
+  AFFECTEE:         <UserCheck className="w-5 h-5" />,
+  RDV_A_REPRENDRE:  <UserX className="w-5 h-5" />,
+  ACCEPTEE:         <CheckCircle2 className="w-5 h-5" />,
   RETRACTATION: <AlertCircle className="w-5 h-5" />,
   REFUSEE:      <XCircle className="w-5 h-5" />,
   ARCHIVEE:     <Archive className="w-5 h-5" />,
@@ -54,8 +55,9 @@ const COUNTER_STYLES: Record<FicheStatus, string> = {
   BROUILLON:    "border-l-slate-300   text-muted-foreground",
   SOUMISE:      "border-l-blue-500    text-blue-600   dark:text-blue-400",
   VALIDEE:      "border-l-emerald-500 text-emerald-600 dark:text-emerald-400",
-  AFFECTEE:     "border-l-orange-500  text-orange-600 dark:text-orange-400",
-  ACCEPTEE:     "border-l-emerald-500 text-emerald-600 dark:text-emerald-400",
+  AFFECTEE:         "border-l-orange-500  text-orange-600 dark:text-orange-400",
+  RDV_A_REPRENDRE:  "border-l-amber-500   text-amber-600  dark:text-amber-400",
+  ACCEPTEE:         "border-l-emerald-500 text-emerald-600 dark:text-emerald-400",
   RETRACTATION: "border-l-purple-500  text-purple-600 dark:text-purple-400",
   REFUSEE:      "border-l-red-500     text-red-600    dark:text-red-400",
   ARCHIVEE:     "border-l-slate-300   text-muted-foreground",
@@ -303,7 +305,7 @@ export default function DashboardPage() {
   const { profile, loading: profileLoading } = useProfile();
   const { selectedBranchId, isDG, selectedBranchName, setSelectedBranchId, branches } = useBranch();
   const [counts, setCounts] = useState<Record<FicheStatus, number>>({
-    BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
+    BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, RDV_A_REPRENDRE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
   });
   const [anterieures, setAnterieures] = useState<{ id: string; reference: string; prospect_nom: string; prospect_prenom: string; status: FicheStatus; updated_at: string }[]>([]);
   const [fichesPending,         setFichesPending]         = useState<FicheEnAttente[]>([]);
@@ -316,8 +318,9 @@ export default function DashboardPage() {
   // Référent : fiches par statut
   const [prospBrouillons,   setProspBrouillons]   = useState<FicheListItem[]>([]);
   const [prospSoumises,     setProspSoumises]     = useState<FicheListItem[]>([]);
-  const [prospAffectees,    setProspAffectees]    = useState<FicheListItem[]>([]);
-  const [prospAcceptees,    setProspAcceptees]    = useState<FicheListItem[]>([]);
+  const [prospAffectees,      setProspAffectees]      = useState<FicheListItem[]>([]);
+  const [prospRdvAReprendre,  setProspRdvAReprendre]  = useState<FicheListItem[]>([]);
+  const [prospAcceptees,      setProspAcceptees]      = useState<FicheListItem[]>([]);
   const [prospRetractees,   setProspRetractees]   = useState<FicheListItem[]>([]);
   const [prospRefusees,     setProspRefusees]     = useState<FicheListItem[]>([]);
   const [prospArchivees,    setProspArchivees]    = useState<FicheListItem[]>([]);
@@ -474,7 +477,7 @@ export default function DashboardPage() {
 
     // Référent : fiches par statut
     if (isReferent) {
-      const statuses: FicheStatus[] = ["BROUILLON", "SOUMISE", "AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+      const statuses: FicheStatus[] = ["BROUILLON", "SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
       for (const s of statuses) {
         keys.push(`prosp_${s}`);
         let rq = supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", s);
@@ -492,7 +495,7 @@ export default function DashboardPage() {
 
     // ── Dispatch des résultats ────────────────────────────────────────────
     const allCounts: Record<FicheStatus, number> = {
-      BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
+      BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, RDV_A_REPRENDRE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
     };
     const statusRows = (r.get("statusCounts")?.data ?? []) as { status: FicheStatus }[];
     for (const row of statusRows) {
@@ -578,6 +581,7 @@ export default function DashboardPage() {
       setProspBrouillons((r.get("prosp_BROUILLON")?.data as FicheListItem[]) ?? []);
       setProspSoumises((r.get("prosp_SOUMISE")?.data as FicheListItem[]) ?? []);
       setProspAffectees((r.get("prosp_AFFECTEE")?.data as FicheListItem[]) ?? []);
+      setProspRdvAReprendre((r.get("prosp_RDV_A_REPRENDRE")?.data as FicheListItem[]) ?? []);
       setProspRetractees((r.get("prosp_RETRACTATION")?.data as FicheListItem[]) ?? []);
       setProspAcceptees((r.get("prosp_ACCEPTEE")?.data as FicheListItem[]) ?? []);
       setProspRefusees((r.get("prosp_REFUSEE")?.data as FicheListItem[]) ?? []);
@@ -704,12 +708,12 @@ export default function DashboardPage() {
   }, [isAdminOrDG, referentsStats, caTotal, totalVentes, dashPeriod]);
 
   const visibleStatuses: FicheStatus[] = isReferent
-    ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
+    ? ["BROUILLON", "SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
     : isCommercial
-    ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
+    ? ["AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
     : isAdminOrDG
-    ? ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
-    : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+    ? ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+    : ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
   // ── Guard profil uniquement (local, < 100 ms) ───────────────────────────
   if (profileLoading || !profile || loading) {
@@ -1623,8 +1627,9 @@ export default function DashboardPage() {
           const blocs: { status: FicheStatus; label: string; fiches: FicheListItem[]; color: string; badgeBg: string; iconBg: string; iconColor: string; hoverBg: string; emptyMsg: string }[] = [
             { status: "BROUILLON",    label: "Mes brouillons",           fiches: prospBrouillons, color: "border-l-slate-400",   badgeBg: "bg-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800/40",    iconColor: "text-slate-500",   hoverBg: "hover:bg-slate-50/60",   emptyMsg: "Aucun brouillon en cours." },
             { status: "SOUMISE",      label: "À valider par la direction", fiches: prospSoumises,   color: "border-l-blue-500",    badgeBg: "bg-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",       iconColor: "text-blue-500",    hoverBg: "hover:bg-blue-50/40",    emptyMsg: "Aucune fiche en attente." },
-            { status: "AFFECTEE",     label: "Fiches affectées",                           fiches: prospAffectees,  color: "border-l-orange-500",  badgeBg: "bg-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",   iconColor: "text-orange-500",  hoverBg: "hover:bg-orange-50/40",  emptyMsg: "Aucune fiche affectée." },
-            { status: "RETRACTATION", label: "En attente de validation par le client",    fiches: prospRetractees, color: "border-l-purple-500",  badgeBg: "bg-purple-500",  iconBg: "bg-purple-50 dark:bg-purple-950/40",   iconColor: "text-purple-500",  hoverBg: "hover:bg-purple-50/40",  emptyMsg: "Aucune fiche en attente de validation client." },
+            { status: "AFFECTEE",         label: "Fiches affectées",                        fiches: prospAffectees,       color: "border-l-orange-500",  badgeBg: "bg-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",   iconColor: "text-orange-500",  hoverBg: "hover:bg-orange-50/40",  emptyMsg: "Aucune fiche affectée." },
+            { status: "RDV_A_REPRENDRE",  label: "RDV à reprendre — client absent",         fiches: prospRdvAReprendre,   color: "border-l-amber-500",   badgeBg: "bg-amber-500",   iconBg: "bg-amber-50 dark:bg-amber-950/40",     iconColor: "text-amber-600",   hoverBg: "hover:bg-amber-50/40",   emptyMsg: "Aucun RDV à reprendre." },
+            { status: "RETRACTATION",     label: "En attente de validation par le client",  fiches: prospRetractees,      color: "border-l-purple-500",  badgeBg: "bg-purple-500",  iconBg: "bg-purple-50 dark:bg-purple-950/40",   iconColor: "text-purple-500",  hoverBg: "hover:bg-purple-50/40",  emptyMsg: "Aucune fiche en attente de validation client." },
             { status: "ACCEPTEE",     label: "Validées par le client",                    fiches: prospAcceptees,  color: "border-l-emerald-500", badgeBg: "bg-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40", iconColor: "text-emerald-500", hoverBg: "hover:bg-emerald-50/40", emptyMsg: "Aucune fiche validée." },
             { status: "REFUSEE",      label: "Refusées par le client",    fiches: prospRefusees,   color: "border-l-red-500",     badgeBg: "bg-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",         iconColor: "text-red-500",     hoverBg: "hover:bg-red-50/40",     emptyMsg: "Aucune fiche refusée." },
             { status: "ARCHIVEE",     label: "Archivées",                 fiches: prospArchivees,  color: "border-l-slate-300",   badgeBg: "bg-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800/40",    iconColor: "text-slate-400",   hoverBg: "hover:bg-slate-50/60",   emptyMsg: "Aucune fiche archivée." },

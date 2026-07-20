@@ -114,7 +114,7 @@ function emptyBucket(start: Date, g: Granularity): PeriodBucket {
   return { key: bucketKey(start), start, label: bucketLabel(start, g), total: 0, submitted: 0, assigned: 0, accepted: 0, refused: 0 };
 }
 
-const ASSIGNED_STATUSES: FicheStatus[] = ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+const ASSIGNED_STATUSES: FicheStatus[] = ["AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
 
 function accumulate(bucket: PeriodBucket, status: FicheStatus): void {
   bucket.total += 1;

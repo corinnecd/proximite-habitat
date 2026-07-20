@@ -22,7 +22,7 @@ import { toast } from "sonner";
 import {
   Search, FilePlus, Filter, Loader2, Download, Send,
   UserCheck, CheckCircle2, XCircle, Archive, Clock, CalendarRange, CalendarDays, X, AlertCircle,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, UserX,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -51,7 +51,7 @@ const VISIBLE_INIT = 5;
 
 const STATUS_LABELS_PLURAL: Record<FicheStatus, string> = {
   BROUILLON: "brouillons", SOUMISE: "à valider", VALIDEE: "validées",
-  AFFECTEE: "validées et affectées", ACCEPTEE: "acceptées",
+  AFFECTEE: "validées et affectées", RDV_A_REPRENDRE: "avec RDV à reprendre", ACCEPTEE: "acceptées",
   RETRACTATION: "en attente acceptation client", REFUSEE: "refusées", ARCHIVEE: "archivées",
 };
 
@@ -59,7 +59,8 @@ const STATUS_CARD_STYLES: Record<FicheStatus, { border: string; icon: string; ic
   BROUILLON:    { border: "border-l-slate-400",   icon: "text-slate-500",   iconBg: "bg-slate-100 dark:bg-slate-800",         Icon: Clock },
   SOUMISE:      { border: "border-l-blue-500",    icon: "text-blue-500",    iconBg: "bg-blue-50 dark:bg-blue-950/40",         Icon: Send },
   VALIDEE:      { border: "border-l-emerald-500", icon: "text-emerald-500", iconBg: "bg-emerald-50 dark:bg-emerald-950/40",   Icon: CheckCircle2 },
-  AFFECTEE:     { border: "border-l-orange-500",  icon: "text-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",     Icon: UserCheck },
+  AFFECTEE:         { border: "border-l-orange-500",  icon: "text-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",     Icon: UserCheck },
+  RDV_A_REPRENDRE:  { border: "border-l-amber-500",  icon: "text-amber-600",   iconBg: "bg-amber-50 dark:bg-amber-950/40",        Icon: UserX },
   ACCEPTEE:     { border: "border-l-emerald-500", icon: "text-emerald-600", iconBg: "bg-emerald-50 dark:bg-emerald-950/40",   Icon: CheckCircle2 },
   RETRACTATION: { border: "border-l-purple-500",  icon: "text-purple-600",  iconBg: "bg-purple-50 dark:bg-purple-950/40",     Icon: AlertCircle },
   REFUSEE:      { border: "border-l-red-500",     icon: "text-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",           Icon: XCircle },
@@ -112,10 +113,10 @@ export default function FichesPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const visibleStatuses: FicheStatus[] = isReferent
-    ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+    ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
     : isCommercial
-    ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
-    : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+    ? ["AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
+    : ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
   // Labels adaptés selon le rôle
   const statusLabel = (s: FicheStatus): string => {
@@ -251,10 +252,10 @@ export default function FichesPage() {
     async function loadStatusCounts() {
       const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
       const statuses: FicheStatus[] = isReferent
-        ? ["BROUILLON", "SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+        ? ["BROUILLON", "SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
         : isCommercial
-        ? ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
-        : ["SOUMISE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+        ? ["AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
+        : ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
       // Date de la fiche la plus ancienne (visible pour le rôle courant)
       let firstQ = supabase.from("fiches").select("created_at").order("created_at", { ascending: true }).limit(1);
       if (isReferent && profile.id) firstQ = firstQ.eq("created_by", profile.id);

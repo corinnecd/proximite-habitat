@@ -4,7 +4,8 @@ const STATUS_TRANSITIONS: Record<FicheStatus, { to: FicheStatus[]; roles: UserRo
   BROUILLON: [{ to: ["SOUMISE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE", "COMMERCIAL", "ADMIN"] }],
   SOUMISE: [{ to: ["VALIDEE"], roles: ["ADMIN"] }, { to: ["BROUILLON"], roles: ["ADMIN", "PROSPECTEUR", "CHEF_EQUIPE"] }],
   VALIDEE: [{ to: ["AFFECTEE"], roles: ["ADMIN"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
-  AFFECTEE: [{ to: ["RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
+  AFFECTEE: [{ to: ["RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE", "RDV_A_REPRENDRE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
+  RDV_A_REPRENDRE: [{ to: ["AFFECTEE"], roles: ["ADMIN", "PROSPECTEUR", "CHEF_EQUIPE"] }],
   RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
   ACCEPTEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }],
   REFUSEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
@@ -58,6 +59,7 @@ export function canEditRdvDate(
 
 export const STATUS_LABELS: Record<FicheStatus, string> = {
   BROUILLON: "Brouillon", SOUMISE: "À valider", VALIDEE: "Validée", AFFECTEE: "Validée et affectée",
+  RDV_A_REPRENDRE: "RDV à reprendre",
   RETRACTATION: "Attente Acceptation Client", ACCEPTEE: "Acceptation Client",
   REFUSEE: "Refus Client", ARCHIVEE: "Archivé",
 };
@@ -67,6 +69,7 @@ export const STATUS_COLORS: Record<FicheStatus, string> = {
   SOUMISE: "bg-blue-50 text-blue-700 ring-1 ring-blue-200/60",
   VALIDEE: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60",
   AFFECTEE: "bg-orange-50 text-orange-700 ring-1 ring-orange-200/60",
+  RDV_A_REPRENDRE: "bg-amber-50 text-amber-700 ring-1 ring-amber-300/60",
   ACCEPTEE: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60",
   RETRACTATION: "bg-purple-50 text-purple-700 ring-1 ring-purple-200/60",
   REFUSEE: "bg-red-50 text-red-700 ring-1 ring-red-200/60",

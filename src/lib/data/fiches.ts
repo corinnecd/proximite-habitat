@@ -37,9 +37,12 @@ export type FichePhotoItem = {
   original_name: string | null;
 };
 
-/** Une fiche complète par son id, ou `null` si introuvable. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Une fiche complète par son UUID ou sa référence (PHC-xxx), ou `null` si introuvable. */
 export async function getFicheById(db: Db, id: string): Promise<Fiche | null> {
-  const { data } = await db.from("fiches").select("*").eq("id", id).single();
+  const col = UUID_RE.test(id) ? "id" : "reference";
+  const { data } = await db.from("fiches").select("*").eq(col, id).single();
   return data;
 }
 

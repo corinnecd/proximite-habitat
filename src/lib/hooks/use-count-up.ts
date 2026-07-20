@@ -1,29 +1,26 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-/**
- * Anime un nombre de 0 vers `target` en `duration` ms.
- * Ne redémarre que si `target` change (ex. chargement initial).
- */
-export function useCountUp(target: number, duration = 900): number {
-  const [value, setValue] = useState(0);
+export function useCountUp(target: number, duration = 600): number {
+  const [displayed, setDisplayed] = useState(target);
+  const displayedRef = useRef(target);
   const rafRef = useRef<number | null>(null);
   const startRef = useRef<number | null>(null);
-  const startValRef = useRef(0);
 
   useEffect(() => {
-    if (target === 0) { setValue(0); return; }
-
-    startValRef.current = 0;
+    const from = displayedRef.current;
+    if (from === target) return;
     startRef.current = null;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
 
     const animate = (ts: number) => {
       if (startRef.current === null) startRef.current = ts;
       const elapsed = ts - startRef.current;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
       const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(Math.round(startValRef.current + (target - startValRef.current) * eased));
+      const next = Math.round(from + (target - from) * eased);
+      displayedRef.current = next;
+      setDisplayed(next);
       if (progress < 1) rafRef.current = requestAnimationFrame(animate);
     };
 
@@ -31,5 +28,5 @@ export function useCountUp(target: number, duration = 900): number {
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [target, duration]);
 
-  return value;
+  return displayed;
 }

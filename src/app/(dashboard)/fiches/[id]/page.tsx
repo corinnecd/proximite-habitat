@@ -170,11 +170,14 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
   const fetchData = useCallback(async () => {
     try {
-      const [ficheData, historyData, photosData, commercialsData] = await Promise.all([
+      const [ficheData, commercialsData] = await Promise.all([
         getFicheById(supabase, id),
-        getFicheHistory(supabase, id),
-        getFichePhotos(supabase, id),
         getActiveCommercialsAndAdmins(supabase),
+      ]);
+      const ficheUuid = ficheData?.id ?? id;
+      const [historyData, photosData] = await Promise.all([
+        getFicheHistory(supabase, ficheUuid),
+        getFichePhotos(supabase, ficheUuid),
       ]);
       setFiche(ficheData);
       if (ficheData?.reference) {

@@ -905,6 +905,17 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                     ) : null;
                   })()}
                 </div>
+
+                {/* Date RDV mise en évidence quand fiche affectée avec date fixée */}
+                {fiche.rdv_date && (fiche.status === "AFFECTEE" || fiche.status === "RDV_A_REPRENDRE") && (
+                  <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 text-xs font-medium text-orange-700 dark:text-orange-300">
+                    <Calendar className="w-3.5 h-3.5 shrink-0" />
+                    Rendez-vous le{" "}
+                    {new Date(fiche.rdv_date).toLocaleDateString("fr-FR", {
+                      weekday: "long", day: "numeric", month: "long", year: "numeric",
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 

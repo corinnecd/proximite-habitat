@@ -329,7 +329,11 @@ export default function UtilisateursPage() {
         </div>
 
         {/* ── Liste ────────────────────────────────────────────────────────── */}
-        {loading ? null : filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+            Chargement des utilisateurs…
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border">
             <EmptyState
               illustration="fiches"

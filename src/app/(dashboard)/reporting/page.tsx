@@ -422,8 +422,20 @@ export default function ReportingPage() {
   if (profileLoading || !profile) {
     return (
       <>
-        <Topbar title={isCommercial ? "Mon reporting" : "Reporting direction"} />
-        <div className="p-4 sm:p-6 lg:p-8" />
+        <Topbar title="Reporting direction" />
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+          <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
+            <div className="relative z-10">
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-5">
+                <div>
+                  <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">Vue consolidée</span>
+                  <h1 className="font-heading text-3xl sm:text-4xl text-white tracking-tight leading-none mt-1.5">Reporting</h1>
+                  <p className="text-sm text-white/60 mt-2">Chargement…</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </>
     );
   }

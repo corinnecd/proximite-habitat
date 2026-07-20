@@ -10,17 +10,19 @@ import { toast } from "sonner";
 import type { Notification } from "@/types/database";
 import { useSearch } from "@/components/layout/SearchProvider";
 import { usePathname, useRouter } from "next/navigation";
+import { useProfile } from "@/lib/hooks/use-profile";
 
 export function Topbar({ title, actions }: { title?: string; actions?: React.ReactNode }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [recentNotifs, setRecentNotifs] = useState<Notification[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
   const supabase = useMemo(() => createClient(), []);
   const { open: openSearch } = useSearch();
   const router = useRouter();
   const pathname = usePathname();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { profile } = useProfile();
+  const userId = profile?.id ?? null;
 
   const fetchUnread = useCallback(async (uid: string) => {
     setUnreadCount(await getUnreadNotificationCount(supabase, uid));
@@ -32,44 +34,35 @@ export function Topbar({ title, actions }: { title?: string; actions?: React.Rea
   }, [supabase]);
 
   useEffect(() => {
-    let channelCleanup: (() => void) | undefined;
+    if (!userId) return;
+    fetchUnread(userId);
 
-    async function init() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      setUserId(user.id);
-      await fetchUnread(user.id);
-
-      const channel = supabase
-        .channel(`topbar-notifications-${user.id}-${crypto.randomUUID()}`)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-          (payload) => {
-            fetchUnread(user.id);
-            if (payload.eventType === "INSERT") {
-              const n = payload.new as Notification;
-              setRecentNotifs((prev) => [n, ...prev].slice(0, 5));
-              toast(n.title, {
-                description: n.message,
-                duration: 6000,
-                action: n.fiche_id
-                  ? { label: "Voir la fiche", onClick: () => { window.location.href = `/fiches/${n.fiche_id}`; } }
-                  : undefined,
-                icon: "🔔",
-              });
-            }
+    const channel = supabase
+      .channel(`topbar-notifications-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        (payload) => {
+          fetchUnread(userId);
+          if (payload.eventType === "INSERT") {
+            const n = payload.new as Notification;
+            setRecentNotifs((prev) => [n, ...prev].slice(0, 5));
+            toast(n.title, {
+              description: n.message,
+              duration: 6000,
+              action: n.fiche_id
+                ? { label: "Voir la fiche", onClick: () => { window.location.href = `/fiches/${n.fiche_id}`; } }
+                : undefined,
+              icon: "🔔",
+            });
           }
-        )
-        .subscribe();
+        }
+      )
+      .subscribe();
 
-      channelCleanup = () => supabase.removeChannel(channel);
-    }
-
-    init();
-    return () => { channelCleanup?.(); };
+    return () => { supabase.removeChannel(channel); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (userId) fetchUnread(userId);

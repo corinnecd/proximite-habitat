@@ -841,10 +841,7 @@ export default function DashboardPage() {
           </div>
         ) : undefined}
       />
-      <div
-        className="p-4 sm:p-6 lg:p-8 space-y-6"
-        style={loading ? { opacity: 0, pointerEvents: "none" } : { opacity: 1, transition: "opacity 250ms ease" }}
-      >
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* ═══════════════════════════════════════════════════════════════════
             HERO DASHBOARD — bloc navy signature avec greeting + KPI vedette
@@ -899,7 +896,7 @@ export default function DashboardPage() {
                   {profile?.first_name}
                 </h1>
                 <p className="text-sm text-white/60 max-w-md leading-relaxed">
-                  {isReferent
+                  {loading ? "Chargement…" : isReferent
                     ? `${counts.BROUILLON} brouillon${counts.BROUILLON > 1 ? "s" : ""} en cours · ${counts.SOUMISE} soumise${counts.SOUMISE > 1 ? "s" : ""} en attente de validation`
                     : isCommercial
                     ? `${counts.AFFECTEE} fiche${counts.AFFECTEE > 1 ? "s" : ""} à traiter · ${counts.ACCEPTEE} contrat${counts.ACCEPTEE > 1 ? "s" : ""} signé${counts.ACCEPTEE > 1 ? "s" : ""}`

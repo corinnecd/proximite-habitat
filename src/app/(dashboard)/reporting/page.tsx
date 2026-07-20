@@ -448,10 +448,7 @@ export default function ReportingPage() {
           ],
         })} /></div>}
       />
-      <div
-        className="p-4 sm:p-6 lg:p-8 space-y-6"
-        style={loading ? { opacity: 0, pointerEvents: "none" } : { opacity: 1, transition: "opacity 250ms ease" }}
-      >
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* ═══ HERO REPORTING ═══ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
@@ -465,7 +462,7 @@ export default function ReportingPage() {
                     {isCommercial ? "Mon reporting" : "Reporting"}
                   </h1>
                   <p className="text-sm text-white/60 mt-2">
-                    {isCommercial
+                    {loading ? "Chargement…" : isCommercial
                       ? "Statistiques personnelles — vos fiches affectées"
                       : "Vue globale — tous commerciaux et référents réunis"}
                   </p>

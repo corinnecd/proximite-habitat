@@ -299,7 +299,7 @@ export default function PlanificationPage() {
         }
         if (data) {
           const passedSoumise = new Set(["SOUMISE", "VALIDEE", "AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]);
-          const passedAffectee = new Set(["AFFECTEE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]);
+          const passedAffectee = new Set(["AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]);
           for (const f of data) {
             if (!f.ville_id) continue;
             const s = map.get(f.ville_id);

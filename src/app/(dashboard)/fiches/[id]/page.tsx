@@ -163,6 +163,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [showAnnulationDialog, setShowAnnulationDialog] = useState(false);
   const [annulationMotif, setAnnulationMotif] = useState("");
   const [montantHtInput, setMontantHtInput] = useState("");
+  const [newRdvDate, setNewRdvDate] = useState("");
 
   const { profile } = useProfile();
   const router = useRouter();
@@ -265,7 +266,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     return () => document.removeEventListener("mousedown", close);
   }, [showStatusDropdown]);
 
-  async function handleStatusChange(newStatus: FicheStatus, comment?: string, motifRefus?: MotifRefus) {
+  async function handleStatusChange(newStatus: FicheStatus, comment?: string, motifRefus?: MotifRefus, rdvDateParam?: string) {
     if (!fiche || !profile) return;
     setTransitioning(true);
     const { error } = await supabase.rpc("transition_fiche", {
@@ -284,7 +285,17 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       await supabase.from("fiches").update({ montant_ht: montantHtValue }).eq("id", fiche.id);
     }
 
-    setFiche({ ...fiche, status: newStatus, ...(motifRefus ? { motif_refus: motifRefus } : {}), ...(montantHtValue ? { montant_ht: montantHtValue } : {}) });
+    if (newStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE" && rdvDateParam) {
+      await supabase.from("fiches").update({ rdv_date: rdvDateParam }).eq("id", fiche.id);
+    }
+
+    setFiche({
+      ...fiche,
+      status: newStatus,
+      ...(motifRefus ? { motif_refus: motifRefus } : {}),
+      ...(montantHtValue ? { montant_ht: montantHtValue } : {}),
+      ...(newStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE" && rdvDateParam ? { rdv_date: rdvDateParam } : {}),
+    });
     window.dispatchEvent(new CustomEvent("phc:fiche-status-changed"));
     toast.success(`Statut changé : ${STATUS_LABELS[newStatus]}`);
     if (newStatus === "ACCEPTEE") {
@@ -1088,8 +1099,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
 
-        {/* ── Modifier l'affectation (AFFECTEE · direction uniquement) ──── */}
-        {profile && canAssignFiche(profile.role) && fiche.status === "AFFECTEE" && (
+        {/* ── Modifier l'affectation (AFFECTEE / RDV_A_REPRENDRE · direction uniquement) ──── */}
+        {profile && canAssignFiche(profile.role) && (fiche.status === "AFFECTEE" || fiche.status === "RDV_A_REPRENDRE") && (
           <div data-no-print className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-2xl px-6 py-4 space-y-3">
             <div className="flex items-center gap-4">
               <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0">
@@ -1842,7 +1853,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       </Dialog>
 
       {/* ── Dialog : motif obligatoire pour tout changement de statut ───── */}
-      <Dialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); } }}>
+      <Dialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); setNewRdvDate(""); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className={`flex items-center gap-2 ${
@@ -1876,11 +1887,35 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               }
             </DialogTitle>
             <DialogDescription>
-              Le motif est obligatoire et sera conservé dans l&apos;historique de la fiche.
+              {pendingStatus === "AFFECTEE" && fiche?.status === "RDV_A_REPRENDRE"
+                ? "Indiquez la nouvelle date de rendez-vous et ajoutez un commentaire pour le commercial."
+                : "Le motif est obligatoire et sera conservé dans l'historique de la fiche."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-2 space-y-3">
+            {pendingStatus === "AFFECTEE" && fiche?.status === "RDV_A_REPRENDRE" && (
+              <div className="space-y-1.5">
+                <label htmlFor="new-rdv-date" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Nouvelle date de rendez-vous <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="new-rdv-date"
+                  type="date"
+                  value={newRdvDate}
+                  onChange={(e) => setNewRdvDate(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                  className={`w-full h-10 rounded-lg border bg-card px-3 text-sm transition-colors ${
+                    !newRdvDate ? "border-red-300 dark:border-red-700" : "border-amber-300 dark:border-amber-700"
+                  }`}
+                />
+                {!newRdvDate && (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />La nouvelle date de rendez-vous est obligatoire.
+                  </p>
+                )}
+              </div>
+            )}
             {pendingStatus === "REFUSEE" && (
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -1954,7 +1989,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           </div>
 
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); setMontantHtInput(""); }}>Annuler</Button>
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); setMontantHtInput(""); setNewRdvDate(""); }}>Annuler</Button>
             <Button
               onClick={async () => {
                 if (!pendingStatus) return;
@@ -1970,13 +2005,18 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   toast.error("Veuillez saisir le montant HT du contrat.");
                   return;
                 }
-                await handleStatusChange(pendingStatus, statusComment.trim(), selectedMotifRefus as MotifRefus || undefined);
+                if (pendingStatus === "AFFECTEE" && fiche?.status === "RDV_A_REPRENDRE" && !newRdvDate) {
+                  toast.error("Veuillez indiquer la nouvelle date de rendez-vous.");
+                  return;
+                }
+                await handleStatusChange(pendingStatus, statusComment.trim(), selectedMotifRefus as MotifRefus || undefined, newRdvDate || undefined);
                 setPendingStatus(null);
                 setStatusComment("");
                 setSelectedMotifRefus("");
                 setMontantHtInput("");
+                setNewRdvDate("");
               }}
-              disabled={transitioning || !statusComment.trim() || (pendingStatus === "REFUSEE" && !selectedMotifRefus) || (pendingStatus === "ACCEPTEE" && (!montantHtInput || parseFloat(montantHtInput) <= 0))}
+              disabled={transitioning || !statusComment.trim() || (pendingStatus === "REFUSEE" && !selectedMotifRefus) || (pendingStatus === "ACCEPTEE" && (!montantHtInput || parseFloat(montantHtInput) <= 0)) || (pendingStatus === "AFFECTEE" && fiche?.status === "RDV_A_REPRENDRE" && !newRdvDate)}
               className={`rounded-xl gap-2 text-white ${
                 pendingStatus === "REFUSEE"
                   ? "bg-red-600 hover:bg-red-700"

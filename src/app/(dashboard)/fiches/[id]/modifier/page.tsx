@@ -10,7 +10,7 @@ import { getFicheById, getFichePhotos } from "@/lib/data/fiches";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { canEditFiche } from "@/lib/permissions";
 import type { FicheStatus } from "@/types/database";
-import { Loader2, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 
 interface PhotoRow { id: string; storage_path: string; original_name: string; }
 
@@ -117,26 +117,15 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, profile, profileLoading, router]);
 
-  // ── Loading ──────────────────────────────────────────────────────────────
+  // ── Rendu ────────────────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <>
-        <Topbar title="Modifier la fiche" />
-        <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-64">
-          <div className="text-center text-muted-foreground">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-primary" />
-            <p className="text-sm">Chargement de la fiche…</p>
-          </div>
-        </div>
-      </>
-    );
-  }
+  const isEditSubmitted = ficheStatus !== "BROUILLON";
+  const pageTitle = isEditSubmitted ? "Modifier la fiche" : "Modifier le brouillon";
 
   if (error) {
     return (
       <>
-        <Topbar title="Modifier la fiche" />
+        <Topbar title={pageTitle} />
         <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-64">
           <div className="text-center text-muted-foreground">
             <AlertCircle className="w-8 h-8 mx-auto mb-3 text-destructive" />
@@ -147,26 +136,25 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
     );
   }
 
-  // ── Rendu ────────────────────────────────────────────────────────────────
-
-  const isEditSubmitted = ficheStatus !== "BROUILLON";
-  const pageTitle = isEditSubmitted ? "Modifier la fiche" : "Modifier le brouillon";
-
   return (
     <>
       <Topbar title={pageTitle} />
       <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6 lg:p-10">
-            <FicheStepper
-              key={id}
-              ficheId={id}
-              initialData={initialData ?? undefined}
-              initialPhotos={initialPhotos}
-              existingSignatureUrl={existingSignatureUrl}
-              existingReferentSignatureUrl={existingReferentSignatureUrl}
-              mode={isEditSubmitted ? "edit-submitted" : "edit-draft"}
-            />
+            {loading ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Chargement…</p>
+            ) : (
+              <FicheStepper
+                key={id}
+                ficheId={id}
+                initialData={initialData ?? undefined}
+                initialPhotos={initialPhotos}
+                existingSignatureUrl={existingSignatureUrl}
+                existingReferentSignatureUrl={existingReferentSignatureUrl}
+                mode={isEditSubmitted ? "edit-submitted" : "edit-draft"}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

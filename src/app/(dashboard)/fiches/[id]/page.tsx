@@ -164,6 +164,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [annulationMotif, setAnnulationMotif] = useState("");
   const [montantHtInput, setMontantHtInput] = useState("");
   const [newRdvDate, setNewRdvDate] = useState("");
+  const [showRdvEditDialog, setShowRdvEditDialog] = useState(false);
+  const [rdvEditInput, setRdvEditInput] = useState("");
 
   const { profile } = useProfile();
   const router = useRouter();
@@ -954,7 +956,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   onClick={() => { setDeleteMotif(""); setShowDeleteConfirm(true); }}
                   className="rounded-xl gap-2 text-destructive hover:text-destructive border-destructive/30 hover:bg-red-50 dark:hover:bg-red-950/30"
                   aria-label="Supprimer cette fiche">
-                  <Trash2 className="w-4 h-4" />Supprimer
+                  <Trash2 className="w-4 h-4" />Supprimer la fiche
                 </Button>
               )}
               {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && fiche.created_by === profile.id && fiche.status === "BROUILLON" && (
@@ -962,7 +964,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   onClick={() => { setDeleteMotif(""); setShowDeleteConfirm(true); }}
                   className="rounded-xl gap-2 text-destructive hover:text-destructive border-destructive/30 hover:bg-red-50 dark:hover:bg-red-950/30"
                   aria-label="Supprimer cette fiche">
-                  <Trash2 className="w-4 h-4" />Supprimer
+                  <Trash2 className="w-4 h-4" />Supprimer la fiche
                 </Button>
               )}
 
@@ -1026,6 +1028,15 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   <UserX className="w-4 h-4" />
                   RDV à reprendre
                 </div>
+              )}
+
+              {/* Bouton Modifier le rendez-vous — visible si rdv_date défini et utilisateur autorisé */}
+              {fiche.rdv_date && profile && canEditRdvDate(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status) && (
+                <Button size="sm" variant="outline"
+                  onClick={() => { setRdvEditInput(fiche.rdv_date || ""); setShowRdvEditDialog(true); }}
+                  className="ml-auto rounded-xl gap-2 bg-secondary text-foreground hover:bg-secondary/80 border-border">
+                  <Calendar className="w-4 h-4" />Modifier le rendez-vous
+                </Button>
               )}
 
               {/* Boutons classiques pour le référent */}
@@ -2313,6 +2324,57 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           </Dialog>
         );
       })()}
+
+      {/* ── Dialog : modifier la date de rendez-vous depuis le hero ──────── */}
+      <Dialog open={showRdvEditDialog} onOpenChange={(open) => { if (!open) { setShowRdvEditDialog(false); setRdvEditInput(""); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
+              <Calendar className="w-5 h-5" />Modifier le rendez-vous
+            </DialogTitle>
+            <DialogDescription>
+              Choisissez la nouvelle date de rendez-vous pour cette fiche.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <label htmlFor="rdv-edit-date" className="text-xs font-medium text-muted-foreground uppercase tracking-wide block mb-1.5">
+              Date de rendez-vous
+            </label>
+            <input
+              id="rdv-edit-date"
+              type="date"
+              value={rdvEditInput}
+              onChange={(e) => setRdvEditInput(e.target.value)}
+              className="w-full h-10 rounded-lg border border-border bg-card px-3 text-sm"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setShowRdvEditDialog(false); setRdvEditInput(""); }}>Annuler</Button>
+            <Button
+              disabled={!rdvEditInput}
+              onClick={async () => {
+                if (!fiche || !profile || !rdvEditInput) return;
+                const oldDate = fiche.rdv_date;
+                await supabase.from("fiches").update({ rdv_date: rdvEditInput }).eq("id", fiche.id);
+                await supabase.from("fiche_history").insert({
+                  fiche_id: fiche.id,
+                  organization_id: profile.organization_id,
+                  user_id: profile.id,
+                  action: "MODIFICATION_RDV",
+                  comment: `Date de RDV modifiée : ${oldDate || "non définie"} → ${rdvEditInput}`,
+                });
+                setFiche({ ...fiche, rdv_date: rdvEditInput });
+                setShowRdvEditDialog(false);
+                setRdvEditInput("");
+                toast.success("Date de rendez-vous mise à jour");
+              }}
+              className="rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white gap-2"
+            >
+              <Calendar className="w-4 h-4" />Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -434,7 +434,7 @@ export default function FichesPage() {
                   {isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"}
                 </h1>
                 <p className="text-sm text-white/60 mt-2">
-                  {isValidationMode
+                  {loading && fiches.length === 0 ? "Chargement…" : isValidationMode
                     ? `${fiches.length} fiche${fiches.length > 1 ? "s" : ""} en attente de votre validation`
                     : (
                       <>
@@ -688,40 +688,48 @@ export default function FichesPage() {
         )}
 
         {/* Liste des fiches */}
-        {loading ? null : fetchError ? (
-          <div className="text-center py-16 bg-card rounded-2xl border border-border space-y-3">
-            <AlertCircle className="w-10 h-10 mx-auto text-destructive opacity-60" />
-            <p className="font-medium text-sm text-foreground">Erreur de chargement</p>
-            <Button variant="outline" className="rounded-full" onClick={() => fetchFiches(0, false)}>
-              Réessayer
-            </Button>
-          </div>
-        ) : fiches.length === 0 ? (
-          <div className="bg-card rounded-2xl border border-border">
-            <EmptyState
-              illustration={search ? "search" : "fiches"}
-              title={isValidationMode ? "Aucune fiche à valider" : "Aucune fiche trouvée"}
-              description={
-                isValidationMode
-                  ? (search ? `Aucun résultat pour "${search}"` : "Toutes les fiches ont été traitées")
-                  : statusFilter !== "ALL"
-                  ? `Aucune fiche avec le statut "${STATUS_LABELS[statusFilter as FicheStatus]}"${search ? ` pour "${search}"` : ""}`
-                  : search
-                  ? `Aucun résultat pour "${search}"`
-                  : "Commencez par créer votre première fiche de pré-visite"
-              }
-              action={
-                !isValidationMode && !search && statusFilter === "ALL" && !isDG ? (
-                  <Link href="/fiches/nouvelle" className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-medium transition-colors">
-                    <FilePlus className="w-4 h-4" />Nouvelle fiche
-                  </Link>
-                ) : undefined
-              }
-            />
+        {loading && fiches.length === 0 ? (
+          <div className="space-y-5">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-[72px] bg-card border border-border border-l-4 border-l-border rounded-2xl" />
+            ))}
           </div>
         ) : (
-          <div className="space-y-5">
-            {fiches.slice(0, visibleCount).map((fiche, idx) => {
+          <div style={{ opacity: loading ? 0.5 : 1, transition: "opacity 200ms ease" }}>
+            {fetchError ? (
+              <div className="text-center py-16 bg-card rounded-2xl border border-border space-y-3">
+                <AlertCircle className="w-10 h-10 mx-auto text-destructive opacity-60" />
+                <p className="font-medium text-sm text-foreground">Erreur de chargement</p>
+                <Button variant="outline" className="rounded-full" onClick={() => fetchFiches(0, false)}>
+                  Réessayer
+                </Button>
+              </div>
+            ) : fiches.length === 0 ? (
+              <div className="bg-card rounded-2xl border border-border">
+                <EmptyState
+                  illustration={search ? "search" : "fiches"}
+                  title={isValidationMode ? "Aucune fiche à valider" : "Aucune fiche trouvée"}
+                  description={
+                    isValidationMode
+                      ? (search ? `Aucun résultat pour "${search}"` : "Toutes les fiches ont été traitées")
+                      : statusFilter !== "ALL"
+                      ? `Aucune fiche avec le statut "${STATUS_LABELS[statusFilter as FicheStatus]}"${search ? ` pour "${search}"` : ""}`
+                      : search
+                      ? `Aucun résultat pour "${search}"`
+                      : "Commencez par créer votre première fiche de pré-visite"
+                  }
+                  action={
+                    !isValidationMode && !search && statusFilter === "ALL" && !isDG ? (
+                      <Link href="/fiches/nouvelle" className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#F97316] hover:bg-[#EA580C] text-white text-sm font-medium transition-colors">
+                        <FilePlus className="w-4 h-4" />Nouvelle fiche
+                      </Link>
+                    ) : undefined
+                  }
+                />
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {fiches.slice(0, visibleCount).map((fiche, idx) => {
               const s = STATUS_CARD_STYLES[fiche.status];
               const StatusIcon = s.Icon;
               const isHighlighted = highlightIds.has(fiche.id);
@@ -771,7 +779,9 @@ export default function FichesPage() {
                   </div>
                 </Link>
               );
-            })}
+                })}
+              </div>
+            )}
           </div>
         )}
 

@@ -173,19 +173,8 @@ export default function UtilisateursPage() {
     } finally { setSaving(false); }
   }
 
-  // Chargement du profil en cours — ne pas afficher "Accès restreint" prématurément
-  if (profileLoading) {
-    return (
-      <>
-        <Topbar title="Utilisateurs" />
-        <div className="p-4 sm:p-6 lg:p-8">
-        </div>
-      </>
-    );
-  }
-
-  // Accès refusé
-  if (profile?.role !== "ADMIN" && profile?.role !== "DIRECTION_GENERALE") {
+  // Accès refusé — attendre que le profil soit chargé avant de juger le rôle
+  if (!profileLoading && profile?.role !== "ADMIN" && profile?.role !== "DIRECTION_GENERALE") {
     return (
       <>
         <Topbar title="Utilisateurs" />
@@ -228,7 +217,7 @@ export default function UtilisateursPage() {
                   Utilisateurs
                 </h1>
                 <p className="text-sm text-white/60 mt-2">
-                  {stats.total} collaborateur{stats.total > 1 ? "s" : ""} · {stats.active} actif{stats.active > 1 ? "s" : ""} · {stats.commercials} commerciaux · {stats.référents} référents
+                  {loading ? "Chargement…" : `${stats.total} collaborateur${stats.total > 1 ? "s" : ""} · ${stats.active} actif${stats.active > 1 ? "s" : ""} · ${stats.commercials} commerciaux · ${stats.référents} référents`}
                 </p>
               </div>
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

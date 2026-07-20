@@ -617,7 +617,9 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     return (
       <>
         <Topbar title="Détail de la fiche" />
-        <div className="p-4 sm:p-6 lg:p-8" />
+        <div className="p-4 sm:p-6 lg:p-8">
+          <p className="text-sm text-muted-foreground">Chargement…</p>
+        </div>
       </>
     );
   }

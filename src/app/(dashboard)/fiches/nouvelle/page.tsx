@@ -18,7 +18,16 @@ export default function NouvelleFichePage() {
     if (!loading && profile && !allowed) router.replace("/");
   }, [loading, profile, allowed, router]);
 
-  if (loading || !profile || !allowed) return null;
+  if (!profile) {
+    return (
+      <>
+        <Topbar title="Nouvelle fiche de pré-visite" />
+        <div className="p-4 sm:p-6 lg:p-8" />
+      </>
+    );
+  }
+
+  if (!allowed) return null;
 
   return (
     <>

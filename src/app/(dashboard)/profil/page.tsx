@@ -113,7 +113,7 @@ export default function ProfilPage() {
 
   const isProspecteur = profile?.role === "PROSPECTEUR";
 
-  if (loading || !profile) {
+  if (!profile) {
     return (
       <>
         <Topbar title="Mon profil" />

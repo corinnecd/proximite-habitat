@@ -119,7 +119,7 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
 
   // ── Loading ──────────────────────────────────────────────────────────────
 
-  if (profileLoading || loading) {
+  if (loading) {
     return (
       <>
         <Topbar title="Modifier la fiche" />

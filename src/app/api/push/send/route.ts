@@ -2,19 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
-
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// IMPORTANT: ne pas appeler webpush.setVapidDetails() au niveau module.
+// Next.js exécute ce module pendant "Collecting page data" au build (sans les
+// variables d'env runtime forcément présentes) : un appel top-level ferait
+// planter le build si VAPID_SUBJECT/VAPID_PRIVATE_KEY ne sont pas définies à
+// ce moment-là. On initialise donc à la demande, au premier appel de route.
+let vapidConfigured = false;
+function ensureVapidConfigured() {
+  if (vapidConfigured) return;
+  const subject = process.env.VAPID_SUBJECT;
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!subject || !publicKey || !privateKey) {
+    throw new Error(
+      "Configuration VAPID manquante (VAPID_SUBJECT, NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)"
+    );
+  }
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+  vapidConfigured = true;
+}
+
 export async function POST(req: NextRequest) {
   try {
+    ensureVapidConfigured();
+
     const { userIds, title, body, url } = await req.json();
     if (!userIds?.length || !title) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });

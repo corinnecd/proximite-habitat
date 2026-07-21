@@ -273,6 +273,7 @@ export default function CalendrierPage() {
                       {shown.map((f) => (
                         <span
                           key={f.id}
+                          title="Plus de détails"
                           className={`truncate rounded px-1.5 py-0.5 text-[10px] sm:text-[11px] leading-tight ${
                             f.status === "RDV_A_REPRENDRE"
                               ? "bg-[#F97316] text-white font-semibold"
@@ -280,7 +281,7 @@ export default function CalendrierPage() {
                           }`}
                         >
                           {f.heure_visite ? f.heure_visite.slice(0, 5) + " " : ""}
-                          {f.prospect_nom ?? "Sans nom"}
+                          <span className="font-bold">{f.prospect_nom ?? "Sans nom"}</span>
                         </span>
                       ))}
                       {hidden > 0 && (
@@ -317,7 +318,11 @@ export default function CalendrierPage() {
                 key={f.id}
                 className="rounded-xl border p-3 hover:bg-muted/40 transition-colors flex flex-col gap-1.5"
               >
-                <Link href={`/fiches/${f.id}`} className="flex items-center justify-between gap-2">
+                <Link
+                  href={`/fiches/${f.id}`}
+                  className="flex items-center justify-between gap-2"
+                  title="Cliquer ici pour accéder à la Fiche Client"
+                >
                   <span className="font-medium text-sm">
                     {f.prospect_prenom} {f.prospect_nom}
                   </span>

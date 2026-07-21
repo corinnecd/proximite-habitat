@@ -25,7 +25,6 @@ import {
   ChevronDown, ChevronUp, UserX,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel } from "@/lib/periods";
 
@@ -109,6 +108,16 @@ export default function FichesPage() {
   const [validationStats, setValidationStats] = useState<{ label: string; soumises: number; affectees: number; validees: number }[]>([]);
   const [quarterLabel, setQuarterLabel] = useState("");
 
+  // Plage de dates personnalisée (prioritaire sur les préréglages de période)
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
+  // Filtres ville / département
+  const [villeFilter, setVilleFilter] = useState("ALL");
+  const [departementFilter, setDepartementFilter] = useState("ALL");
+  const [villeOptions, setVilleOptions] = useState<string[]>([]);
+  const [departementOptions, setDepartementOptions] = useState<string[]>([]);
+
   // Stable — ne change pas entre les renders
   const supabase = useMemo(() => createClient(), []);
 
@@ -145,6 +154,27 @@ export default function FichesPage() {
     loadUsers();
   }, [isAdminOrDG, _branchFilterForUsers]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Chargement des villes / départements distincts pour les filtres avancés
+  useEffect(() => {
+    if (!isAdminOrDG) return;
+    async function loadVillesDepartements() {
+      let q = supabase.from("fiches").select("prospect_ville, prospect_cp").not("prospect_ville", "is", null);
+      if (_branchFilterForUsers) q = q.eq("organization_id", _branchFilterForUsers);
+      const { data } = await q.limit(5000);
+      if (data) {
+        const villes = new Set<string>();
+        const deps = new Set<string>();
+        for (const row of data as { prospect_ville: string | null; prospect_cp: string | null }[]) {
+          if (row.prospect_ville && row.prospect_ville.trim()) villes.add(row.prospect_ville.trim());
+          if (row.prospect_cp && row.prospect_cp.trim().length >= 2) deps.add(row.prospect_cp.trim().slice(0, 2));
+        }
+        setVilleOptions(Array.from(villes).sort((a, b) => a.localeCompare(b, "fr")));
+        setDepartementOptions(Array.from(deps).sort());
+      }
+    }
+    loadVillesDepartements();
+  }, [isAdminOrDG, _branchFilterForUsers]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchFiches = useCallback(async (pageToLoad = 0, append = false) => {
     if (!append) setLoading(true);
 
@@ -171,14 +201,18 @@ export default function FichesPage() {
       query = query.neq("status", "BROUILLON");
     }
 
+    // Plage de dates : la sélection personnalisée (du/au) est prioritaire sur les préréglages
+    const effectiveDates = (customFrom || customTo)
+      ? { from: customFrom || "1970-01-01", to: customTo || new Date().toISOString().slice(0, 10) }
+      : getPeriodDates(periodFilter);
+
     // Référent : ne voit que ses propres fiches + filtre période
     if (_isReferent && profile?.id) {
       query = query.eq("created_by", profile.id);
-      const dates = getPeriodDates(periodFilter);
-      if (dates) {
+      if (effectiveDates) {
         query = query
-          .gte("updated_at", `${dates.from}T00:00:00Z`)
-          .lte("updated_at", `${dates.to}T23:59:59Z`);
+          .gte("updated_at", `${effectiveDates.from}T00:00:00Z`)
+          .lte("updated_at", `${effectiveDates.to}T23:59:59Z`);
       }
     }
 
@@ -189,17 +223,19 @@ export default function FichesPage() {
 
     // Filtres direction
     if (_isAdmin) {
-      const dates = getPeriodDates(periodFilter);
-      if (dates) {
+      if (effectiveDates) {
         query = query
-          .gte("updated_at", `${dates.from}T00:00:00Z`)
-          .lte("updated_at", `${dates.to}T23:59:59Z`);
+          .gte("updated_at", `${effectiveDates.from}T00:00:00Z`)
+          .lte("updated_at", `${effectiveDates.to}T23:59:59Z`);
       }
       if (referentFilter !== "ALL") query = query.eq("created_by", referentFilter);
       if (commercialFilter  !== "ALL") query = query.eq("assigned_to", commercialFilter);
     }
 
     if (_branchFilter) query = query.eq("organization_id", _branchFilter);
+
+    if (villeFilter !== "ALL") query = query.eq("prospect_ville", villeFilter);
+    if (departementFilter !== "ALL") query = query.like("prospect_cp", `${departementFilter}%`);
 
     if (search) {
       query = query.or(
@@ -223,7 +259,7 @@ export default function FichesPage() {
       if (!append) setLoading(false);
     }
   // supabase est stable (useMemo), pas besoin dans les deps
-  }, [statusFilter, search, profile, periodFilter, referentFilter, commercialFilter, selectedBranchId, isDG]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [statusFilter, search, profile, periodFilter, referentFilter, commercialFilter, selectedBranchId, isDG, customFrom, customTo, villeFilter, departementFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fiches antérieures au trimestre (toujours chargées)
   useEffect(() => {
@@ -332,7 +368,7 @@ export default function FichesPage() {
         const [soumises, affectees, validees] = await Promise.all([
           countHistory("SOUMISE", w.from, w.to),
           countHistory("AFFECTEE", w.from, w.to),
-          countHistory("ACCEPTEE", w.from, w.to),
+          countHistory("VALIDEE", w.from, w.to),
         ]);
         return { label: w.label, soumises, affectees, validees };
       }));
@@ -401,11 +437,16 @@ export default function FichesPage() {
     return () => { supabase.removeChannel(channel); };
   }, [fetchFiches]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const hasAdminFilters = isAdminOrDG && (periodFilter !== "ALL" || referentFilter !== "ALL" || commercialFilter !== "ALL");
+  const hasAdminFilters = isAdminOrDG && (
+    periodFilter !== "ALL" || referentFilter !== "ALL" || commercialFilter !== "ALL" ||
+    villeFilter !== "ALL" || departementFilter !== "ALL" || !!customFrom || !!customTo
+  );
 
   function resetAdminFilters() {
     setPeriodFilter("ALL");
     setReferentFilter("ALL"); setCommercialFilter("ALL");
+    setVilleFilter("ALL"); setDepartementFilter("ALL");
+    setCustomFrom(""); setCustomTo("");
   }
 
   return (
@@ -633,10 +674,68 @@ export default function FichesPage() {
                           </SelectContent>
                         </Select>
                       </div>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Ville</label>
+                        <Select value={villeFilter} onValueChange={(v) => setVilleFilter(v ?? "ALL")}>
+                          <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm max-w-[160px]">
+                            <SelectValue>{villeFilter === "ALL" ? "Toutes" : villeFilter}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ALL">Toutes les villes</SelectItem>
+                            {villeOptions.map((v) => (
+                              <SelectItem key={v} value={v}>{v}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Département</label>
+                        <Select value={departementFilter} onValueChange={(v) => setDepartementFilter(v ?? "ALL")}>
+                          <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm max-w-[130px]">
+                            <SelectValue>{departementFilter === "ALL" ? "Tous" : departementFilter}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ALL">Tous les départements</SelectItem>
+                            {departementOptions.map((d) => (
+                              <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Du</label>
+                        <input
+                          type="date"
+                          value={customFrom}
+                          onChange={(e) => setCustomFrom(e.target.value)}
+                          className="h-[34px] px-2 bg-background border rounded-xl text-sm"
+                        />
+                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Au</label>
+                        <input
+                          type="date"
+                          value={customTo}
+                          onChange={(e) => setCustomTo(e.target.value)}
+                          className="h-[34px] px-2 bg-background border rounded-xl text-sm"
+                        />
+                        {(customFrom || customTo) && (
+                          <button
+                            type="button"
+                            onClick={() => { setCustomFrom(""); setCustomTo(""); }}
+                            className="text-xs text-muted-foreground hover:text-foreground underline whitespace-nowrap"
+                          >
+                            Effacer
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
-                {periodFilter !== "ALL" && (
+                {(customFrom || customTo) && (
+                  <p className="text-xs text-muted-foreground pt-1">
+                    Période personnalisée : <span className="font-semibold text-foreground">du {customFrom || "…"} au {customTo || "…"}</span>
+                  </p>
+                )}
+                {!customFrom && !customTo && periodFilter !== "ALL" && (
                   <p className="text-xs text-muted-foreground pt-1">
                     Affichage : <span className="font-semibold text-foreground">{fiches.length} fiche{fiches.length > 1 ? "s" : ""}</span> {PERIOD_LABELS[periodFilter].toLowerCase()}
                   </p>
@@ -688,6 +787,67 @@ export default function FichesPage() {
           </p>
         )}
 
+        {/* Évolution des validations par semaine (trimestre en cours) — admin/DG uniquement */}
+        {isValidationMode && isAdminOrDG && validationStats.length > 0 && (
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-1">
+              <p className="text-sm font-semibold text-foreground">Évolution des validations par semaine</p>
+              {quarterLabel && (
+                <p className="text-xs text-muted-foreground">Trimestre en cours ({quarterLabel})</p>
+              )}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b border-border">
+                    <th className="py-1.5 pr-3 font-medium">Semaine</th>
+                    <th className="py-1.5 px-3 font-medium text-right">Soumises</th>
+                    <th className="py-1.5 px-3 font-medium text-right">Affectées</th>
+                    <th className="py-1.5 pl-3 font-medium text-right">Validées</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {validationStats.map((w) => {
+                    const max = Math.max(w.soumises, w.affectees, w.validees, 1);
+                    return (
+                      <tr key={w.label} className="border-b border-border/50 last:border-0">
+                        <td className="py-1.5 pr-3 text-foreground whitespace-nowrap">{w.label}</td>
+                        <td className="py-1.5 px-3 text-right">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className="h-1.5 rounded-full bg-blue-400"
+                              style={{ width: `${Math.max((w.soumises / max) * 24, w.soumises > 0 ? 3 : 0)}px` }}
+                            />
+                            <span className="tabular-nums text-foreground">{w.soumises}</span>
+                          </span>
+                        </td>
+                        <td className="py-1.5 px-3 text-right">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className="h-1.5 rounded-full bg-amber-400"
+                              style={{ width: `${Math.max((w.affectees / max) * 24, w.affectees > 0 ? 3 : 0)}px` }}
+                            />
+                            <span className="tabular-nums text-foreground">{w.affectees}</span>
+                          </span>
+                        </td>
+                        <td className="py-1.5 pl-3 text-right">
+                          <span className="inline-flex items-center gap-1.5 justify-end w-full">
+                            <span
+                              className="h-1.5 rounded-full bg-emerald-400"
+                              style={{ width: `${Math.max((w.validees / max) * 24, w.validees > 0 ? 3 : 0)}px` }}
+                            />
+                            <span className="tabular-nums text-foreground">{w.validees}</span>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Liste des fiches */}
         {loading ? null : fetchError ? (
           <div className="text-center py-16 bg-card rounded-2xl border border-border space-y-3">
@@ -722,7 +882,7 @@ export default function FichesPage() {
           </div>
         ) : (
           <div className="space-y-5">
-            {fiches.slice(0, visibleCount).map((fiche, idx) => {
+            {fiches.slice(0, visibleCount).map((fiche) => {
               const s = STATUS_CARD_STYLES[fiche.status];
               const StatusIcon = s.Icon;
               const isHighlighted = highlightIds.has(fiche.id);

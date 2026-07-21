@@ -56,6 +56,27 @@ export async function createNotifications(
 ) {
   if (!rows.length) return;
   await db.from("notifications").insert(rows);
+
+  // Envoyer les pushes en arrière-plan — ne bloque pas si le service est indisponible
+  const userIds = [...new Set(rows.map((r) => r.user_id))];
+  const first = rows[0];
+  try {
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL
+      ? (typeof window !== "undefined" ? "" : process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+      : "";
+    await fetch(`${base}/api/push/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userIds,
+        title: first.title,
+        body: first.message,
+        url: first.fiche_id ? `/fiches/${first.fiche_id}` : "/notifications",
+      }),
+    });
+  } catch {
+    // Push facultatif — l'in-app notification est déjà envoyée
+  }
 }
 
 /** Récupère les ids de tous les admins d'une organisation. */

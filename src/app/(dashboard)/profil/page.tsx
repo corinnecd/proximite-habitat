@@ -14,8 +14,9 @@ import { ROLE_LABELS } from "@/lib/permissions";
 import { toast } from "sonner";
 import {
   User, Lock, Loader2, Eye, EyeOff, Mail, Phone,
-  CheckCircle2, AlertCircle, Shield, Clock,
+  CheckCircle2, AlertCircle, Shield, Clock, Bell, BellOff,
 } from "lucide-react";
+import { usePushSubscription } from "@/lib/hooks/use-push-subscription";
 
 // ── Palette rôle ─────────────────────────────────────────────────────────────
 
@@ -53,6 +54,7 @@ export default function ProfilPage() {
   const [savingPassword, setSavingPassword] = useState(false);
 
   const [lastLogin, setLastLogin] = useState<string | null>(null);
+  const { status: pushStatus, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushSubscription(profile?.id ?? null);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -344,6 +346,58 @@ export default function ProfilPage() {
               Modifier le mot de passe
             </Button>
           </form>
+        </div>
+        {/* ── Notifications push ────────────────────────────────────────── */}
+        <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+              <Bell className="w-4 h-4 text-blue-600" />
+            </div>
+            <h3 className="font-semibold text-sm">Notifications push</h3>
+          </div>
+          <Separator />
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              {pushStatus === "unsupported" && (
+                <p className="text-sm text-muted-foreground">Votre navigateur ne supporte pas les notifications push.</p>
+              )}
+              {pushStatus === "denied" && (
+                <p className="text-sm text-red-500 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  Notifications bloquées par le navigateur. Modifiez les permissions dans les paramètres du site.
+                </p>
+              )}
+              {pushStatus === "subscribed" && (
+                <div>
+                  <p className="text-sm font-medium text-emerald-600 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />Notifications activées
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Vous recevrez les alertes même onglet fermé.</p>
+                </div>
+              )}
+              {pushStatus === "unsubscribed" && (
+                <div>
+                  <p className="text-sm font-medium">Notifications désactivées</p>
+                  <p className="text-xs text-muted-foreground mt-1">Activez-les pour recevoir les alertes en temps réel (affectations, décisions…) même si l'onglet est fermé.</p>
+                </div>
+              )}
+              {pushStatus === "loading" && (
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />Vérification…
+                </p>
+              )}
+            </div>
+            {pushStatus === "subscribed" && (
+              <Button variant="outline" size="sm" className="rounded-xl gap-2 shrink-0" onClick={pushUnsubscribe}>
+                <BellOff className="w-4 h-4" />Désactiver
+              </Button>
+            )}
+            {pushStatus === "unsubscribed" && (
+              <Button size="sm" className="rounded-xl gap-2 shrink-0 bg-[#F97316] hover:bg-[#EA580C] text-white" onClick={pushSubscribe}>
+                <Bell className="w-4 h-4" />Activer
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </>

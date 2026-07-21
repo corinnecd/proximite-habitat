@@ -22,7 +22,14 @@ export const metadata: Metadata = {
     template: "%s · Proximité Habitat Conseil",
   },
   description: "Gestion des pré-visites de rénovation énergétique",
-  icons: { icon: "/icon.svg" },
+  icons: {
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({

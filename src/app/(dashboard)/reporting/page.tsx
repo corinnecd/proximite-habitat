@@ -29,6 +29,7 @@ interface ReferentRow { name: string; total: number; submitted: number; accepted
 interface CommercialRow { name: string; assigned: number; accepted: number; refused: number; rate: number; ca: number; }
 interface VilleRow { ville: string; accepted: number; refused: number; total: number; rate: number; }
 interface WeeklyPoint { label: string; creees: number; acceptees: number; }
+interface BranchRow { orgId: string; total: number; accepted: number; refused: number; ca: number; rate: number; }
 
 // ── Palette statuts ───────────────────────────────────────────────────────────
 const STATUS_COLORS_HEX: Record<FicheStatus, string> = {
@@ -110,7 +111,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
 
 export default function ReportingPage() {
   const { profile, loading: profileLoading } = useProfile();
-  const { selectedBranchId, isDG } = useBranch();
+  const { selectedBranchId, isDG, branches } = useBranch();
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -131,6 +132,7 @@ export default function ReportingPage() {
   const [refSearch, setRefSearch] = useState("");
   const [motifRefusCounts, setMotifRefusCounts] = useState<Record<MotifRefus, number>>({ RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 });
   const [caTotal, setCaTotal] = useState(0);
+  const [branchStats, setBranchStats] = useState<BranchRow[]>([]);
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
@@ -180,7 +182,7 @@ export default function ReportingPage() {
     // Pas de JOIN sur profiles ici — on les charge séparément en parallèle (requête beaucoup plus légère)
     let fichesQuery = supabase
       .from("fiches")
-      .select("id, created_by, assigned_to, status, motif_refus, montant_ht, prospect_ville, ville_id, created_at")
+      .select("id, created_by, assigned_to, organization_id, status, motif_refus, montant_ht, prospect_ville, ville_id, created_at")
       .neq("status", "BROUILLON");
     if (isComm) fichesQuery = fichesQuery.eq("assigned_to", profileId);
     if (ficheIdsForPeriod) fichesQuery = fichesQuery.in("id", ficheIdsForPeriod);
@@ -220,7 +222,7 @@ export default function ReportingPage() {
     for (const p of allProfiles) profileNameMap[p.id] = `${p.first_name} ${p.last_name}`;
 
     type FicheRow = {
-      id: string; created_by: string; assigned_to: string | null; status: string;
+      id: string; created_by: string; assigned_to: string | null; organization_id: string; status: string;
       montant_ht: number | null; motif_refus: MotifRefus | null; prospect_ville: string | null; ville_id: string | null; created_at: string;
     };
     const fiches = (fichesRaw ?? []) as unknown as FicheRow[];
@@ -240,6 +242,26 @@ export default function ReportingPage() {
       }
     }
     setMotifRefusCounts(motifCounts);
+
+    // ── Vue comparative succursales (DG uniquement, vue globale) ──
+    if (isDG && !_branchFilter) {
+      const bMap = new Map<string, BranchRow>();
+      for (const f of fiches) {
+        const orgId = f.organization_id;
+        if (!orgId) continue;
+        if (!bMap.has(orgId)) bMap.set(orgId, { orgId, total: 0, accepted: 0, refused: 0, ca: 0, rate: 0 });
+        const b = bMap.get(orgId)!;
+        b.total++;
+        if (f.status === "ACCEPTEE") { b.accepted++; b.ca += Number(f.montant_ht ?? 0); }
+        if (f.status === "REFUSEE") b.refused++;
+      }
+      const rows = Array.from(bMap.values())
+        .map((b) => ({ ...b, rate: b.total > 0 ? Math.round((b.accepted / b.total) * 100) : 0 }))
+        .sort((a, b) => b.accepted - a.accepted);
+      setBranchStats(rows);
+    } else {
+      setBranchStats([]);
+    }
 
     // ── 1. Productivité référents ──
     if (!isComm) {
@@ -538,6 +560,82 @@ export default function ReportingPage() {
             border="border-l-emerald-500"
           />
         </div>
+
+        {/* ── Vue comparative succursales (DG, vue globale) ────────────────── */}
+        {isDG && selectedBranchId === "all" && branchStats.length > 0 && (
+          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-xl bg-[#1E3A5F]/10 dark:bg-[#1E3A5F]/30 flex items-center justify-center shrink-0">
+                <BarChart3 className="w-4 h-4 text-[#1E3A5F] dark:text-blue-300" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">Vue comparative succursales{periodSuffix}</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{branchStats.length} succursale{branchStats.length > 1 ? "s" : ""} — acceptées, refusées, taux, CA</p>
+              </div>
+            </div>
+
+            {/* Tableau ranking */}
+            <div className="mb-5">
+              <div className="grid grid-cols-[1fr_56px_56px_56px_72px_80px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+                <span>Succursale</span>
+                <span className="text-right">Fiches</span>
+                <span className="text-right text-emerald-600">Accept.</span>
+                <span className="text-right text-red-500">Refus.</span>
+                <span className="text-right">Taux</span>
+                <span className="text-right text-amber-600">CA HT</span>
+              </div>
+              {branchStats.map((b, i) => {
+                const name = branches.find((br) => br.id === b.orgId)?.name ?? b.orgId.slice(0, 8) + "…";
+                return (
+                  <div key={b.orgId} className="grid grid-cols-[1fr_56px_56px_56px_72px_80px] gap-2 items-center py-2.5 border-b border-border/50 last:border-0 text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${i === 0 ? "bg-amber-100 text-amber-700" : i === 1 ? "bg-slate-100 text-slate-600" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
+                      <span className="font-medium truncate">{name}</span>
+                    </div>
+                    <span className="text-right tabular-nums text-muted-foreground">{b.total}</span>
+                    <span className="text-right tabular-nums text-emerald-600 font-semibold">{b.accepted}</span>
+                    <span className="text-right tabular-nums text-red-500">{b.refused}</span>
+                    <span className={`text-right tabular-nums font-bold ${b.rate >= 50 ? "text-emerald-600" : b.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{b.rate}%</span>
+                    <span className="text-right tabular-nums text-amber-700 dark:text-amber-400 font-medium text-xs">
+                      {b.ca > 0 ? b.ca.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bar chart comparatif */}
+            {branchStats.length > 0 && (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart
+                  data={branchStats.map((b) => ({
+                    name: (branches.find((br) => br.id === b.orgId)?.name ?? "…").split(" ").slice(0, 2).join(" "),
+                    Acceptées: b.accepted,
+                    Refusées: b.refused,
+                    "En cours": b.total - b.accepted - b.refused,
+                  }))}
+                  margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 12, fontSize: 12, border: "1px solid var(--border)" }}
+                    cursor={{ fill: "var(--muted)" }}
+                  />
+                  <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Refusées" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="En cours" fill="#f97316" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+            <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" />Refusées</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-500 inline-block" />En cours</span>
+            </div>
+          </div>
+        )}
 
         {/* ── Taux d'acceptation par commercial ──────────────────────────── */}
         {!isCommercial && commerciaux.length > 0 && (

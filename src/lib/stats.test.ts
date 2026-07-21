@@ -80,9 +80,9 @@ describe("buildBuckets", () => {
 });
 
 describe("conversionRate", () => {
-  it("acceptées / soumises en %", () => {
-    expect(conversionRate({ submitted: 4, accepted: 1 })).toBe(25);
-    expect(conversionRate({ submitted: 0, accepted: 0 })).toBe(0);
+  it("acceptées / affectées en %", () => {
+    expect(conversionRate({ assigned: 4, accepted: 1 })).toBe(25);
+    expect(conversionRate({ assigned: 0, accepted: 0 })).toBe(0);
   });
 });
 

@@ -327,60 +327,117 @@ export function FichePDF({ fiche, referentNom, commercialNom, photoUrls = [], or
 
       </Page>
 
-      {/* ── Page 2 : Observations + Photos (uniquement si présentes) ── */}
-      {(fiche.observations || photoUrls.length > 0) && (
-        <Page size="A4" style={s.page}>
+      {/* ── Page 2 : Observations + Photos + Zone de signature ── */}
+      <Page size="A4" style={s.page}>
 
-          {/* Mini en-tête page 2 */}
-          <View style={{ backgroundColor: NAVY, paddingHorizontal: 36, paddingVertical: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <View>
-              <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: WHITE }}>{orgName}</Text>
-              <Text style={{ fontSize: 9, color: "#94A3B8", marginTop: 2 }}>Fiche de pré-visite énergétique — suite</Text>
-            </View>
-            <View style={s.refBox}>
-              <Text style={s.refLabel}>RÉFÉRENCE</Text>
-              <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: WHITE, marginTop: 2 }}>{fiche.reference}</Text>
-            </View>
+        {/* Mini en-tête page 2 */}
+        <View style={{ backgroundColor: NAVY, paddingHorizontal: 36, paddingVertical: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View>
+            <Text style={{ fontSize: 13, fontFamily: "Helvetica-Bold", color: WHITE }}>{orgName}</Text>
+            <Text style={{ fontSize: 9, color: "#94A3B8", marginTop: 2 }}>Fiche de pré-visite énergétique — suite</Text>
           </View>
-          <View style={s.band} />
+          <View style={s.refBox}>
+            <Text style={s.refLabel}>RÉFÉRENCE</Text>
+            <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: WHITE, marginTop: 2 }}>{fiche.reference}</Text>
+          </View>
+        </View>
+        <View style={s.band} />
 
-          <View style={{ paddingHorizontal: 36, paddingTop: 24 }}>
+        <View style={{ paddingHorizontal: 36, paddingTop: 24 }}>
 
-            {/* Observations */}
-            {fiche.observations && (
-              <View style={s.section}>
-                <SectionHead color="#F59E0B" title="Observations" />
-                <View style={s.obsBox}>
-                  <Text style={s.obsText}>{fiche.observations}</Text>
-                </View>
+          {/* Montant HT — uniquement si ACCEPTEE */}
+          {fiche.status === "ACCEPTEE" && fiche.montant_ht != null && (
+            <View style={{ marginBottom: 20, backgroundColor: "#F0FDF4", border: `2px solid #86EFAC`, borderRadius: 8, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View>
+                <Text style={{ fontSize: 8, color: "#166534", letterSpacing: 0.5, fontFamily: "Helvetica-Bold" }}>CONTRAT SIGNÉ — MONTANT HT</Text>
+                <Text style={{ fontSize: 26, fontFamily: "Helvetica-Bold", color: "#166534", marginTop: 4 }}>
+                  {Number(fiche.montant_ht).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                </Text>
               </View>
-            )}
-
-            {/* Photos */}
-            {photoUrls.length > 0 && (
-              <View style={s.section}>
-                <SectionHead color="#8B5CF6" title={`Photos (${photoUrls.length})`} />
-                <View style={s.photosGrid}>
-                  {photoUrls.slice(0, 9).map((url, i) => (
-                    <View key={i} style={s.photoBox}>
-                      <PDFImage src={url} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    </View>
-                  ))}
-                </View>
+              <View style={{ backgroundColor: GREEN, borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 }}>
+                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: WHITE }}>{"✓ Acceptation Client"}</Text>
               </View>
-            )}
+            </View>
+          )}
 
+          {/* Date RDV — si AFFECTEE */}
+          {fiche.rdv_date && (fiche.status === "AFFECTEE" || fiche.status === "RDV_A_REPRENDRE") && (
+            <View style={{ marginBottom: 20, backgroundColor: "#FFF7ED", border: `1px solid #FED7AA`, borderRadius: 8, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: ORANGE }} />
+              <View>
+                <Text style={{ fontSize: 8, color: ORANGE, letterSpacing: 0.5, fontFamily: "Helvetica-Bold" }}>RENDEZ-VOUS PLANIFIÉ</Text>
+                <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: "#92400E", marginTop: 3 }}>
+                  {new Date(fiche.rdv_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                </Text>
+                {commercialNom && <Text style={{ fontSize: 9, color: "#B45309", marginTop: 2 }}>Commercial : {commercialNom}</Text>}
+              </View>
+            </View>
+          )}
+
+          {/* Observations */}
+          {fiche.observations && (
+            <View style={s.section}>
+              <SectionHead color="#F59E0B" title="Observations" />
+              <View style={s.obsBox}>
+                <Text style={s.obsText}>{fiche.observations}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Photos */}
+          {photoUrls.length > 0 && (
+            <View style={s.section}>
+              <SectionHead color="#8B5CF6" title={`Photos (${photoUrls.length})`} />
+              <View style={s.photosGrid}>
+                {photoUrls.slice(0, 9).map((url, i) => (
+                  <View key={i} style={s.photoBox}>
+                    <PDFImage src={url} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* ── Zone de signature ── */}
+          <View style={{ marginTop: 20 }}>
+            <SectionHead color={NAVY} title="Signatures" />
+            <View style={{ flexDirection: "row", gap: 20 }}>
+
+              <View style={{ flex: 1, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 14 }}>
+                <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: NAVY, marginBottom: 4 }}>SIGNATURE DU CLIENT</Text>
+                <Text style={{ fontSize: 8, color: GREY, marginBottom: 16 }}>
+                  {`${fiche.prospect_prenom ?? ""} ${fiche.prospect_nom ?? ""}`.trim() || "—"}
+                </Text>
+                <View style={{ height: 64, borderBottom: `1px solid ${BORDER}`, marginBottom: 6 }} />
+                <Text style={{ fontSize: 8, color: GREY }}>{"Date : _____ / _____ / _________"}</Text>
+              </View>
+
+              <View style={{ flex: 1, border: `1px solid ${BORDER}`, borderRadius: 8, padding: 14 }}>
+                <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: NAVY, marginBottom: 4 }}>SIGNATURE DU COMMERCIAL</Text>
+                <Text style={{ fontSize: 8, color: GREY, marginBottom: 16 }}>{commercialNom ?? "—"}</Text>
+                <View style={{ height: 64, borderBottom: `1px solid ${BORDER}`, marginBottom: 6 }} />
+                <Text style={{ fontSize: 8, color: GREY }}>{"Date : _____ / _____ / _________"}</Text>
+              </View>
+
+            </View>
+
+            <View style={{ marginTop: 12, backgroundColor: LIGHT, borderRadius: 6, padding: 10 }}>
+              <Text style={{ fontSize: 7.5, color: GREY, lineHeight: 1.5 }}>
+                {"En signant ce document, le client reconnaît avoir été informé des conditions de la visite énergétique et consent au traitement de ses données personnelles conformément au RGPD. Ce document constitue une pré-visite et n'engage pas contractuellement les parties sur les travaux à réaliser."}
+              </Text>
+            </View>
           </View>
 
-          {/* Footer page 2 */}
-          <View style={s.footer}>
-            <Text style={s.footerText}>Réf. {fiche.reference} · Imprimé le {printedAt}</Text>
-            <Text style={s.footerBrand}>{orgName}</Text>
-            <Text style={s.footerText}>Document confidentiel</Text>
-          </View>
+        </View>
 
-        </Page>
-      )}
+        {/* Footer page 2 */}
+        <View style={s.footer}>
+          <Text style={s.footerText}>Réf. {fiche.reference} · Imprimé le {printedAt}</Text>
+          <Text style={s.footerBrand}>{orgName}</Text>
+          <Text style={s.footerText}>Document confidentiel</Text>
+        </View>
+
+      </Page>
 
     </Document>
   );

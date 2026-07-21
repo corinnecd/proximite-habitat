@@ -4,6 +4,19 @@ import { createContext, useContext, useEffect, useState, useCallback, useMemo } 
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
 
+const PROFILE_CACHE_KEY = "ph_profile_v1";
+const ORG_CACHE_KEY = "ph_org_v1";
+
+function readCache<T>(key: string): T | null {
+  try { const v = localStorage.getItem(key); return v ? (JSON.parse(v) as T) : null; } catch { return null; }
+}
+function writeCache(key: string, value: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+function clearCache() {
+  try { localStorage.removeItem(PROFILE_CACHE_KEY); localStorage.removeItem(ORG_CACHE_KEY); } catch {}
+}
+
 interface ProfileContextValue {
   profile: Profile | null;
   loading: boolean;
@@ -19,20 +32,24 @@ const ProfileContext = createContext<ProfileContextValue>({
 });
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [organizationName, setOrganizationName] = useState<string | null>(null);
+  // Initialise immédiatement depuis le cache — pas de flash blanc
+  const [profile, setProfile] = useState<Profile | null>(() => readCache<Profile>(PROFILE_CACHE_KEY));
+  const [organizationName, setOrganizationName] = useState<string | null>(() => readCache<string>(ORG_CACHE_KEY));
+  // loading = false si le cache existe (on affiche le contenu tout de suite)
+  const [loading, setLoading] = useState(() => !readCache<Profile>(PROFILE_CACHE_KEY));
   const supabase = useMemo(() => createClient(), []);
 
   const fetchProfile = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     const userId = session?.user?.id;
-    if (!userId) { setLoading(false); return; }
+    if (!userId) { clearCache(); setProfile(null); setOrganizationName(null); setLoading(false); return; }
     const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
-    setProfile(data);
+    if (data) { setProfile(data); writeCache(PROFILE_CACHE_KEY, data); }
     if (data?.organization_id) {
       const { data: org } = await supabase.from("organizations").select("name").eq("id", data.organization_id).single();
-      setOrganizationName(org?.name ?? null);
+      const name = org?.name ?? null;
+      setOrganizationName(name);
+      if (name) writeCache(ORG_CACHE_KEY, name);
     }
     setLoading(false);
   }, [supabase]);

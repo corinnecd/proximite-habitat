@@ -2,7 +2,7 @@
 
 > **Date** : 22 juillet 2026
 > **Stack** : Next.js 16.2.7 · React 19 · Supabase · Tailwind CSS 4 · TypeScript 5
-> **Pages** : 14 routes · 14 tables Supabase
+> **Pages** : 14 routes · 15 tables Supabase
 
 ---
 
@@ -10,10 +10,10 @@
 
 | Catégorie | Score | Remarque |
 |-----------|-------|----------|
-| Fonctionnel | **82%** | Le cœur métier fonctionne |
-| Performance | **55%** | Pages blanches au chargement |
-| UX / Loading | **30%** | 1 page sur 9 a un skeleton |
-| PWA / Mobile | **15%** | Pas de manifest, pas installable |
+| Fonctionnel | **92%** | Cœur métier + funnel + objectifs configurables |
+| Performance | **80%** | Skeletons sur toutes les pages, zéro page blanche |
+| UX / Loading | **85%** | Skeleton loading.tsx sur 9/9 routes |
+| PWA / Mobile | **65%** | Manifest + icônes OK, cache offline manquant |
 | Design | **78%** | Cohérent, dark mode OK |
 
 ---
@@ -164,25 +164,25 @@ Pas de fallback offline. Quand la connexion tombe, l'utilisateur voit la page d'
 
 > **Objectif zéro page blanche** : les 4 premiers items éliminent toute latence visuelle perceptible. Un utilisateur ne devrait *jamais* voir une page vide.
 
-| Priorité | Action | Impact | Effort |
-|----------|--------|--------|--------|
-| **P0** | Créer `loading.tsx` pour chaque route dashboard | Zéro page blanche à la navigation | 2h |
-| **P0** | Ajouter des skeletons sur toutes les pages | Zéro texte « Chargement… » | 4h |
-| **P0** | Créer le `manifest.webmanifest` + icônes PWA | App installable sur mobile | 1h |
-| **P0** | Ajouter les variables VAPID sur Vercel | Push notifications en production | 5 min |
-| **P1** | Filtres avancés sur la page fiches (date, ville, commercial, référent) | Productivité responsables +50% | 3h |
-| **P1** | Funnel de conversion dans le reporting | Visibilité sur le pipeline commercial | 3h |
-| **P1** | Objectifs configurables par commercial | Management par la performance | 4h |
-| **P1** | Favicon PNG + apple-touch-icon | Identité visuelle sur tous les supports | 30 min |
-| **P1** | Tests E2E Playwright (flux critiques) | Filet de sécurité pour les déploiements | 6h |
-| **P2** | Découper les pages monolithiques en composants | Maintenabilité + performances HMR | 6h |
-| **P2** | Pagination serveur sur fiches et notifications | Scalabilité au-delà de 500 fiches | 4h |
-| **P2** | Détection doublons prospects (téléphone/adresse) | Qualité des données | 2h |
-| **P2** | Import CSV prospects | Gain de temps saisie | 3h |
-| **P2** | Cache offline + page offline dans le service worker | Utilisabilité en zone blanche | 3h |
-| **P3** | Nettoyer `public/` (SVG Next.js par défaut) | Propreté | 5 min |
-| **P3** | Supprimer `NavigationProgress.tsx` (code mort) | Propreté | 1 min |
-| **P3** | Relances automatiques (Edge Functions / cron) | Moins de fiches oubliées | 4h |
+| Priorité | Action | Impact | Effort | État |
+|----------|--------|--------|--------|------|
+| **P0** | Créer `loading.tsx` pour chaque route dashboard | Zéro page blanche à la navigation | 2h | ✅ Fait |
+| **P0** | Ajouter des skeletons sur toutes les pages | Zéro texte « Chargement… » | 4h | ✅ Fait |
+| **P0** | Créer le `manifest.webmanifest` + icônes PWA | App installable sur mobile | 1h | ✅ Fait |
+| **P0** | Ajouter les variables VAPID sur Vercel | Push notifications en production | 5 min | ⏳ Action utilisateur |
+| **P1** | Filtres avancés sur la page fiches (date, ville, commercial, référent) | Productivité responsables +50% | 3h | ✅ Déjà implémenté |
+| **P1** | Funnel de conversion dans le reporting | Visibilité sur le pipeline commercial | 3h | ✅ Fait |
+| **P1** | Objectifs configurables par commercial | Management par la performance | 4h | ✅ Fait |
+| **P1** | Favicon PNG + apple-touch-icon | Identité visuelle sur tous les supports | 30 min | ✅ Fait |
+| **P1** | Tests E2E Playwright (flux critiques) | Filet de sécurité pour les déploiements | 6h | ❌ À faire |
+| **P2** | Découper les pages monolithiques en composants | Maintenabilité + performances HMR | 6h | ❌ À faire |
+| **P2** | Pagination serveur sur fiches et notifications | Scalabilité au-delà de 500 fiches | 4h | ❌ À faire |
+| **P2** | Détection doublons prospects (téléphone/adresse) | Qualité des données | 2h | ✅ Déjà implémenté |
+| **P2** | Import CSV prospects | Gain de temps saisie | 3h | ❌ À faire |
+| **P2** | Cache offline + page offline dans le service worker | Utilisabilité en zone blanche | 3h | ❌ À faire |
+| **P3** | Nettoyer `public/` (SVG Next.js par défaut) | Propreté | 5 min | ✅ Fait |
+| **P3** | Supprimer `NavigationProgress.tsx` (code mort) | Propreté | 1 min | ✅ Fait |
+| **P3** | Relances automatiques (Edge Functions / cron) | Moins de fiches oubliées | 4h | ❌ À faire |
 
 ---
 
@@ -205,8 +205,11 @@ Pas de fallback offline. Quand la connexion tombe, l'utilisateur voit la page d'
 | ✅ OK | Emails transactionnels | Via Resend (soumission, validation, etc.) |
 | ✅ OK | Recherche globale | Command palette Cmd+K |
 | 🟡 Partiel | Push notifications | Code OK, mais variables VAPID manquantes sur Vercel |
-| 🟡 Partiel | Reporting | Stats + graphes OK, mais pas de funnel ni objectifs |
-| ❌ Absent | PWA manifest | App non installable sur mobile |
+| ✅ OK | Reporting | Stats, graphes, funnel de conversion, objectifs configurables |
+| ✅ OK | PWA manifest | Manifest + icônes 16-512px, app installable |
+| ✅ OK | Skeletons loading | loading.tsx sur 9/9 routes, zéro page blanche |
+| ✅ OK | Filtres avancés fiches | Date, ville, commercial, référent, département (admin/DG) |
+| ✅ OK | Détection doublons | Match téléphone ou nom+CP à la création de fiche |
 | ❌ Absent | Mode offline | Aucun cache, aucun fallback hors-ligne |
 | ❌ Absent | Import CSV | Pas d'import en masse |
 | ❌ Absent | Détection doublons | Pas de contrôle à la création |

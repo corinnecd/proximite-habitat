@@ -32,11 +32,10 @@ const ProfileContext = createContext<ProfileContextValue>({
 });
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
-  // Initialise immédiatement depuis le cache — pas de flash blanc
-  const [profile, setProfile] = useState<Profile | null>(() => readCache<Profile>(PROFILE_CACHE_KEY));
-  const [organizationName, setOrganizationName] = useState<string | null>(() => readCache<string>(ORG_CACHE_KEY));
-  // loading = false si le cache existe (on affiche le contenu tout de suite)
-  const [loading, setLoading] = useState(() => !readCache<Profile>(PROFILE_CACHE_KEY));
+  // SSR-safe: démarre toujours avec null/true pour éviter les erreurs d'hydratation
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [organizationName, setOrganizationName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const supabase = useMemo(() => createClient(), []);
 
   const fetchProfile = useCallback(async () => {
@@ -54,7 +53,16 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, [supabase]);
 
-  useEffect(() => { fetchProfile(); }, [fetchProfile]);
+  useEffect(() => {
+    // Lecture cache côté client uniquement (useEffect ne tourne pas en SSR)
+    const cached = readCache<Profile>(PROFILE_CACHE_KEY);
+    if (cached) {
+      setProfile(cached);
+      setOrganizationName(readCache<string>(ORG_CACHE_KEY));
+      setLoading(false); // affiche le contenu immédiatement depuis le cache
+    }
+    fetchProfile(); // actualise en arrière-plan dans tous les cas
+  }, [fetchProfile]);
 
   return (
     <ProfileContext.Provider value={{ profile, loading, refresh: fetchProfile, organizationName }}>

@@ -117,7 +117,14 @@ export default function ProfilPage() {
     return (
       <>
         <Topbar title="Mon profil" />
-        <div className="p-4 sm:p-6 lg:p-8" />
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+          <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
+            <div className="relative z-10">
+              <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">Mon compte</span>
+              <h1 className="font-heading text-3xl sm:text-4xl text-white tracking-tight leading-none mt-1.5">Mon profil</h1>
+            </div>
+          </div>
+        </div>
       </>
     );
   }

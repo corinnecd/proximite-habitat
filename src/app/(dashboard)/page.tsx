@@ -715,28 +715,6 @@ export default function DashboardPage() {
     ? ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
     : ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
 
-  // ── Guard profil uniquement (local, < 100 ms) ───────────────────────────
-  if (profileLoading || !profile || loading) {
-    return (
-      <>
-        <Topbar title="Tableau de bord" />
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-          <div className="hero-surface rounded-3xl p-6 sm:p-8">
-            <div className="relative z-10">
-              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 mb-6">
-                <div className="min-w-0">
-                  <h1 className="font-heading text-4xl sm:text-5xl text-white tracking-tight leading-none mb-2">
-                    {profile?.first_name ?? ""}
-                  </h1>
-                  <p className="text-sm text-white/60 max-w-md leading-relaxed">Chargement…</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
 
   // ── Dialog affectation rapide ────────────────────────────────────────────
   const assignDialog = (

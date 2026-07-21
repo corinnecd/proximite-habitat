@@ -217,7 +217,7 @@ export default function UtilisateursPage() {
                   Utilisateurs
                 </h1>
                 <p className="text-sm text-white/60 mt-2">
-                  {loading ? "Chargement…" : `${stats.total} collaborateur${stats.total > 1 ? "s" : ""} · ${stats.active} actif${stats.active > 1 ? "s" : ""} · ${stats.commercials} commerciaux · ${stats.référents} référents`}
+                  {loading ? <span className="inline-block h-4 w-64 bg-white/10 rounded animate-pulse align-middle" /> : `${stats.total} collaborateur${stats.total > 1 ? "s" : ""} · ${stats.active} actif${stats.active > 1 ? "s" : ""} · ${stats.commercials} commerciaux · ${stats.référents} référents`}
                 </p>
               </div>
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

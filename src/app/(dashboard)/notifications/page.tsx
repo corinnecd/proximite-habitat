@@ -529,7 +529,7 @@ export default function NotificationsPage() {
                 </h1>
                 <p className="text-sm text-white/60 mt-1.5">
                   {loading
-                    ? "Chargement…"
+                    ? <span className="inline-block h-4 w-48 bg-white/10 rounded animate-pulse align-middle" />
                     : unreadCount > 0
                     ? <><span className="text-[#F97316] font-medium">{unreadCount} non lue{unreadCount > 1 ? "s" : ""}</span> · {totalDisplayed} au total</>
                     : "Toutes les notifications sont lues"}

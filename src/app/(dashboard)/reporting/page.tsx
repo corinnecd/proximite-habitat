@@ -468,7 +468,7 @@ export default function ReportingPage() {
                     {isCommercial ? "Mon reporting" : "Reporting"}
                   </h1>
                   <p className="text-sm text-white/60 mt-2">
-                    {loading ? "Chargement…" : isCommercial
+                    {loading ? <span className="inline-block h-4 w-56 bg-white/10 rounded animate-pulse align-middle" /> : isCommercial
                       ? "Statistiques personnelles — vos fiches affectées"
                       : "Vue globale — tous commerciaux et référents réunis"}
                   </p>

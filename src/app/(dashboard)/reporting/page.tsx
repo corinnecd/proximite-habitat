@@ -15,7 +15,7 @@ import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel as get
 import {
   BarChart3, TrendingUp, Users, FileText, Search, X, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, Clock, ArrowUp, ArrowDown, Minus, Euro,
-  Trophy, RefreshCw, CalendarDays, MapPin,
+  Trophy, RefreshCw, CalendarDays, MapPin, Target, Save, Pencil,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -26,7 +26,7 @@ import {
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface StatusCount { status: FicheStatus; count: number; }
 interface ReferentRow { name: string; total: number; submitted: number; accepted: number; ca: number; }
-interface CommercialRow { name: string; assigned: number; accepted: number; refused: number; rate: number; ca: number; }
+interface CommercialRow { id: string; name: string; assigned: number; accepted: number; refused: number; rate: number; ca: number; }
 interface VilleRow { ville: string; accepted: number; refused: number; total: number; rate: number; }
 interface WeeklyPoint { label: string; creees: number; acceptees: number; }
 interface BranchRow { orgId: string; total: number; accepted: number; refused: number; ca: number; rate: number; }
@@ -133,8 +133,13 @@ export default function ReportingPage() {
   const [motifRefusCounts, setMotifRefusCounts] = useState<Record<MotifRefus, number>>({ RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 });
   const [caTotal, setCaTotal] = useState(0);
   const [branchStats, setBranchStats] = useState<BranchRow[]>([]);
+  const [objectifs, setObjectifs] = useState<Record<string, { objectif_fiches: number; objectif_ca: number }>>({});
+  const [editingObjectifs, setEditingObjectifs] = useState(false);
+  const [objDraft, setObjDraft] = useState<Record<string, { fiches: string; ca: string }>>({});
+  const [savingObjectifs, setSavingObjectifs] = useState(false);
 
   const isCommercial = profile?.role === "COMMERCIAL";
+  const isAdminOrDG = profile?.role === "ADMIN" || profile?.role === "DIRECTION_GENERALE";
 
   async function loadData(profileId: string, role: string, period: PeriodFilter = "ALL") {
     const isComm = role === "COMMERCIAL";
@@ -168,8 +173,8 @@ export default function ReportingPage() {
           .eq("role", "COMMERCIAL").eq("is_active", true);
         if (_branchFilter) emptyCommQ = emptyCommQ.eq("organization_id", _branchFilter);
         const { data: emptyCommProfiles } = await emptyCommQ;
-        setCommerciaux((emptyCommProfiles ?? []).map((p) => ({
-          name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0,
+        setCommerciaux((emptyCommProfiles ?? []).map((p: { id: string; first_name: string; last_name: string }) => ({
+          id: p.id, name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0,
         })));
         setVilles([]);
         setWeeklyData([]);
@@ -286,14 +291,14 @@ export default function ReportingPage() {
     const commMap: Record<string, CommercialRow> = {};
     const COMM_STATUSES = ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE"]; // hors ARCHIVEE → cohérent avec baseActive
     for (const p of allCommProfiles ?? []) {
-      commMap[p.id] = { name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
+      commMap[p.id] = { id: p.id, name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
     }
     for (const f of fiches) {
       if (!f.assigned_to || !COMM_STATUSES.includes(f.status)) continue;
       const key = f.assigned_to;
       if (!commMap[key]) {
         const name = profileNameMap[key] ?? "Inconnu";
-        commMap[key] = { name, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
+        commMap[key] = { id: key, name, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
       }
       commMap[key].assigned++;
       if (f.status === "ACCEPTEE") {
@@ -307,6 +312,21 @@ export default function ReportingPage() {
       rate: c.assigned > 0 ? Math.round((c.accepted / c.assigned) * 100) : 0,
     })).sort((a, b) => b.assigned - a.assigned);
     setCommerciaux(commRows);
+
+    // ── Objectifs du mois courant ──
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    const monthStr = currentMonth.toISOString().slice(0, 10);
+    const { data: objRows } = await supabase
+      .from("objectifs_commerciaux")
+      .select("commercial_id, objectif_fiches, objectif_ca")
+      .eq("period_month", monthStr);
+    const objMap: Record<string, { objectif_fiches: number; objectif_ca: number }> = {};
+    for (const o of objRows ?? []) {
+      objMap[o.commercial_id] = { objectif_fiches: o.objectif_fiches, objectif_ca: o.objectif_ca };
+    }
+    setObjectifs(objMap);
+
     // CA total depuis la source primaire (toutes les fiches ACCEPTEE du dataset filtré)
     setCaTotal(fiches.filter((f) => f.status === "ACCEPTEE").reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0));
     type PlanifRow = { ville_id: string; zones_villes: { nom: string } };
@@ -385,6 +405,53 @@ export default function ReportingPage() {
     setShowAllCommerciaux(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, profileLoading, periodFilter, selectedBranchId]);
+
+  async function saveObjectifs() {
+    if (!profile) return;
+    setSavingObjectifs(true);
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    const monthStr = currentMonth.toISOString().slice(0, 10);
+
+    for (const [commId, draft] of Object.entries(objDraft)) {
+      const fiches = parseInt(draft.fiches) || 0;
+      const ca = parseFloat(draft.ca) || 0;
+      if (fiches === 0 && ca === 0) continue;
+      await supabase.from("objectifs_commerciaux").upsert({
+        commercial_id: commId,
+        organization_id: profile.organization_id,
+        period_month: monthStr,
+        objectif_fiches: fiches,
+        objectif_ca: ca,
+        created_by: profile.id,
+      }, { onConflict: "commercial_id,period_month" });
+    }
+
+    const { data: objRows } = await supabase
+      .from("objectifs_commerciaux")
+      .select("commercial_id, objectif_fiches, objectif_ca")
+      .eq("period_month", monthStr);
+    const objMap: Record<string, { objectif_fiches: number; objectif_ca: number }> = {};
+    for (const o of objRows ?? []) {
+      objMap[o.commercial_id] = { objectif_fiches: o.objectif_fiches, objectif_ca: o.objectif_ca };
+    }
+    setObjectifs(objMap);
+    setEditingObjectifs(false);
+    setSavingObjectifs(false);
+  }
+
+  function startEditingObjectifs() {
+    const draft: Record<string, { fiches: string; ca: string }> = {};
+    for (const c of commerciaux) {
+      const obj = objectifs[c.id];
+      draft[c.id] = {
+        fiches: obj?.objectif_fiches?.toString() ?? "",
+        ca: obj?.objectif_ca?.toString() ?? "",
+      };
+    }
+    setObjDraft(draft);
+    setEditingObjectifs(true);
+  }
 
   const accepted      = statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0;
   const refused       = statusCounts.find((s) => s.status === "REFUSEE")?.count ?? 0;
@@ -813,6 +880,145 @@ export default function ReportingPage() {
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" />Refusées</span>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── Objectifs du mois par commercial ──────────────────────────── */}
+        {!loading && commerciaux.length > 0 && (
+          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
+                  <Target className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Objectifs du mois</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" })} — {isCommercial ? "Mon objectif" : "par commercial"}
+                  </p>
+                </div>
+              </div>
+              {isAdminOrDG && !editingObjectifs && (
+                <button
+                  type="button"
+                  onClick={startEditingObjectifs}
+                  className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
+                >
+                  <Pencil className="w-3.5 h-3.5" />Configurer
+                </button>
+              )}
+              {isAdminOrDG && editingObjectifs && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingObjectifs(false)}
+                    className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveObjectifs}
+                    disabled={savingObjectifs}
+                    className="flex items-center gap-1.5 text-xs font-medium text-white bg-primary hover:bg-primary/90 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <Save className="w-3.5 h-3.5" />{savingObjectifs ? "Enregistrement…" : "Enregistrer"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {isCommercial && profile ? (() => {
+              const obj = objectifs[profile.id];
+              const myComm = commerciaux.find((c) => c.id === profile.id);
+              if (!obj) return (
+                <p className="text-sm text-muted-foreground text-center py-4">Aucun objectif défini pour ce mois</p>
+              );
+              const fichePct = obj.objectif_fiches > 0 ? Math.min(100, Math.round(((myComm?.accepted ?? 0) / obj.objectif_fiches) * 100)) : 0;
+              const caPct = obj.objectif_ca > 0 ? Math.min(100, Math.round(((myComm?.ca ?? 0) / Number(obj.objectif_ca)) * 100)) : 0;
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-border p-4 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Fiches acceptées</span>
+                      <span className="font-bold">{myComm?.accepted ?? 0} / {obj.objectif_fiches}</span>
+                    </div>
+                    <div className="h-3 bg-muted rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-700 ${fichePct >= 100 ? "bg-emerald-500" : fichePct >= 50 ? "bg-blue-500" : "bg-orange-500"}`} style={{ width: `${fichePct}%` }} />
+                    </div>
+                    <p className="text-[11px] text-right font-medium tabular-nums">{fichePct}%</p>
+                  </div>
+                  <div className="rounded-xl border border-border p-4 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">CA HT</span>
+                      <span className="font-bold">{(myComm?.ca ?? 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€ / {Number(obj.objectif_ca).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€</span>
+                    </div>
+                    <div className="h-3 bg-muted rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-700 ${caPct >= 100 ? "bg-emerald-500" : caPct >= 50 ? "bg-blue-500" : "bg-orange-500"}`} style={{ width: `${caPct}%` }} />
+                    </div>
+                    <p className="text-[11px] text-right font-medium tabular-nums">{caPct}%</p>
+                  </div>
+                </div>
+              );
+            })() : (
+              <div>
+                <div className="grid grid-cols-[1fr_80px_80px_60px_80px_60px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+                  <span>Commercial</span>
+                  <span className="text-right">Obj. fiches</span>
+                  <span className="text-right">Obj. CA</span>
+                  <span className="text-right">Accept.</span>
+                  <span className="text-right">CA réel</span>
+                  <span className="text-right">Atteinte</span>
+                </div>
+                <div className="space-y-0 max-h-[350px] overflow-y-auto">
+                  {commerciaux.map((c) => {
+                    const obj = objectifs[c.id];
+                    const fichePct = obj && obj.objectif_fiches > 0 ? Math.min(999, Math.round((c.accepted / obj.objectif_fiches) * 100)) : null;
+                    return (
+                      <div key={c.id} className="grid grid-cols-[1fr_80px_80px_60px_80px_60px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
+                        <span className="text-sm font-medium truncate">{c.name}</span>
+                        {editingObjectifs ? (
+                          <>
+                            <input
+                              type="number"
+                              min={0}
+                              value={objDraft[c.id]?.fiches ?? ""}
+                              onChange={(e) => setObjDraft((d) => ({ ...d, [c.id]: { ...d[c.id], fiches: e.target.value } }))}
+                              placeholder="0"
+                              className="w-full text-right text-sm tabular-nums px-2 py-1 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+                            />
+                            <input
+                              type="number"
+                              min={0}
+                              value={objDraft[c.id]?.ca ?? ""}
+                              onChange={(e) => setObjDraft((d) => ({ ...d, [c.id]: { ...d[c.id], ca: e.target.value } }))}
+                              placeholder="0"
+                              className="w-full text-right text-sm tabular-nums px-2 py-1 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-sm text-right tabular-nums text-muted-foreground">{obj?.objectif_fiches ?? "—"}</span>
+                            <span className="text-sm text-right tabular-nums text-muted-foreground">{obj ? Number(obj.objectif_ca).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€" : "—"}</span>
+                          </>
+                        )}
+                        <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{c.accepted}</span>
+                        <span className="text-sm text-right tabular-nums text-amber-600 font-medium">{c.ca > 0 ? c.ca.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€" : "—"}</span>
+                        <span className="text-right">
+                          {fichePct !== null ? (
+                            <span className={`text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-full ${fichePct >= 100 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" : fichePct >= 50 ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" : "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"}`}>
+                              {fichePct}%
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

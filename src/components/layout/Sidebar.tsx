@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   LayoutDashboard, FileText, FilePlus, Users, Bell,
-  Building2, Building, LogOut, Menu, X, UserCircle, BarChart3, ClipboardCheck, CalendarDays,
+  Building2, Building, LogOut, Menu, X, UserCircle, BarChart3, ClipboardCheck, CalendarDays, CalendarRange,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -28,6 +28,7 @@ const suivisNav = [
 
 const planningNav = [
   { name: "Planification", href: "/planification", icon: CalendarDays },
+  { name: "Calendrier",    href: "/calendrier",     icon: CalendarRange },
 ];
 
 const adminNav = [

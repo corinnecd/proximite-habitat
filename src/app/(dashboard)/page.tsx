@@ -891,7 +891,7 @@ export default function DashboardPage() {
                   {profile?.first_name}
                 </h1>
                 <p className="text-sm text-white/60 max-w-md leading-relaxed">
-                  {loading ? "Chargement…" : isReferent
+                  {loading ? <span className="inline-block h-4 w-56 bg-white/10 rounded animate-pulse align-middle" /> : isReferent
                     ? `${counts.BROUILLON} brouillon${counts.BROUILLON > 1 ? "s" : ""} en cours · ${counts.SOUMISE} soumise${counts.SOUMISE > 1 ? "s" : ""} en attente de validation`
                     : isCommercial
                     ? `${counts.AFFECTEE} fiche${counts.AFFECTEE > 1 ? "s" : ""} à traiter · ${counts.ACCEPTEE} contrat${counts.ACCEPTEE > 1 ? "s" : ""} signé${counts.ACCEPTEE > 1 ? "s" : ""}`

@@ -464,7 +464,7 @@ export default function FichesPage() {
         ] as { key: keyof { reference: string; nom: string; prenom: string; ville: string; status: string; date: string }; label: string }[],
         rows: fiches.map((f) => ({ reference: f.reference, nom: f.prospect_nom, prenom: f.prospect_prenom, ville: f.prospect_ville || "", status: f.status, date: f.created_at?.slice(0, 10) || "" })),
       })} />{(isReferent || isAdminOrDG) && profile && <ImportCsvDialog organizationId={profile.organization_id} createdBy={profile.id} onImported={() => fetchFiches(0, false)} />}</div>} />
-      <div className={`p-4 sm:p-6 lg:p-8 space-y-4 transition-opacity duration-300 ${loading ? "opacity-0" : "opacity-100"}`}>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4">
 
         {/* ═══ HERO FICHES — navy signature avec recherche intégrée ═══════ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">

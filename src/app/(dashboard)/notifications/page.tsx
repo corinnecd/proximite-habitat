@@ -645,7 +645,7 @@ export default function NotificationsPage() {
         )}
 
         {/* ── Contenu ───────────────────────────────────────────────────── */}
-        <div className={`transition-opacity duration-200 ${!initialLoaded || loading ? "opacity-0" : "opacity-100"}`}>
+        <div>
         {displayed.length === 0 ? (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4">

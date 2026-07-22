@@ -333,7 +333,7 @@ export default function UtilisateursPage() {
         </div>
 
         {/* ── Liste ────────────────────────────────────────────────────────── */}
-        <div className={`transition-opacity duration-300 ${loading ? "opacity-0" : "opacity-100"}`}>
+        <div>
         {filtered.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border">
             <EmptyState

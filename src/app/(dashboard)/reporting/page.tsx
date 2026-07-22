@@ -538,7 +538,7 @@ export default function ReportingPage() {
             </div>
         </div>
 
-        <div className={`space-y-6 transition-opacity duration-200 ${loading ? "opacity-0" : "opacity-100"}`}>
+        <div className={`space-y-6 transition-opacity duration-300 ${loading ? "opacity-0" : "opacity-100"}`}>
 
         {/* ── KPIs (6 indicateurs clés — 2 lignes de 3) ────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

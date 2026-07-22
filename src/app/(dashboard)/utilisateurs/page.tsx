@@ -73,8 +73,12 @@ export default function UtilisateursPage() {
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
+    if (!profile || (profile.role !== "ADMIN" && profile.role !== "DIRECTION_GENERALE")) {
+      setLoading(false);
+      return;
+    }
     getAllProfiles(supabase).then((data) => { setUsers(data); setLoading(false); });
-  }, [supabase]);
+  }, [supabase, profile]);
 
   // Pour le DG : restreindre à la succursale sélectionnée (cohérent avec dashboard/reporting).
   const branchScopedUsers = useMemo(() => {
@@ -329,7 +333,7 @@ export default function UtilisateursPage() {
         </div>
 
         {/* ── Liste ────────────────────────────────────────────────────────── */}
-        <div className={`transition-opacity duration-200 ${loading ? "opacity-0" : "opacity-100"}`}>
+        <div className={`transition-opacity duration-300 ${loading ? "opacity-0" : "opacity-100"}`}>
         {filtered.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border">
             <EmptyState

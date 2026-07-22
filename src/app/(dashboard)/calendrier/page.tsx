@@ -194,7 +194,7 @@ export default function CalendrierPage() {
   return (
     <>
       <Topbar title="Calendrier des RDV" />
-      <div className={`p-4 sm:p-6 space-y-4 transition-opacity duration-200 ${loading ? "opacity-0" : "opacity-100"}`}>
+      <div className={`p-4 sm:p-6 space-y-4 transition-opacity duration-300 ${loading ? "opacity-0" : "opacity-100"}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={goPrev} aria-label="Période précédente">

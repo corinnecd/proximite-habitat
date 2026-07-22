@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +32,7 @@ export default function SuccursalesPage() {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     const { data: orgs } = await supabase.from("organizations").select("*").order("name");
     const list = (orgs ?? []).slice().sort((a, b) => {
       if (a.is_hq && !b.is_hq) return -1;
@@ -50,14 +50,13 @@ export default function SuccursalesPage() {
     );
     setBranches(withCounts);
     setLoading(false);
-  }
+  }, [supabase]);
 
   useEffect(() => {
     if (profileLoading) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (profile?.role !== "DIRECTION_GENERALE") { setLoading(false); return; }
     load();
-  }, [profile, profileLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile, profileLoading, load]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();

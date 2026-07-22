@@ -107,7 +107,6 @@ export default function FichesPage() {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [firstFicheDate, setFirstFicheDate] = useState<string | null>(null);
   const [validationStats, setValidationStats] = useState<{ label: string; soumises: number; affectees: number; validees: number }[]>([]);
-  const [loadingValidation, setLoadingValidation] = useState(true);
   const [quarterLabel, setQuarterLabel] = useState("");
 
   // Plage de dates personnalisée (prioritaire sur les préréglages de période)
@@ -253,6 +252,68 @@ export default function FichesPage() {
       setFiches((prev) => (append ? [...prev, ...rows] : rows));
       if (!append) setVisibleCount(VISIBLE_INIT);
       setFetchError(null);
+
+      if (!append && isValidationMode && (_isAdmin || role === "DIRECTION_GENERALE")) {
+        try {
+          const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
+          const now = new Date();
+          const qtr = Math.floor(now.getMonth() / 3);
+          const quarterStart = new Date(now.getFullYear(), qtr * 3, 1);
+          const quarterEnd = new Date(now.getFullYear(), qtr * 3 + 3, 0);
+          const pad = (n: number) => String(n).padStart(2, "0");
+          const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+          const weeks: { label: string; from: string; to: string }[] = [];
+          const cur = new Date(quarterStart);
+          const dayOfWeek = cur.getDay() === 0 ? 6 : cur.getDay() - 1;
+          cur.setDate(cur.getDate() - dayOfWeek);
+          let weekNum = 1;
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          while (cur <= quarterEnd && weeks.length < 8) {
+            const monday = new Date(cur);
+            if (monday > today) break;
+            const sunday = new Date(cur);
+            sunday.setDate(sunday.getDate() + 6);
+            const effMonday = monday < quarterStart ? quarterStart : monday;
+            const effSunday = sunday > quarterEnd ? quarterEnd : sunday;
+            const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
+            weeks.push({
+              label: `S${weekNum} (${shortDate(effMonday)}-${shortDate(effSunday)})`,
+              from: fmtDate(effMonday),
+              to: fmtDate(effSunday),
+            });
+            cur.setDate(cur.getDate() + 7);
+            weekNum++;
+          }
+
+          const countHistory = async (status: FicheStatus, wFrom: string, wTo: string) => {
+            let hq = supabase
+              .from("fiche_history")
+              .select("*", { count: "exact", head: true })
+              .eq("new_status", status)
+              .gte("created_at", `${wFrom}T00:00:00Z`)
+              .lte("created_at", `${wTo}T23:59:59Z`);
+            if (branchFilter) hq = hq.eq("organization_id", branchFilter);
+            const { count } = await hq;
+            return count ?? 0;
+          };
+
+          const results = await Promise.all(weeks.map(async (w) => {
+            const [soumises, affectees, validees] = await Promise.all([
+              countHistory("SOUMISE", w.from, w.to),
+              countHistory("AFFECTEE", w.from, w.to),
+              countHistory("VALIDEE", w.from, w.to),
+            ]);
+            return { label: w.label, soumises, affectees, validees };
+          }));
+
+          setValidationStats(results);
+          const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+          setQuarterLabel(`du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}`);
+        } catch (e) {
+          console.error("loadValidationStats error", e);
+        }
+      }
     } catch (err) {
       console.error("fetchFiches error", err);
       setFetchError("Erreur lors du chargement des fiches.");
@@ -320,70 +381,6 @@ export default function FichesPage() {
     loadStatusCounts();
   }, [profile, isReferent, isCommercial, supabase, isDG, selectedBranchId]);
 
-  // Évolution des validations par semaine (trimestre en cours) — mode validation uniquement
-  useEffect(() => {
-    if (!isValidationMode || !profile || !isAdminOrDG) { setLoadingValidation(false); return; }
-    setLoadingValidation(true);
-    async function loadValidationStats() {
-      const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
-      const now = new Date();
-      const q = Math.floor(now.getMonth() / 3);
-      const quarterStart = new Date(now.getFullYear(), q * 3, 1);
-      const quarterEnd = new Date(now.getFullYear(), q * 3 + 3, 0);
-      const pad = (n: number) => String(n).padStart(2, "0");
-      const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-      const weeks: { label: string; from: string; to: string }[] = [];
-      const current = new Date(quarterStart);
-      const dayOfWeek = current.getDay() === 0 ? 6 : current.getDay() - 1;
-      current.setDate(current.getDate() - dayOfWeek);
-      let weekNum = 1;
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      while (current <= quarterEnd && weeks.length < 8) {
-        const monday = new Date(current);
-        if (monday > today) break;
-        const sunday = new Date(current);
-        sunday.setDate(sunday.getDate() + 6);
-        const effMonday = monday < quarterStart ? quarterStart : monday;
-        const effSunday = sunday > quarterEnd ? quarterEnd : sunday;
-        const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
-        weeks.push({
-          label: `S${weekNum} (${shortDate(effMonday)}-${shortDate(effSunday)})`,
-          from: fmt(effMonday),
-          to: fmt(effSunday),
-        });
-        current.setDate(current.getDate() + 7);
-        weekNum++;
-      }
-
-      const countHistory = async (status: FicheStatus, from: string, to: string) => {
-        let hq = supabase
-          .from("fiche_history")
-          .select("*", { count: "exact", head: true })
-          .eq("new_status", status)
-          .gte("created_at", `${from}T00:00:00Z`)
-          .lte("created_at", `${to}T23:59:59Z`);
-        if (branchFilter) hq = hq.eq("organization_id", branchFilter);
-        const { count } = await hq;
-        return count ?? 0;
-      };
-
-      const results = await Promise.all(weeks.map(async (w) => {
-        const [soumises, affectees, validees] = await Promise.all([
-          countHistory("SOUMISE", w.from, w.to),
-          countHistory("AFFECTEE", w.from, w.to),
-          countHistory("VALIDEE", w.from, w.to),
-        ]);
-        return { label: w.label, soumises, affectees, validees };
-      }));
-
-      setValidationStats(results);
-      const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-      setQuarterLabel(`du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}`);
-      setLoadingValidation(false);
-    }
-    loadValidationStats();
-  }, [isValidationMode, profile, isAdminOrDG, isDG, selectedBranchId, supabase]);
 
 
   async function handleExport() {
@@ -750,7 +747,7 @@ export default function FichesPage() {
           </div>
         )}
 
-        <div className={`space-y-4 transition-opacity duration-200 ${loading || (isValidationMode && loadingValidation) ? "opacity-0" : "opacity-100"}`}>
+        <div className={`space-y-4 transition-opacity duration-300 ${loading ? "opacity-0" : "opacity-100"}`}>
         {/* Filtres par statut */}
         {!isValidationMode && profile && (<div className="flex gap-2 flex-wrap">
           <button

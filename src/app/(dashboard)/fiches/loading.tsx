@@ -16,7 +16,7 @@ export default function FichesLoading() {
         </div>
         {/* Status chips skeleton */}
         <div className="flex gap-2 flex-wrap">
-          {Array.from({ length: 7 }).map((_, i) => (
+          {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className="h-9 w-24 bg-muted rounded-full animate-pulse" />
           ))}
         </div>

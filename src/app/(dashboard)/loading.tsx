@@ -12,7 +12,7 @@ export default function DashboardLoading() {
         {/* Hero skeleton */}
         <div className="bg-[#1E3A5F] rounded-3xl p-6 sm:p-8 space-y-4">
           <div className="h-3 w-20 bg-white/10 rounded animate-pulse" />
-          <div className="h-10 w-48 bg-white/10 rounded animate-pulse" />
+          <div className="h-12 w-64 bg-white/10 rounded animate-pulse" />
           <div className="h-4 w-72 bg-white/10 rounded animate-pulse" />
           <div className="flex gap-2 mt-4">
             <div className="h-9 w-36 bg-white/10 rounded-full animate-pulse" />

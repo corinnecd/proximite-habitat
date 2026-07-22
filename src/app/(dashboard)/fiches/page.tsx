@@ -119,6 +119,9 @@ export default function FichesPage() {
   const [villeOptions, setVilleOptions] = useState<string[]>([]);
   const [departementOptions, setDepartementOptions] = useState<string[]>([]);
 
+  // Panneau filtres avancés (référents, commerciaux, ville, département, dates)
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
   // Stable — ne change pas entre les renders
   const supabase = useMemo(() => createClient(), []);
 
@@ -444,6 +447,15 @@ export default function FichesPage() {
     villeFilter !== "ALL" || departementFilter !== "ALL" || !!customFrom || !!customTo
   );
 
+  // Nombre de filtres avancés actifs (hors Période qui reste toujours visible)
+  const advancedFiltersCount =
+    (referentFilter !== "ALL" ? 1 : 0) +
+    (commercialFilter !== "ALL" ? 1 : 0) +
+    (villeFilter !== "ALL" ? 1 : 0) +
+    (departementFilter !== "ALL" ? 1 : 0) +
+    (customFrom ? 1 : 0) +
+    (customTo ? 1 : 0);
+
   function resetAdminFilters() {
     setPeriodFilter("ALL");
     setReferentFilter("ALL"); setCommercialFilter("ALL");
@@ -640,103 +652,131 @@ export default function FichesPage() {
                     )}
                   </div>
                   {!isValidationMode && (
-                    <div className="flex flex-wrap gap-x-3 gap-y-2 items-center w-full sm:w-auto sm:shrink-0">
-                      <div className="flex items-center gap-1.5">
-                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Référents</label>
-                        <Select value={referentFilter} onValueChange={(v) => setReferentFilter(v ?? "ALL")}>
-                          <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
-                            <SelectValue>
-                              {referentFilter === "ALL"
-                                ? "Tous"
-                                : (() => { const p = referents.find((x) => x.id === referentFilter); return p ? `${p.first_name} ${p.last_name}` : "Tous"; })()}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ALL">Tous les référents</SelectItem>
-                            {referents.map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.first_name} {p.last_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Commerciaux</label>
-                        <Select value={commercialFilter} onValueChange={(v) => setCommercialFilter(v ?? "ALL")}>
-                          <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
-                            <SelectValue>
-                              {commercialFilter === "ALL"
-                                ? "Tous"
-                                : (() => { const c = commercials.find((x) => x.id === commercialFilter); return c ? `${c.first_name} ${c.last_name}` : "Tous"; })()}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ALL">Tous les commerciaux</SelectItem>
-                            {commercials.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>
-                                {c.first_name} {c.last_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Ville</label>
-                        <Select value={villeFilter} onValueChange={(v) => setVilleFilter(v ?? "ALL")}>
-                          <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm max-w-[160px]">
-                            <SelectValue>{villeFilter === "ALL" ? "Toutes" : villeFilter}</SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ALL">Toutes les villes</SelectItem>
-                            {villeOptions.map((v) => (
-                              <SelectItem key={v} value={v}>{v}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Département</label>
-                        <Select value={departementFilter} onValueChange={(v) => setDepartementFilter(v ?? "ALL")}>
-                          <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm max-w-[130px]">
-                            <SelectValue>{departementFilter === "ALL" ? "Tous" : departementFilter}</SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="ALL">Tous les départements</SelectItem>
-                            {departementOptions.map((d) => (
-                              <SelectItem key={d} value={d}>{d}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Du</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAdvancedFilters((v) => !v)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                        showAdvancedFilters || advancedFiltersCount > 0
+                          ? "bg-primary/5 border-primary/30 text-foreground"
+                          : "bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                      }`}
+                      aria-expanded={showAdvancedFilters}
+                    >
+                      <Filter className="w-3.5 h-3.5" />
+                      Filtres avancés
+                      {advancedFiltersCount > 0 && (
+                        <span className="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                          {advancedFiltersCount}
+                        </span>
+                      )}
+                      {showAdvancedFilters ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
+                </div>
+
+                {/* Panneau filtres avancés — rétractable */}
+                {!isValidationMode && showAdvancedFilters && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-3 mt-1 border-t border-border">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-muted-foreground uppercase tracking-wide">Référents</label>
+                      <Select value={referentFilter} onValueChange={(v) => setReferentFilter(v ?? "ALL")}>
+                        <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
+                          <SelectValue>
+                            {referentFilter === "ALL"
+                              ? "Tous les référents"
+                              : (() => { const p = referents.find((x) => x.id === referentFilter); return p ? `${p.first_name} ${p.last_name}` : "Tous"; })()}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL">Tous les référents</SelectItem>
+                          {referents.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.first_name} {p.last_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-muted-foreground uppercase tracking-wide">Commerciaux</label>
+                      <Select value={commercialFilter} onValueChange={(v) => setCommercialFilter(v ?? "ALL")}>
+                        <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
+                          <SelectValue>
+                            {commercialFilter === "ALL"
+                              ? "Tous les commerciaux"
+                              : (() => { const c = commercials.find((x) => x.id === commercialFilter); return c ? `${c.first_name} ${c.last_name}` : "Tous"; })()}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL">Tous les commerciaux</SelectItem>
+                          {commercials.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.first_name} {c.last_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-muted-foreground uppercase tracking-wide">Ville</label>
+                      <Select value={villeFilter} onValueChange={(v) => setVilleFilter(v ?? "ALL")}>
+                        <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
+                          <SelectValue>{villeFilter === "ALL" ? "Toutes les villes" : villeFilter}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL">Toutes les villes</SelectItem>
+                          {villeOptions.map((v) => (
+                            <SelectItem key={v} value={v}>{v}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-muted-foreground uppercase tracking-wide">Département</label>
+                      <Select value={departementFilter} onValueChange={(v) => setDepartementFilter(v ?? "ALL")}>
+                        <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
+                          <SelectValue>{departementFilter === "ALL" ? "Tous les départements" : departementFilter}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL">Tous les départements</SelectItem>
+                          {departementOptions.map((d) => (
+                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-1">
+                      <label className="text-xs text-muted-foreground uppercase tracking-wide">Période personnalisée</label>
+                      <div className="flex items-center gap-2">
                         <input
                           type="date"
                           value={customFrom}
                           onChange={(e) => setCustomFrom(e.target.value)}
-                          className="h-[34px] px-2 bg-background border rounded-xl text-sm"
+                          className="h-[34px] px-2 bg-background border rounded-xl text-sm flex-1"
+                          aria-label="Du"
                         />
-                        <label className="text-xs text-muted-foreground uppercase tracking-wide whitespace-nowrap">Au</label>
+                        <span className="text-xs text-muted-foreground">→</span>
                         <input
                           type="date"
                           value={customTo}
                           onChange={(e) => setCustomTo(e.target.value)}
-                          className="h-[34px] px-2 bg-background border rounded-xl text-sm"
+                          className="h-[34px] px-2 bg-background border rounded-xl text-sm flex-1"
+                          aria-label="Au"
                         />
                         {(customFrom || customTo) && (
                           <button
                             type="button"
                             onClick={() => { setCustomFrom(""); setCustomTo(""); }}
-                            className="text-xs text-muted-foreground hover:text-foreground underline whitespace-nowrap"
+                            className="text-muted-foreground hover:text-foreground shrink-0"
+                            aria-label="Effacer les dates"
                           >
-                            Effacer
+                            <X className="w-4 h-4" />
                           </button>
                         )}
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
                 {(customFrom || customTo) && (
                   <p className="text-xs text-muted-foreground pt-1">
                     Période personnalisée : <span className="font-semibold text-foreground">du {customFrom || "…"} au {customTo || "…"}</span>

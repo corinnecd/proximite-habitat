@@ -253,7 +253,7 @@ export default function FichesPage() {
       if (!append) setVisibleCount(VISIBLE_INIT);
       setFetchError(null);
 
-      if (!append && isValidationMode && (_isAdmin || role === "DIRECTION_GENERALE")) {
+      if (!append && isValidationMode && _isAdmin) {
         try {
           const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
           const now = new Date();
@@ -464,7 +464,7 @@ export default function FichesPage() {
         ] as { key: keyof { reference: string; nom: string; prenom: string; ville: string; status: string; date: string }; label: string }[],
         rows: fiches.map((f) => ({ reference: f.reference, nom: f.prospect_nom, prenom: f.prospect_prenom, ville: f.prospect_ville || "", status: f.status, date: f.created_at?.slice(0, 10) || "" })),
       })} />{(isReferent || isAdminOrDG) && profile && <ImportCsvDialog organizationId={profile.organization_id} createdBy={profile.id} onImported={() => fetchFiches(0, false)} />}</div>} />
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4">
+      <div className={`p-4 sm:p-6 lg:p-8 space-y-4 transition-opacity duration-300 ${loading ? "opacity-0" : "opacity-100"}`}>
 
         {/* ═══ HERO FICHES — navy signature avec recherche intégrée ═══════ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
@@ -747,7 +747,7 @@ export default function FichesPage() {
           </div>
         )}
 
-        <div className={`space-y-4 transition-opacity duration-300 ${loading ? "opacity-0" : "opacity-100"}`}>
+        <div className="space-y-4">
         {/* Filtres par statut */}
         {!isValidationMode && profile && (<div className="flex gap-2 flex-wrap">
           <button

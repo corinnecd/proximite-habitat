@@ -150,11 +150,7 @@ export default function SuccursalesPage() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : branches.length === 0 ? (
+        {loading ? null : branches.length === 0 ? (
           <EmptyState
             title="Aucune succursale"
             description="Créez votre première succursale pour commencer."

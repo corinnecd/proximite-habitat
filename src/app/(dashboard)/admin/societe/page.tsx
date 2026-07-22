@@ -53,11 +53,7 @@ export default function SocietePage() {
     <>
       <Topbar title="Société" />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : !company ? (
+        {loading ? null : !company ? (
           <p className="text-muted-foreground">Aucune société rattachée.</p>
         ) : (
           <>

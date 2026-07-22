@@ -119,7 +119,7 @@ function UrgencyBadge({ days }: { days: number }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { profile, loading: profileLoading } = useProfile();
+  const { profile } = useProfile();
   const { selectedBranchId, isDG, selectedBranchName, setSelectedBranchId, branches } = useBranch();
   const [counts, setCounts] = useState<Record<FicheStatus, number>>({
     BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, RDV_A_REPRENDRE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
@@ -230,14 +230,15 @@ export default function DashboardPage() {
       promises.push(arq.order("updated_at", { ascending: false }).limit(30));
     }
 
-    // Ventes (ADMIN + COMMERCIAL)
-    if (isAdmin || isCommercial) {
+    // Ventes (ADMIN + COMMERCIAL + REFERENT)
+    if (isAdmin || isCommercial || isReferent) {
       let vq = supabase.from("fiches").select(
         "id, created_by, assigned_to, updated_at, montant_ht, " +
         "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name), " +
         "assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)"
       ).eq("status", "ACCEPTEE");
       if (isCommercial) vq = vq.eq("assigned_to", profile.id);
+      if (isReferent) vq = vq.eq("created_by", profile.id);
       if (branchFilter) vq = vq.eq("organization_id", branchFilter);
       if (periodDates) vq = vq.gte("updated_at", `${periodDates.from}T00:00:00Z`).lte("updated_at", `${periodDates.to}T23:59:59Z`);
       keys.push("ventes");
@@ -329,11 +330,11 @@ export default function DashboardPage() {
       setFichesArchivees((r.get("archivees")?.data as unknown as FicheAffectee[]) ?? []);
     }
 
-    if (isAdmin || isCommercial) {
+    if (isAdmin || isCommercial || isReferent) {
       const rows = ((r.get("ventes")?.data ?? r.get("ventes")) as unknown as VenteRow[]) ?? [];
       setTotalVentes(rows.length);
       setCaTotal(rows.reduce((sum, v) => sum + (v.montant_ht ? Number(v.montant_ht) : 0), 0));
-      if (isCommercial) setMesVentes(rows.length);
+      if (isCommercial || isReferent) setMesVentes(rows.length);
 
       if (isAdmin) {
         const now = new Date();
@@ -415,7 +416,7 @@ export default function DashboardPage() {
   }, [profile, supabase, isDG, selectedBranchId]);
 
   useEffect(() => {
-    if (profileLoading || !profile) return;
+    if (!profile) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData(dashPeriod);
 
@@ -427,7 +428,7 @@ export default function DashboardPage() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [profile, profileLoading, supabase, fetchData, dashPeriod, selectedBranchId]);
+  }, [profile, supabase, fetchData, dashPeriod, selectedBranchId]);
 
   // ── Affectation rapide ───────────────────────────────────────────────────────
   async function handleQuickAssign() {
@@ -774,6 +775,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Tout le contenu data-driven apparaît d'un coup */}
+        <div className={`space-y-6 transition-opacity duration-200 ${loading ? "opacity-0" : "opacity-100"}`}>
+
         {/* Compteurs par statut */}
         <div>
           {/* Mobile : bouton repliable */}
@@ -810,6 +814,55 @@ export default function DashboardPage() {
 
         {/* ── Prime du mois (référent) ─────────────────────────────────── */}
         {isReferent && <PrimeSection prospAcceptees={prospAcceptees} />}
+
+        {/* ── Section REFERENT : KPIs ventes / CA / taux de conversion ──────── */}
+        {isReferent && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                </div>
+              </div>
+              <AnimatedCounter value={mesVentes} className="text-2xl sm:text-3xl font-bold" />
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Ventes réalisées" : <>Ventes<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+            </div>
+            <div className="bg-card border border-border border-l-4 border-l-amber-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                  <Euro className="w-5 h-5 text-amber-600" />
+                </div>
+              </div>
+              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA HT total" : <>CA HT<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+            </div>
+            <div className="bg-card border border-border border-l-4 border-l-blue-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{mesVentes > 0 ? Math.round(caTotal / mesVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA moyen par fiche" : <>CA moyen<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
+            </div>
+            {(() => {
+              const totalTraitees = mesVentes + prospRefusees.length;
+              const convRate = totalTraitees > 0 ? Math.round((mesVentes / totalTraitees) * 100) : 0;
+              return (
+                <div className="bg-card border border-border border-l-4 border-l-orange-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                      <BarChart3 className="w-5 h-5 text-orange-600" />
+                    </div>
+                  </div>
+                  <p className="text-2xl sm:text-3xl font-bold tabular-nums">{convRate}%</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">Taux de conversion</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{mesVentes} acceptée{mesVentes > 1 ? "s" : ""} / {totalTraitees} traitée{totalTraitees > 1 ? "s" : ""}</p>
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {/* ── Section ADMIN/DG : KPI CA consolidé ────────────────────────────── */}
         {isAdminOrDG && (
@@ -1394,6 +1447,7 @@ export default function DashboardPage() {
           </>
         )}
 
+        </div>{/* fin wrapper opacity */}
       </div>
 
       {assignDialog}

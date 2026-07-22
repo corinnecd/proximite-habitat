@@ -6,6 +6,7 @@ import { SearchProvider } from "@/components/layout/SearchProvider";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import { ProfileProvider } from "@/lib/context/profile-context";
 import { BranchProvider } from "@/lib/context/branch-context";
+import { DashboardShell } from "@/components/layout/DashboardShell";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,7 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Suspense fallback={<aside className="hidden lg:flex lg:w-72 lg:fixed lg:inset-y-0 bg-[#1E3A5F]" />}>
             <Sidebar />
           </Suspense>
-          <div className="lg:pl-72"><main className="min-h-screen">{children}</main></div>
+          <div className="lg:pl-72"><main className="min-h-screen"><DashboardShell>{children}</DashboardShell></main></div>
           <ScrollToTop />
         </div>
       </SearchProvider>

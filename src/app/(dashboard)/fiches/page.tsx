@@ -746,6 +746,7 @@ export default function FichesPage() {
           </div>
         )}
 
+        <div className={`space-y-4 transition-opacity duration-200 ${loading ? "opacity-0" : "opacity-100"}`}>
         {/* Filtres par statut */}
         {!isValidationMode && profile && (<div className="flex gap-2 flex-wrap">
           <button
@@ -964,6 +965,7 @@ export default function FichesPage() {
           </div>
         )}
 
+        </div>
       </div>
     </>
   );

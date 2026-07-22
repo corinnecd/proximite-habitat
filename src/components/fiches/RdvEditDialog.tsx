@@ -61,11 +61,11 @@ export function RdvEditDialog({
         fiche_id: ficheId,
         organization_id: organizationId,
         user_id: userId,
-        action: "MODIFICATION_RDV",
-        comment: `Date de RDV modifiée : ${oldDate || "non définie"} → ${value}`,
+        action: oldDate ? "MODIFICATION_RDV" : "PLANIFICATION_RDV",
+        comment: oldDate ? `Date de RDV modifiée : ${oldDate} → ${value}` : `RDV planifié au ${value}`,
       });
       onSaved(value);
-      toast.success("Date de rendez-vous mise à jour");
+      toast.success(oldDate ? "Date de rendez-vous mise à jour" : "Rendez-vous planifié");
       onOpenChange(false);
     } catch (err) {
       console.error("Erreur mise à jour date RDV:", err);
@@ -86,10 +86,10 @@ export function RdvEditDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-orange-600 dark:text-orange-400">
             <Calendar className="w-5 h-5" />
-            Modifier le rendez-vous
+            {currentRdvDate ? "Modifier le rendez-vous" : "Planifier le rendez-vous"}
           </DialogTitle>
           <DialogDescription>
-            Choisissez la nouvelle date de rendez-vous pour cette fiche.
+            {currentRdvDate ? "Choisissez la nouvelle date de rendez-vous pour cette fiche." : "Définissez la date de rendez-vous pour cette fiche."}
           </DialogDescription>
         </DialogHeader>
         <div className="py-2">

@@ -44,8 +44,15 @@ interface RdvFiche {
   prospect_ville: string | null;
   prospect_telephone: string | null;
   organization_id: string;
+  created_by: string | null;
   assigned_to_profile: { first_name: string; last_name: string } | null;
 }
+
+const STATUS_CHIP: Record<string, { bg: string; text: string }> = {
+  VALIDEE: { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200/60" },
+  AFFECTEE: { bg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-700 ring-1 ring-blue-200/60" },
+  RDV_A_REPRENDRE: { bg: "bg-[#F97316]", text: "text-white font-semibold" },
+};
 
 function formatMonthLabel(date: Date): string {
   return `${MOIS_NOMS[date.getMonth()]} ${date.getFullYear()}`;
@@ -103,22 +110,25 @@ export default function CalendrierPage() {
     loadCommercials();
   }, [isAdminOrDG, branchFilterForUsers, supabase]);
 
+  const isReferent = role === "PROSPECTEUR" || role === "CHEF_EQUIPE";
+
   const fetchRdvs = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
     let query = supabase
       .from("fiches")
       .select(
-        "id, reference, status, rdv_date, heure_visite, prospect_nom, prospect_prenom, prospect_adresse, prospect_ville, prospect_telephone, organization_id, " +
+        "id, reference, status, rdv_date, heure_visite, prospect_nom, prospect_prenom, prospect_adresse, prospect_ville, prospect_telephone, organization_id, created_by, " +
         "assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)"
       )
       .not("rdv_date", "is", null)
+      .in("status", ["VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "REFUSEE"])
       .gte("rdv_date", rangeStartKey)
       .lte("rdv_date", rangeEndKey)
       .order("rdv_date", { ascending: true })
       .order("heure_visite", { ascending: true, nullsFirst: false });
 
-    if (role === "PROSPECTEUR" || role === "CHEF_EQUIPE") {
+    if (isReferent) {
       query = query.eq("created_by", profile.id);
     } else if (role === "COMMERCIAL") {
       query = query.eq("assigned_to", profile.id);
@@ -140,7 +150,7 @@ export default function CalendrierPage() {
     } finally {
       setLoading(false);
     }
-  }, [profile, role, isAdminOrDG, commercialFilter, isDG, selectedBranchId, rangeStartKey, rangeEndKey, supabase]);
+  }, [profile, role, isAdminOrDG, isReferent, commercialFilter, isDG, selectedBranchId, rangeStartKey, rangeEndKey, supabase]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -184,7 +194,7 @@ export default function CalendrierPage() {
   return (
     <>
       <Topbar title="Calendrier des RDV" />
-      <div className="p-4 sm:p-6 space-y-4">
+      <div className={`p-4 sm:p-6 space-y-4 transition-opacity duration-200 ${loading ? "opacity-0" : "opacity-100"}`}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={goPrev} aria-label="Période précédente">
@@ -302,20 +312,19 @@ export default function CalendrierPage() {
                       {day.getDate()}
                     </span>
                     <div className="flex flex-col gap-0.5 flex-1">
-                      {shown.map((f) => (
-                        <span
-                          key={f.id}
-                          title="Plus de détails"
-                          className={`truncate rounded px-1.5 py-0.5 text-[10px] sm:text-[11px] leading-tight ${
-                            f.status === "RDV_A_REPRENDRE"
-                              ? "bg-[#F97316] text-white font-semibold"
-                              : "bg-blue-50 text-blue-700 ring-1 ring-blue-200/60"
-                          }`}
-                        >
-                          {f.heure_visite ? f.heure_visite.slice(0, 5) + " " : ""}
-                          <span className="font-bold">{f.prospect_nom ?? "Sans nom"}</span>
-                        </span>
-                      ))}
+                      {shown.map((f) => {
+                        const chip = STATUS_CHIP[f.status] ?? { bg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-700 ring-1 ring-blue-200/60" };
+                        return (
+                          <span
+                            key={f.id}
+                            title="Plus de détails"
+                            className={`truncate rounded px-1.5 py-0.5 text-[10px] sm:text-[11px] leading-tight ${chip.bg} ${chip.text}`}
+                          >
+                            {f.heure_visite ? f.heure_visite.slice(0, 5) + " " : ""}
+                            <span className="font-bold">{f.prospect_nom ?? "Sans nom"}</span>
+                          </span>
+                        );
+                      })}
                       {hidden > 0 && (
                         <span className="text-[10px] text-muted-foreground font-medium">+{hidden} autre{hidden > 1 ? "s" : ""}</span>
                       )}
@@ -370,11 +379,11 @@ export default function CalendrierPage() {
                   {f.prospect_telephone && (
                     <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 shrink-0" />{f.prospect_telephone}</span>
                   )}
-                  {isAdminOrDG && fullName(f.assigned_to_profile) && (
+                  {(isAdminOrDG || isReferent) && fullName(f.assigned_to_profile) && (
                     <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 shrink-0" />{fullName(f.assigned_to_profile)}</span>
                   )}
                 </Link>
-                {f.status === "RDV_A_REPRENDRE" && (
+                {(f.status === "RDV_A_REPRENDRE" || (isReferent && f.created_by === profile?.id)) && (
                   <Button
                     type="button"
                     variant="outline"

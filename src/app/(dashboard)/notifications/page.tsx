@@ -645,8 +645,7 @@ export default function NotificationsPage() {
         )}
 
         {/* ── Contenu ───────────────────────────────────────────────────── */}
-        {!initialLoaded ? null : (
-        <div style={{ opacity: loading ? 0.4 : 1, transition: "opacity 150ms ease", pointerEvents: loading ? "none" : undefined }}>
+        <div className={`transition-opacity duration-200 ${!initialLoaded || loading ? "opacity-0" : "opacity-100"}`}>
         {displayed.length === 0 ? (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
@@ -736,7 +735,6 @@ export default function NotificationsPage() {
           </div>
         )}
         </div>
-        )}
       </div>
       {/* Dialog suppression fiche */}
       <Dialog open={deleteFicheId !== null} onOpenChange={(open) => { if (!open) setDeleteFicheId(null); }}>

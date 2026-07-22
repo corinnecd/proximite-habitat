@@ -997,12 +997,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               )}
 
-              {/* Bouton Modifier le rendez-vous — visible si rdv_date défini et utilisateur autorisé */}
-              {fiche.rdv_date && profile && canEditRdvDate(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status) && (
+              {/* Bouton Modifier / Planifier le rendez-vous */}
+              {profile && canEditRdvDate(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status) && (
                 <Button size="sm" variant="outline"
                   onClick={() => setShowRdvEditDialog(true)}
-                  className="ml-auto rounded-xl gap-2 bg-secondary text-foreground hover:bg-secondary/80 border-border">
-                  <Calendar className="w-4 h-4" />Modifier le rendez-vous
+                  className={`ml-auto rounded-xl gap-2 border-border ${fiche.rdv_date ? "bg-secondary text-foreground hover:bg-secondary/80" : "bg-[#F97316] hover:bg-[#EA580C] text-white border-transparent"}`}>
+                  <Calendar className="w-4 h-4" />{fiche.rdv_date ? "Modifier le rendez-vous" : "Planifier le RDV"}
                 </Button>
               )}
 

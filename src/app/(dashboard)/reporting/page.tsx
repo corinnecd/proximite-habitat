@@ -65,7 +65,7 @@ function Bar2({ value, max, colorClass }: { value: number; max: number; colorCla
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportingPage() {
-  const { profile, loading: profileLoading } = useProfile();
+  const { profile } = useProfile();
   const { selectedBranchId, isDG, branches } = useBranch();
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -350,7 +350,6 @@ export default function ReportingPage() {
   }
 
   useEffect(() => {
-    if (profileLoading) return;
     if (!profile) return;
     if (profile.role !== "ADMIN" && profile.role !== "COMMERCIAL" && profile.role !== "DIRECTION_GENERALE") { router.replace("/"); return; }
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -359,7 +358,7 @@ export default function ReportingPage() {
     setShowAllReferents(false);
     setShowAllCommerciaux(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, profileLoading, periodFilter, selectedBranchId]);
+  }, [profile, periodFilter, selectedBranchId]);
 
   async function saveObjectifs() {
     if (!profile) return;
@@ -539,7 +538,7 @@ export default function ReportingPage() {
             </div>
         </div>
 
-        <>
+        <div className={`space-y-6 transition-opacity duration-200 ${loading ? "opacity-0" : "opacity-100"}`}>
 
         {/* ── KPIs (6 indicateurs clés — 2 lignes de 3) ────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1209,7 +1208,7 @@ export default function ReportingPage() {
             )}
           </div>
         )}
-        </>
+        </div>
       </div>
     </>
   );

@@ -10,9 +10,9 @@
 
 | Catégorie | Score | Remarque |
 |-----------|-------|----------|
-| Fonctionnel | **97%** | Cœur métier + funnel + objectifs + import CSV + relances auto |
+| Fonctionnel | **98%** | Cœur métier + funnel + objectifs + import CSV + relances auto + calendrier partagé + KPIs référent |
 | Performance | **88%** | Skeletons + pagination serveur + cache offline + composants extraits |
-| UX / Loading | **92%** | Skeleton loading.tsx 9/9 routes, page offline, import CSV |
+| UX / Loading | **93%** | Skeleton loading.tsx 9/9 routes, page offline, import CSV, planification RDV |
 | PWA / Mobile | **82%** | Manifest + icônes + cache offline + fallback |
 | Design | **78%** | Cohérent, dark mode OK |
 
@@ -192,10 +192,10 @@ Pas de fallback offline. Quand la connexion tombe, l'utilisateur voit la page d'
 |------|---------------|--------|
 | ✅ OK | CRUD fiches (7 étapes) | Création, modification, brouillons, photos, signature |
 | ✅ OK | Workflow statuts | Soumise → Validée → Affectée → Acceptée/Refusée + transitions RPC |
-| ✅ OK | Dashboard KPI | Compteurs animés, primes, fiches récentes, périodes |
+| ✅ OK | Dashboard KPI | Compteurs animés, primes, fiches récentes, périodes, KPIs référent (ventes, CA, taux conversion) |
 | ✅ OK | Gestion utilisateurs | CRUD, rôles, activation/désactivation |
 | ✅ OK | Multi-succursales | Filtre par branche, vue DG « toutes », comparison ranking |
-| ✅ OK | Calendrier RDV | Vue semaine/mois, par commercial |
+| ✅ OK | Calendrier RDV partagé | Vue semaine/mois, chips colorés par statut, visible par tous les rôles (référent, commercial, admin, DG), édition RDV référent |
 | ✅ OK | Planification hebdo | Zones, parcours, carte Leaflet |
 | ✅ OK | PDF fiche | 2 pages, zone signature, montant HT, RDV |
 | ✅ OK | Export CSV | Toutes les pages avec données tabulaires |
@@ -213,4 +213,6 @@ Pas de fallback offline. Quand la connexion tombe, l'utilisateur voit la page d'
 | ✅ OK | Mode offline | Cache SW network-first + page /offline fallback |
 | ✅ OK | Import CSV | Import en masse avec détection doublons |
 | ✅ OK | Relances automatiques | Cron Vercel lun-ven 8h, notifications auto |
-| ✅ OK | Composants extraits | KpiCard, ConversionFunnel, ObjectifsSection |
+| ✅ OK | Composants extraits | KpiCard, ConversionFunnel, ObjectifsSection, StatusBlock, PrimeSection, AdminKpiSection |
+| ✅ OK | Planification RDV | Bouton "Planifier le RDV" sur fiches sans date (cas exceptionnel direction/commercial), historique PLANIFICATION_RDV |
+| ✅ OK | Audit trail enrichi | Suivi des modifications de champs spécifiques, historique RDV avec distinction planification/modification |

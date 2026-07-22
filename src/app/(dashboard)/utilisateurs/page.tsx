@@ -68,7 +68,7 @@ export default function UtilisateursPage() {
     role: "PROSPECTEUR" as UserRole, phone: "",
   });
   const [targetOrgId, setTargetOrgId] = useState<string>("");
-  const { profile, loading: profileLoading } = useProfile();
+  const { profile } = useProfile();
   const { isDG, branches, selectedBranchId } = useBranch();
   const supabase = useMemo(() => createClient(), []);
 
@@ -174,7 +174,7 @@ export default function UtilisateursPage() {
   }
 
   // Accès refusé — attendre que le profil soit chargé avant de juger le rôle
-  if (!profileLoading && profile?.role !== "ADMIN" && profile?.role !== "DIRECTION_GENERALE") {
+  if (profile?.role !== "ADMIN" && profile?.role !== "DIRECTION_GENERALE") {
     return (
       <>
         <Topbar title="Utilisateurs" />
@@ -329,7 +329,8 @@ export default function UtilisateursPage() {
         </div>
 
         {/* ── Liste ────────────────────────────────────────────────────────── */}
-        {loading ? null : filtered.length === 0 ? (
+        <div className={`transition-opacity duration-200 ${loading ? "opacity-0" : "opacity-100"}`}>
+        {filtered.length === 0 ? (
           <div className="bg-card rounded-2xl border border-border">
             <EmptyState
               illustration="fiches"
@@ -432,12 +433,13 @@ export default function UtilisateursPage() {
             </Button>
           </div>
         )}
-        {!loading && filtered.length > 0 && (
+        {filtered.length > 0 && (
           <p className="text-xs text-muted-foreground text-center">
             {showAll ? filtered.length : Math.min(VISIBLE_INIT, filtered.length)} utilisateur{filtered.length > 1 ? "s" : ""} affiché{filtered.length > 1 ? "s" : ""} sur {filtered.length}
             {filtered.length !== users.length && ` (${users.length} au total)`}
           </p>
         )}
+        </div>
       </div>
 
       {/* ── Dialog édition utilisateur ───────────────────────────────────── */}

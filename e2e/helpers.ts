@@ -2,8 +2,18 @@ import { expect, type Page } from "@playwright/test";
 
 // Identifiants de démo (cf. README / scripts/seed.mjs). Surchargés par env si besoin.
 export const ADMIN = {
-  email: process.env.E2E_EMAIL || "admin@phc.fr",
-  password: process.env.E2E_PASSWORD || "Admin123!",
+  email: process.env.E2E_EMAIL || "direction1@hdf.fr",
+  password: process.env.E2E_PASSWORD || "Direction123!",
+};
+
+export const REFERENT = {
+  email: "referent1@hdf.fr",
+  password: "Referent123!",
+};
+
+export const COMMERCIAL = {
+  email: "commercial1@hdf.fr",
+  password: "Commercial123!",
 };
 
 /** Connecte l'utilisateur et attend l'arrivée sur le tableau de bord. */

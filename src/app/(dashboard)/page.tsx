@@ -19,9 +19,9 @@ import { useProfile } from "@/lib/hooks/use-profile";
 import { useBranch } from "@/lib/context/branch-context";
 import type { FicheStatus } from "@/types/database";
 import {
-  FileText, FilePlus, Clock, CheckCircle2, XCircle, Send,
+  FilePlus, Clock, CheckCircle2, XCircle, Send,
   UserCheck, Archive, Trash2, AlertCircle, ArrowRight,
-  CalendarDays, User, Trophy, TrendingUp, Star,
+  CalendarDays, User,
   ChevronDown, ChevronUp, Loader2, Euro, BarChart3, Building2, UserX,
 } from "lucide-react";
 import {
@@ -33,6 +33,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { sendEmailFicheAffectee, sendEmailFicheDecision } from "@/lib/email";
 import { toast } from "sonner";
+import { StatusBlock } from "@/components/dashboard/StatusBlock";
+import { PrimeSection } from "@/components/dashboard/PrimeSection";
+import { AdminKpiSection } from "@/components/dashboard/AdminKpiSection";
+import { CollapsibleList } from "@/components/dashboard/CollapsibleList";
+import type { FicheAffectee, ReferentStat, CommercialStat } from "@/components/dashboard/dashboard-types";
 
 // ── Filtre période dashboard ──────────────────────────────────────────────────
 import { type PeriodFilter as DashPeriod, PERIOD_LABELS as DASH_PERIOD_LABELS, getPeriodDates as getDashPeriodDates, getPeriodLabel } from "@/lib/periods";
@@ -86,48 +91,6 @@ interface VenteRow {
   assigned_to_profile: { first_name: string; last_name: string } | null;
 }
 
-interface ReferentStat {
-  id: string;
-  nom: string;
-  ventes: number;        // total ventes
-  ventesMoisCourant: number; // ventes ce mois-ci
-  primes: number;        // mois avec ≥3 ventes
-  prochainPalier: number; // ventes restantes ce mois avant la prime
-  ca: number;            // CA HT total
-}
-
-interface CommercialStat {
-  id: string;
-  nom: string;
-  ventes: number;
-  ca: number;
-}
-
-
-interface HistoryEntry {
-  action: string;
-  old_status: string | null;
-  new_status: string | null;
-  comment: string | null;
-  created_at: string;
-  user: { first_name: string; last_name: string } | null;
-}
-
-interface FicheAffectee {
-  id: string;
-  reference: string;
-  prospect_nom: string;
-  prospect_prenom: string;
-  prospect_ville: string | null;
-  prospect_cp: string | null;
-  updated_at: string;
-  created_at: string;
-  created_by: string;
-  montant_ht: number | null;
-  created_by_profile: { first_name: string; last_name: string } | null;
-  fiche_history: HistoryEntry[];
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function daysSince(dateStr: string): number {
@@ -149,153 +112,6 @@ function UrgencyBadge({ days }: { days: number }) {
     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 flex items-center gap-1">
       <AlertCircle className="w-2.5 h-2.5" />{days}j
     </span>
-  );
-}
-
-// ── Composant bloc par statut ─────────────────────────────────────────────────
-
-const STATUS_LABELS_FR: Record<string, string> = {
-  BROUILLON: "Brouillon", SOUMISE: "À valider", VALIDEE: "Validée", AFFECTEE: "Validée et affectée",
-  RETRACTATION: "Attente Acceptation Client", ACCEPTEE: "Acceptation Client", REFUSEE: "Refus Client", ARCHIVEE: "Archivé",
-};
-
-function StatusBlock({
-  title, total, icon, iconBg, badge, borderColor, hoverColor, href, fiches,
-}: {
-  title: string;
-  total: number;
-  icon: React.ReactNode;
-  iconBg: string;
-  badge: string;
-  borderColor: string;
-  hoverColor: string;
-  href: string;
-  fiches: FicheAffectee[];
-}) {
-  const [showAll, setShowAll] = React.useState(false);
-  const shown  = showAll ? fiches : fiches.slice(0, 5);
-  const hasMore = fiches.length > 5;
-  return (
-    <div className="space-y-3">
-      {/* En-tête du bloc */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${iconBg}`}>{icon}</div>
-          <h3 className="font-semibold text-base">{title}</h3>
-          {total > 0 && (
-            <span className={`${badge} text-white text-xs font-bold px-2 py-0.5 rounded-full`}>{total}</span>
-          )}
-        </div>
-        <Link href={href}>
-          <Button variant="ghost" size="sm" className="text-muted-foreground gap-1">
-            Voir toutes <ArrowRight className="w-3.5 h-3.5" />
-          </Button>
-        </Link>
-      </div>
-
-      {/* Contenu */}
-      {shown.length === 0 ? (
-        <div className="flex items-center gap-3 p-4 bg-muted/30 border border-border rounded-2xl">
-          <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
-          <p className="text-sm text-muted-foreground">Aucune fiche dans cette catégorie</p>
-        </div>
-      ) : (
-        <div className={`bg-card border rounded-2xl overflow-hidden ${borderColor}`}>
-          {shown.map((fiche, idx) => {
-            // Historique trié du plus récent au plus ancien
-            const history = [...(fiche.fiche_history ?? [])].sort(
-              (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            );
-            return (
-              <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
-                <div
-                  className={`px-5 py-4 transition-colors cursor-pointer ${hoverColor} ${idx < shown.length - 1 ? "border-b border-border" : ""}`}
-                  style={undefined}
-                >
-                  {/* Ligne principale */}
-                  <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-foreground truncate">
-                        Fiche de {fiche.prospect_prenom} {fiche.prospect_nom}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        
-                        {fiche.prospect_ville && <span className="text-xs text-muted-foreground">{fiche.prospect_ville}</span>}
-                        {fiche.created_by_profile && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            {fiche.created_by_profile.first_name} {fiche.created_by_profile.last_name}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
-                      <CalendarDays className="w-3.5 h-3.5" />
-                      {new Date(fiche.updated_at).toLocaleDateString("fr-FR")}
-                    </div>
-                  </div>
-
-                  {/* Dernière action */}
-                  {history.length > 0 && (() => { const h = history[0]; return (
-                    <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                      {h.user && (
-                        <span className="font-medium text-foreground/70">
-                          {h.user.first_name} {h.user.last_name}
-                        </span>
-                      )}
-                      {h.old_status && h.new_status ? (
-                        <span>{STATUS_LABELS_FR[h.old_status] ?? h.old_status}{" → "}{STATUS_LABELS_FR[h.new_status] ?? h.new_status}</span>
-                      ) : (
-                        <span>{h.action}</span>
-                      )}
-                      {h.comment && <span className="italic truncate max-w-[120px]">&quot;{h.comment}&quot;</span>}
-                      <span className="ml-auto shrink-0">
-                        {new Date(h.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
-                        {" "}{new Date(h.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    </div>
-                  ); })()}
-                </div>
-              </Link>
-            );
-          })}
-          {hasMore && (
-            <button
-              type="button"
-              onClick={() => setShowAll((v) => !v)}
-              className="w-full px-4 py-2.5 text-center text-xs text-muted-foreground hover:bg-secondary/40 transition-colors border-t border-border flex items-center justify-center gap-1"
-            >
-              {showAll
-                ? <><ChevronUp className="w-3.5 h-3.5" />Voir moins</>
-                : <><ChevronDown className="w-3.5 h-3.5" />Voir plus ({fiches.length - 5} restante{fiches.length - 5 > 1 ? "s" : ""})</>}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CollapsibleList<T extends { id: string }>({ items, renderItem, limit = 5 }: { items: T[]; renderItem: (item: T, idx: number, total: number) => React.ReactNode; limit?: number }) {
-  const [showAll, setShowAll] = React.useState(false);
-  const visible = showAll ? items : items.slice(0, limit);
-  const hasMore = items.length > limit;
-  return (
-    <>
-      {visible.map((item, idx) => renderItem(item, idx, visible.length))}
-      {hasMore && (
-        <button
-          type="button"
-          onClick={() => setShowAll((v) => !v)}
-          className="w-full px-4 py-2.5 text-center text-xs text-muted-foreground hover:bg-secondary/40 transition-colors border-t border-border flex items-center justify-center gap-1"
-        >
-          {showAll
-            ? <><ChevronUp className="w-3.5 h-3.5" />Voir moins</>
-            : <><ChevronDown className="w-3.5 h-3.5" />Voir plus ({items.length - limit} restante{items.length - limit > 1 ? "s" : ""})</>}
-        </button>
-      )}
-    </>
   );
 }
 
@@ -992,243 +808,19 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Prime du mois (référent) ─────────────────────────────────── */}
-        {isReferent && (() => {
-          const SEUIL = 3;
-          const now = new Date();
-          const ventesMonth = prospAcceptees.filter((f) => {
-            const d = new Date(f.updated_at);
-            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-          }).length;
-          const restantes = Math.max(0, SEUIL - ventesMonth);
-          const pct = Math.min(100, Math.round((ventesMonth / SEUIL) * 100));
-          const gained = ventesMonth >= SEUIL;
-          const moisFr = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-
-          return (
-            <div className={`rounded-2xl border p-5 ${gained ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800" : "bg-card border-border"}`}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${gained ? "bg-amber-100 dark:bg-amber-900/40" : "bg-muted"}`}>
-                    <Trophy className={`w-5 h-5 ${gained ? "text-amber-500" : "text-muted-foreground"}`} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-sm">Prime exceptionnelle — {moisFr}</h3>
-                    <p className="text-xs text-muted-foreground">3 ventes validées dans le mois = prime exceptionnelle</p>
-                  </div>
-                </div>
-                {gained && (
-                  <span className="flex items-center gap-1 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                    <Star className="w-3 h-3" /> Prime décrochée !
-                  </span>
-                )}
-              </div>
-
-              {/* Barre de progression */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-medium">
-                  <span className={gained ? "text-amber-700 dark:text-amber-400" : "text-foreground"}>
-                    {ventesMonth} vente{ventesMonth > 1 ? "s" : ""} validée{ventesMonth > 1 ? "s" : ""} ce mois
-                  </span>
-                  <span className="text-muted-foreground">{ventesMonth} / {SEUIL}</span>
-                </div>
-                <div className="h-3 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ${gained ? "bg-amber-400" : "bg-primary"}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                {!gained && (
-                  <p className="text-xs text-muted-foreground">
-                    {restantes} vente{restantes > 1 ? "s" : ""} restante{restantes > 1 ? "s" : ""} pour décrocher la prime exceptionnelle 🎯
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+        {isReferent && <PrimeSection prospAcceptees={prospAcceptees} />}
 
         {/* ── Section ADMIN/DG : KPI CA consolidé ────────────────────────────── */}
         {isAdminOrDG && (
-          <div className="space-y-6">
-            {/* KPI Cards CA */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-card border border-border border-l-4 border-l-amber-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                    <Euro className="w-5 h-5 text-amber-600" />
-                  </div>
-                </div>
-                <p className="text-2xl sm:text-3xl font-bold tabular-nums">{caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA global HT consolidé" : <>CA HT consolidé<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{totalVentes} contrat{totalVentes > 1 ? "s" : ""} signé{totalVentes > 1 ? "s" : ""}</p>
-              </div>
-              <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  </div>
-                </div>
-                <AnimatedCounter value={totalVentes} className="text-2xl sm:text-3xl font-bold" />
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Ventes globales totales" : <>Ventes totales<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-              </div>
-              <div className="bg-card border border-border border-l-4 border-l-blue-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <BarChart3 className="w-5 h-5 text-blue-600" />
-                  </div>
-                </div>
-                <p className="text-2xl sm:text-3xl font-bold tabular-nums">{totalVentes > 0 ? Math.round(caTotal / totalVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Chiffre d'affaires moyen global" : <>Chiffre d&apos;affaires moyen<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-              </div>
-            </div>
-
-            {/* KPI Cards secondaires */}
-            {(() => {
-              const inProgress = counts.SOUMISE + counts.VALIDEE + counts.AFFECTEE + counts.RETRACTATION;
-              // Dénominateur commun hors archivées → les 3 taux somment à 100%
-              const baseActive = counts.ACCEPTEE + counts.REFUSEE + inProgress;
-              const acceptanceRate = baseActive > 0 ? Math.round((counts.ACCEPTEE / baseActive) * 100) : 0;
-              const refusalRate    = baseActive > 0 ? Math.round((counts.REFUSEE   / baseActive) * 100) : 0;
-              const inProgressRate = baseActive > 0 ? Math.round((inProgress        / baseActive) * 100) : 0;
-              return (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                      </div>
-                    </div>
-                    <p className="text-2xl sm:text-3xl font-bold tabular-nums">{acceptanceRate}%</p>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global d'acceptation" : <>Taux d&apos;acceptation<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{counts.ACCEPTEE} acceptée{counts.ACCEPTEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>
-                  </div>
-                  <div className="bg-card border border-border border-l-4 border-l-red-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                        <XCircle className="w-5 h-5 text-red-500" />
-                      </div>
-                    </div>
-                    <p className="text-2xl sm:text-3xl font-bold tabular-nums">{refusalRate}%</p>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global de refus" : <>Taux de refus<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{counts.REFUSEE} refusée{counts.REFUSEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>
-                  </div>
-                  <div className="bg-card border border-border border-l-4 border-l-orange-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-orange-600" />
-                      </div>
-                    </div>
-                    <p className="text-2xl sm:text-3xl font-bold tabular-nums">{inProgressRate}%</p>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global en cours" : <>Taux en cours<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{inProgress} fiche{inProgress > 1 ? "s" : ""} · à valider, affectées, attente client</p>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Tableaux référents + commerciaux */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Classement référents — ventes uniquement */}
-              <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                      <Trophy className="w-4 h-4 text-amber-600" />
-                    </div>
-                    <h3 className="font-semibold text-sm">Objectif mensuel de prime (3 ventes) · {referentsStats.length} Référent{referentsStats.length > 1 ? "s" : ""}</h3>
-                  </div>
-                </div>
-                {referentsStats.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
-                ) : (
-                  <div className="space-y-1">
-                    <div className="grid grid-cols-[1fr_60px_70px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
-                      <span>Référent</span>
-                      <span className="text-right">Ventes</span>
-                      <span className="text-right">En +</span>
-                    </div>
-                    <CollapsibleList items={referentsStats} renderItem={(p: typeof referentsStats[0], idx: number) => {
-                      const bonus = Math.max(0, p.ventes - 3);
-                      return (
-                        <div key={p.id} className="grid grid-cols-[1fr_60px_70px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-4 text-center text-xs font-bold text-muted-foreground shrink-0">{idx+1}</span>
-                            <span className="text-sm font-medium truncate">{p.nom}</span>
-                            {p.ventes >= 3 && <Star className="w-3 h-3 text-amber-500 shrink-0" />}
-                          </div>
-                          <span className="text-sm font-bold text-right tabular-nums">{p.ventes}</span>
-                          <span className={`text-xs text-right tabular-nums ${bonus > 0 ? "text-emerald-600 font-bold" : "text-muted-foreground"}`}>{bonus > 0 ? `+${bonus}` : "—"}</span>
-                        </div>
-                      );
-                    }} />
-                    {referentsStats.length > 0 && (
-                      <div className="grid grid-cols-[1fr_60px_70px] gap-2 pt-3 border-t border-border">
-                        <span className="text-sm font-bold">Total</span>
-                        <span className="text-sm font-bold text-right tabular-nums">{referentsStats.reduce((s, r) => s + r.ventes, 0)}</span>
-                        <span className="text-sm font-bold text-right tabular-nums text-emerald-600">+{referentsStats.reduce((s, r) => s + Math.max(0, r.ventes - 3), 0)}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Classement commerciaux avec CA */}
-              <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-                      <TrendingUp className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <h3 className="font-semibold text-sm">CA par commercial ({commerciauxStats.length} {commerciauxStats.length > 1 ? "Commerciaux" : "Commercial"})</h3>
-                  </div>
-                </div>
-                {commerciauxStats.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
-                ) : (
-                  <div className="space-y-1">
-                    <div className="grid grid-cols-[1fr_60px_80px_60px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
-                      <span>Commercial</span>
-                      <span className="text-right">Ventes</span>
-                      <span className="text-right">CA HT</span>
-                      <span className="text-right">CA moy.</span>
-                    </div>
-                    <CollapsibleList items={commerciauxStats} renderItem={(c: typeof commerciauxStats[0], idx: number) => {
-                      const rate = c.ventes > 0 ? Math.round((c.ventes / (commerciauxStats[0]?.ventes ?? 1)) * 100) : 0;
-                      return (
-                        <div key={c.id} className="space-y-1">
-                          <div className="grid grid-cols-[1fr_60px_80px_60px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="w-4 text-center text-xs font-bold text-muted-foreground shrink-0">{idx+1}</span>
-                              <span className="text-sm font-medium truncate">{c.nom}</span>
-                            </div>
-                            <span className="text-sm font-bold text-right tabular-nums">{c.ventes}</span>
-                            <span className={`text-sm font-bold text-right tabular-nums ${c.ca > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
-                              {c.ca > 0 ? c.ca.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}
-                            </span>
-                            <span className="text-xs text-right tabular-nums text-muted-foreground">{c.ventes > 0 && c.ca > 0 ? Math.round(c.ca / c.ventes).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€/v" : "—"}</span>
-                          </div>
-                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mx-1">
-                            <div className="h-full rounded-full bg-emerald-500 transition-all duration-700"
-                              style={{ width: `${rate}%` }} />
-                          </div>
-                        </div>
-                      );
-                    }} />
-                    {commerciauxStats.length > 0 && (
-                      <div className="grid grid-cols-[1fr_60px_80px_60px] gap-2 pt-3 border-t border-border">
-                        <span className="text-sm font-bold">Total</span>
-                        <span className="text-sm font-bold text-right tabular-nums">{commerciauxStats.reduce((s, c) => s + c.ventes, 0)}</span>
-                        <span className="text-sm font-bold text-right tabular-nums text-amber-600">
-                          {commerciauxStats.reduce((s, c) => s + c.ca, 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
-                        </span>
-                        <span />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <AdminKpiSection
+            caTotal={caTotal}
+            totalVentes={totalVentes}
+            counts={counts}
+            referentsStats={referentsStats}
+            commerciauxStats={commerciauxStats}
+            isAllPeriod={isAllPeriod}
+            dashPeriod={dashPeriod}
+          />
         )}
 
         {/* ── Section ADMIN/DG : fiches en attente (priorité haute) ──────────── */}

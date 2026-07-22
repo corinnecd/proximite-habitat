@@ -3,8 +3,6 @@
 import { useEffect, useState, use, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
@@ -17,6 +15,10 @@ import { Topbar } from "@/components/layout/Topbar";
 import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { RdvEditDialog } from "@/components/fiches/RdvEditDialog";
+import type { HistoryEntry, PhotoEntry, ProfileEntry } from "@/components/fiches/FicheDetailHelpers";
+import { FicheMainContent } from "@/components/fiches/FicheMainContent";
+import { FicheSidebar } from "@/components/fiches/FicheSidebar";
+import { FicheStatusChangeDialog } from "@/components/fiches/FicheStatusChangeDialog";
 import { createClient } from "@/lib/supabase/client";
 import {
   getFicheById, getFicheHistory, getFichePhotos,
@@ -33,29 +35,14 @@ import type { FicheStatus, Fiche, MotifRefus } from "@/types/database";
 import Image from "next/image";
 import { toast } from "sonner";
 import {
-  User, Home, Flame, Wind, Shield, Camera, FileText,
+  User,
   Clock, ArrowLeft, UserCheck, Loader2, Pencil, Trash2,
-  Phone, MapPin, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, Copy, ChevronDown, ChevronUp, PenTool,
+  MapPin, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, Copy, ChevronDown, ChevronUp,
   Send, Archive, UserX,
 } from "lucide-react";
 import { DownloadFicheButton } from "@/components/pdf/DownloadFicheButton";
-import { VilleMapDynamic } from "@/components/ui/VilleMapDynamic";
 import confetti from "canvas-confetti";
 import type { ZoneVille } from "@/types/database";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface HistoryEntry {
-  id: string;
-  action: string;
-  old_status: FicheStatus | null;
-  new_status: FicheStatus | null;
-  comment: string | null;
-  created_at: string;
-  profiles: { first_name: string; last_name: string } | null;
-}
-interface PhotoEntry { id: string; storage_path: string; original_name: string | null; signedUrl: string; }
-interface ProfileEntry { id: string; first_name: string; last_name: string; role: string; }
 
 // ── Status accent colors (same palette as fiches list) ────────────────────────
 
@@ -70,62 +57,6 @@ const STATUS_HERO: Record<FicheStatus, { border: string; iconBg: string; icon: s
   REFUSEE:      { border: "border-l-red-500",     iconBg: "bg-red-100 dark:bg-red-950/50",        icon: "text-red-600 dark:text-red-400",        Icon: Ban },
   ARCHIVEE:     { border: "border-l-slate-300",   iconBg: "bg-slate-100 dark:bg-slate-800",       icon: "text-slate-500",                        Icon: Archive },
 };
-
-// ── Small helpers ─────────────────────────────────────────────────────────────
-
-function PhotoThumb({ url, name }: { url: string; name: string }) {
-  const [broken, setBroken] = useState(false);
-  if (broken) {
-    return (
-      <div className="relative h-32 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
-        <span className="text-xs text-muted-foreground text-center px-2">Image indisponible</span>
-      </div>
-    );
-  }
-  return (
-    <div className="relative h-32 rounded-xl overflow-hidden bg-muted group cursor-zoom-in">
-      <Image
-        src={url}
-        alt={name}
-        fill
-        sizes="(max-width: 640px) 50vw, 33vw"
-        className="object-cover transition-transform duration-300 group-hover:scale-105"
-        onError={() => setBroken(true)}
-      />
-    </div>
-  );
-}
-
-function SectionCard({
-  icon, iconBg, iconColor, title, children,
-}: {
-  icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4 hover:shadow-md transition-all duration-200">
-      <div className="flex items-center gap-3">
-        <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
-          <span className={iconColor}>{icon}</span>
-        </div>
-        <h3 className="font-semibold text-sm">{title}</h3>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function DataRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">{label}</p>
-      <div className="text-sm font-medium text-foreground">{value || <span className="text-muted-foreground/60">—</span>}</div>
-    </div>
-  );
-}
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -1282,552 +1213,29 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         {/* ── Two-column layout ──────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* Main content */}
-          <div className="lg:col-span-2 space-y-4">
+          <FicheMainContent
+            fiche={fiche}
+            villeData={villeData}
+            editingRdvDate={editingRdvDate}
+            setEditingRdvDate={setEditingRdvDate}
+            rdvDateValue={rdvDateValue}
+            setRdvDateValue={setRdvDateValue}
+            profile={profile}
+            supabase={supabase}
+            setFiche={setFiche}
+            photos={photos}
+            signatureUrl={signatureUrl}
+            referentSignatureUrl={referentSignatureUrl}
+            commercials={commercials}
+          />
 
-            {/* ── PDF PAIR 1 : Coordonnées + Habitation ─── */}
-            <div data-pdf-pair className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-            {/* Coordonnées */}
-            <SectionCard
-              icon={<User className="w-4 h-4" />}
-              iconBg="bg-blue-50 dark:bg-blue-950/30"
-              iconColor="text-blue-600"
-              title="Coordonnées du prospect"
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <DataRow label="Nom" value={fiche.prospect_nom} />
-                <DataRow label="Prénom" value={fiche.prospect_prenom} />
-                <div className="col-span-2">
-                  <DataRow
-                    label="Adresse"
-                    value={
-                      <span className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        {[fiche.prospect_adresse, [fiche.prospect_cp, fiche.prospect_ville].filter(Boolean).join(" ")].filter(Boolean).join(", ") || "—"}
-                      </span>
-                    }
-                  />
-                </div>
-                {villeData && (
-                  <div className="col-span-2" data-no-print>
-                    <VilleMapDynamic lat={villeData.lat} lng={villeData.lng} villeNom={villeData.nom} />
-                  </div>
-                )}
-                <DataRow
-                  label="Téléphone"
-                  value={
-                    <span className="flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                      {fiche.prospect_telephone}
-                    </span>
-                  }
-                />
-                <div>
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Disponibilités</p>
-                  <div className="flex gap-1 flex-wrap">
-                    {(fiche.disponibilites || []).length > 0
-                      ? (fiche.disponibilites || []).map((j) => (
-                          <Badge key={j} variant="secondary" className="text-xs rounded-lg">{j}</Badge>
-                        ))
-                      : <span className="text-sm text-muted-foreground/60">—</span>
-                    }
-                  </div>
-                </div>
-                <div className="col-span-2">
-                  <DataRow
-                    label="Visite souhaitée"
-                    value={
-                      fiche.date_visite ? (
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          {new Date(fiche.date_visite).toLocaleDateString("fr-FR", {
-                            weekday: "long", day: "numeric", month: "long", year: "numeric",
-                          })}
-                          {fiche.heure_visite && ` à ${fiche.heure_visite}`}
-                        </span>
-                      ) : null
-                    }
-                  />
-                </div>
-                <div className="col-span-2">
-                  <DataRow
-                    label="Date de rendez-vous"
-                    value={
-                      editingRdvDate ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="date"
-                            value={rdvDateValue}
-                            onChange={(e) => setRdvDateValue(e.target.value)}
-                            onKeyDown={(e) => e.preventDefault()}
-                            className="h-9 rounded-lg border border-border bg-card px-3 text-sm"
-                          />
-                          <Button size="sm" className="rounded-lg h-8 text-xs" onClick={async () => {
-                            if (!fiche || !profile) return;
-                            const oldDate = fiche.rdv_date;
-                            await supabase.from("fiches").update({ rdv_date: rdvDateValue || null }).eq("id", fiche.id);
-                            await supabase.from("fiche_history").insert({
-                              fiche_id: fiche.id,
-                              organization_id: profile.organization_id,
-                              user_id: profile.id,
-                              action: "MODIFICATION_RDV",
-                              comment: `Date de RDV modifiée : ${oldDate || "non définie"} → ${rdvDateValue || "non définie"}`,
-                            });
-                            setFiche({ ...fiche, rdv_date: rdvDateValue || null });
-                            setEditingRdvDate(false);
-                            toast.success("Date de rendez-vous mise à jour");
-                          }}>
-                            Enregistrer
-                          </Button>
-                          <Button size="sm" variant="ghost" className="rounded-lg h-8 text-xs" onClick={() => setEditingRdvDate(false)}>
-                            Annuler
-                          </Button>
-                        </div>
-                      ) : (
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          {fiche.rdv_date
-                            ? new Date(fiche.rdv_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
-                            : "Non définie"}
-                          {profile && canEditRdvDate(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status) && (
-                            <button
-                              type="button"
-                              onClick={() => { setRdvDateValue(fiche.rdv_date || ""); setEditingRdvDate(true); }}
-                              className="ml-2 text-xs text-primary hover:underline"
-                            >
-                              Modifier
-                            </button>
-                          )}
-                        </span>
-                      )
-                    }
-                  />
-                </div>
-              </div>
-            </SectionCard>
-
-            {/* Habitation — ferme la pair 1 */}
-            <SectionCard
-              icon={<Home className="w-4 h-4" />}
-              iconBg="bg-primary/10"
-              iconColor="text-primary"
-              title="Caractéristiques du logement"
-            >
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <DataRow label="Année construction" value={fiche.annee_construction} />
-                <DataRow label="Année emménagement" value={fiche.annee_emmenagement} />
-                <DataRow label="Surface chauffée" value={fiche.surface_chauffee ? `${fiche.surface_chauffee} m²` : null} />
-                <DataRow label="Nb habitants" value={fiche.nb_habitants} />
-                <DataRow label="T° confort" value={fiche.temperature_confort ? `${fiche.temperature_confort} °C` : null} />
-                <DataRow
-                  label="Maison en vente"
-                  value={
-                    fiche.maison_en_vente === true ? (
-                      <span className="text-orange-600 font-semibold">Oui</span>
-                    ) : fiche.maison_en_vente === false ? "Non" : null
-                  }
-                />
-              </div>
-            </SectionCard>
-            </div>{/* fin pdf-pair 1 */}
-
-            {/* ── PDF PAIR 2 : Chauffage + Ventilation ─── */}
-            <div data-pdf-pair className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SectionCard
-              icon={<Flame className="w-4 h-4" />}
-              iconBg="bg-orange-50 dark:bg-orange-950/30"
-              iconColor="text-orange-500"
-              title="Chauffage"
-            >
-              <div className="space-y-3">
-                {(fiche.modes_chauffage || []).length > 0 || (fiche.systemes_chauffage || []).length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {(fiche.modes_chauffage || []).map((m) => (
-                      <Badge key={m} variant="secondary" className="rounded-lg">{m}</Badge>
-                    ))}
-                    {(fiche.systemes_chauffage || []).map((s) => (
-                      <Badge key={s} variant="outline" className="rounded-lg">{s}</Badge>
-                    ))}
-                  </div>
-                ) : <p className="text-sm text-muted-foreground/60">Non renseigné</p>}
-                <div className="grid grid-cols-2 gap-4 pt-1">
-                  <DataRow label="Consommation" value={fiche.consommation} />
-                  <DataRow label="Coût annuel" value={fiche.cout_annuel ? `${fiche.cout_annuel} €` : null} />
-                </div>
-              </div>
-            </SectionCard>
-
-            <SectionCard
-              icon={<Wind className="w-4 h-4" />}
-              iconBg="bg-cyan-50 dark:bg-cyan-950/30"
-              iconColor="text-cyan-600"
-              title="Ventilation"
-            >
-              <div className="space-y-2">
-                {(fiche.systemes_ventilation || []).length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {(fiche.systemes_ventilation || []).map((v) => (
-                      <Badge key={v} variant="secondary" className="rounded-lg">{v}</Badge>
-                    ))}
-                  </div>
-                ) : <p className="text-sm text-muted-foreground/60">Non renseigné</p>}
-                <DataRow label="Âge" value={fiche.age_ventilation} />
-              </div>
-            </SectionCard>
-            </div>{/* fin pdf-pair 2 */}
-
-            {/* ── PDF PAIR 3 : Isolation + Consentement RGPD ─── */}
-            <div data-pdf-pair className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <SectionCard
-              icon={<Shield className="w-4 h-4" />}
-              iconBg="bg-emerald-50 dark:bg-emerald-950/30"
-              iconColor="text-emerald-600"
-              title="Isolation & Toiture"
-            >
-              <div className="space-y-2">
-                {(fiche.nature_isolant || []).length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {(fiche.nature_isolant || []).map((n) => (
-                      <Badge key={n} variant="secondary" className="rounded-lg">{n}</Badge>
-                    ))}
-                  </div>
-                ) : <p className="text-sm text-muted-foreground/60">Non renseigné</p>}
-                <DataRow label="Épaisseur" value={fiche.epaisseur_isolant} />
-                {(fiche.materiaux_toiture || []).length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {(fiche.materiaux_toiture || []).map((m) => (
-                      <Badge key={m} variant="outline" className="rounded-lg text-xs">{m}</Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </SectionCard>
-
-            {/* Consentement RGPD */}
-            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4 hover:shadow-md transition-all duration-200">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                </div>
-                <h3 className="font-semibold text-sm">Consentement RGPD</h3>
-              </div>
-              <div className="space-y-3">
-                <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 ${
-                  fiche.consentement_rgpd
-                    ? "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800"
-                    : "bg-muted border border-border"
-                }`}>
-                  <CheckCircle2 className={`w-4 h-4 shrink-0 ${fiche.consentement_rgpd ? "text-emerald-600" : "text-muted-foreground"}`} />
-                  <span className={`text-xs font-medium ${fiche.consentement_rgpd ? "text-emerald-800 dark:text-emerald-300" : "text-muted-foreground"}`}>
-                    {fiche.consentement_rgpd ? "Consentement obtenu" : "Non renseigné"}
-                  </span>
-                </div>
-                <DataRow label="Créée le" value={new Date(fiche.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })} />
-                <DataRow label="Modifiée le" value={new Date(fiche.updated_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })} />
-                {fiche.assigned_to && (() => {
-                  const c = commercials.find((x) => x.id === fiche.assigned_to);
-                  return c ? <DataRow label="Commercial" value={`${c.first_name} ${c.last_name}`} /> : null;
-                })()}
-              </div>
-            </div>
-            </div>{/* fin pdf-pair 3 */}
-
-            {/* En-tête page 2 — masqué via style inline (pas Tailwind) pour que le CSS print puisse l'overrider */}
-            <div data-pdf-page2-header style={{ display: "none" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "6px", borderBottom: "2px solid #F97316", marginBottom: "10px" }}>
-                <div>
-                  <span style={{ display: "block", fontWeight: 700, fontSize: "14px", color: "#0F172A" }}>Proximité Habitat Conseil</span>
-                  <span style={{ display: "block", fontSize: "11px", color: "#64748B" }}>Fiche de pré-visite énergétique — suite</span>
-                </div>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "#F97316" }}>{fiche.reference}</span>
-              </div>
-            </div>
-
-            {/* Photos */}
-            {photos.length > 0 && (
-              <div data-pdf-photos>
-              <SectionCard
-                icon={<Camera className="w-4 h-4" />}
-                iconBg="bg-slate-100 dark:bg-slate-800"
-                iconColor="text-slate-600"
-                title={`Photos (${photos.length})`}
-              >
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {photos.map((photo) => (
-                    <PhotoThumb key={photo.id} url={photo.signedUrl} name={photo.original_name ?? ""} />
-                  ))}
-                </div>
-              </SectionCard>
-              </div>
-            )}
-
-            {/* Signatures */}
-            {(signatureUrl || referentSignatureUrl) && (
-              <SectionCard
-                icon={<PenTool className="w-4 h-4" />}
-                iconBg="bg-emerald-50 dark:bg-emerald-950/30"
-                iconColor="text-emerald-600"
-                title="Signatures"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {signatureUrl && (
-                    <div className="space-y-1.5">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Signature du prospect</p>
-                      <div className="rounded-xl border border-border bg-white p-3">
-                        <Image src={signatureUrl} alt="Signature prospect" width={300} height={90} className="max-h-20 w-auto object-contain" unoptimized />
-                      </div>
-                    </div>
-                  )}
-                  {referentSignatureUrl && (
-                    <div className="space-y-1.5">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Signature du référent</p>
-                      <div className="rounded-xl border border-border bg-white p-3">
-                        <Image src={referentSignatureUrl} alt="Signature référent" width={300} height={90} className="max-h-20 w-auto object-contain" unoptimized />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </SectionCard>
-            )}
-
-            {/* Observations */}
-            {fiche.observations && (
-              <SectionCard
-                icon={<FileText className="w-4 h-4" />}
-                iconBg="bg-slate-100 dark:bg-slate-800"
-                iconColor="text-slate-600"
-                title="Observations"
-              >
-                <p className="text-sm text-foreground/80 whitespace-pre-wrap leading-relaxed">
-                  {fiche.observations}
-                </p>
-              </SectionCard>
-            )}
-          </div>
-
-          {/* ── Sidebar ──────────────────────────────────────────────────── */}
-          <div className="space-y-4">
-
-            {/* Historique */}
-            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6">
-              <button
-                type="button"
-                onClick={() => setShowHistory(!showHistory)}
-                className="flex items-center gap-3 w-full text-left"
-              >
-                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <Clock className="w-4 h-4 text-primary" />
-                </div>
-                <h3 className="font-semibold text-sm">Historique</h3>
-                {history.length > 0 && (
-                  <span className="ml-auto text-xs text-muted-foreground mr-2">{history.length} action{history.length > 1 ? "s" : ""}</span>
-                )}
-                {showHistory ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
-              </button>
-              {showHistory && (history.length === 0 ? (
-                <div className="flex flex-col items-center py-6 gap-2 text-muted-foreground">
-                  <Clock className="w-8 h-8 opacity-20" />
-                  <p className="text-sm">Aucun historique</p>
-                </div>
-              ) : (
-                <div className="space-y-0 mt-5">
-                  {history.map((entry, idx) => {
-                    // Couleur du point selon le nouveau statut
-                    const dotColors: Record<string, string> = {
-                      SOUMISE:      "border-blue-500 bg-blue-50 dark:bg-blue-950/40",
-                      AFFECTEE:     "border-orange-500 bg-orange-50 dark:bg-orange-950/40",
-                      ACCEPTEE:     "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40",
-                      RETRACTATION: "border-purple-500 bg-purple-50 dark:bg-purple-950/40",
-                      REFUSEE:      "border-red-500 bg-red-50 dark:bg-red-950/40",
-                      ARCHIVEE:     "border-slate-400 bg-slate-50 dark:bg-slate-800/40",
-                      BROUILLON:    "border-slate-400 bg-slate-50 dark:bg-slate-800/40",
-                    };
-                    const innerColors: Record<string, string> = {
-                      SOUMISE:      "bg-blue-500",
-                      AFFECTEE:     "bg-orange-500",
-                      ACCEPTEE:     "bg-emerald-500",
-                      RETRACTATION: "bg-purple-500",
-                      REFUSEE:      "bg-red-500",
-                      ARCHIVEE:     "bg-slate-400",
-                      BROUILLON:    "bg-slate-400",
-                    };
-                    const dotClass = entry.new_status
-                      ? (dotColors[entry.new_status] ?? "border-primary/40 bg-primary/10")
-                      : (idx === 0 ? "border-[#F97316] bg-[#F97316]/10" : "border-primary/40 bg-primary/10");
-                    const innerClass = entry.new_status
-                      ? (innerColors[entry.new_status] ?? "bg-primary")
-                      : (idx === 0 ? "bg-[#F97316]" : "bg-primary");
-                    const statusLabels: Record<string, string> = {
-                      BROUILLON: "Brouillon", SOUMISE: "À valider", VALIDEE: "Validée", AFFECTEE: "Validée et affectée",
-                      RETRACTATION: "Attente Acceptation Client", ACCEPTEE: "Acceptation Client", REFUSEE: "Refus Client", ARCHIVEE: "Archivé",
-                    };
-                    return (
-                      <div
-                        key={entry.id}
-                        className="relative pl-6"
-                        style={undefined}
-                      >
-                        {idx < history.length - 1 && (
-                          <div className="absolute left-[7px] top-5 bottom-0 w-px bg-border" />
-                        )}
-                        <div className={`absolute left-0 top-1.5 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${dotClass}`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${innerClass}`} />
-                        </div>
-                        <div className="pb-5">
-                          {/* Transition statut ou action */}
-                          {entry.old_status && entry.new_status ? (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-                                {statusLabels[entry.old_status] ?? entry.old_status}
-                              </span>
-                              <span className="text-xs text-muted-foreground">→</span>
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                                entry.new_status === "ACCEPTEE"     ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
-                                entry.new_status === "RETRACTATION" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" :
-                                entry.new_status === "REFUSEE"      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
-                                entry.new_status === "AFFECTEE"     ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" :
-                                entry.new_status === "SOUMISE"      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
-                                entry.new_status === "ARCHIVEE"     ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400" :
-                                "bg-muted text-muted-foreground"
-                              }`}>
-                                {statusLabels[entry.new_status] ?? entry.new_status}
-                              </span>
-                            </div>
-                          ) : (
-                            <p className="text-sm font-semibold leading-snug">{entry.action}</p>
-                          )}
-                          {entry.comment && (
-                            <p className="text-xs text-muted-foreground mt-1.5 italic bg-muted/50 px-2.5 py-1.5 rounded-lg border-l-2 border-border">
-                              &quot;{entry.comment}&quot;
-                            </p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                            <span className="font-medium text-foreground/70">
-                              {entry.profiles
-                                ? `${entry.profiles.first_name} ${entry.profiles.last_name}`
-                                : "Système"}
-                            </span>
-                            <span>·</span>
-                            <span>
-                              {new Date(entry.created_at).toLocaleDateString("fr-FR", {
-                                day: "2-digit", month: "short",
-                              })}
-                              {" "}
-                              {new Date(entry.created_at).toLocaleTimeString("fr-FR", {
-                                hour: "2-digit", minute: "2-digit",
-                              })}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-
-            {/* Motif du refus */}
-            {fiche.status === "REFUSEE" && (() => {
-              const refusEntry = history.find((e) => e.new_status === "REFUSEE");
-              return (
-                <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-2xl p-5 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
-                      <Ban className="w-4 h-4 text-red-600 dark:text-red-400" />
-                    </div>
-                    <h3 className="font-semibold text-sm text-red-800 dark:text-red-300">Motif du refus</h3>
-                  </div>
-                  {refusEntry?.comment ? (
-                    <p className="text-sm text-red-700 dark:text-red-300 leading-relaxed italic bg-red-100/60 dark:bg-red-900/20 rounded-xl px-4 py-3">
-                      &quot;{refusEntry.comment}&quot;
-                    </p>
-                  ) : (
-                    <p className="text-sm text-red-500/70 italic">Aucun motif renseigné.</p>
-                  )}
-                  {refusEntry && (
-                    <p className="text-xs text-red-500/70 dark:text-red-400/60">
-                      Refusée par{" "}
-                      <span className="font-medium text-red-700 dark:text-red-300">
-                        {refusEntry.profiles
-                          ? `${refusEntry.profiles.first_name} ${refusEntry.profiles.last_name}`
-                          : "Système"}
-                      </span>
-                      {" · "}
-                      {new Date(refusEntry.created_at).toLocaleDateString("fr-FR", {
-                        day: "2-digit", month: "long", year: "numeric",
-                        hour: "2-digit", minute: "2-digit",
-                      })}
-                    </p>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Infos */}
-            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-5 space-y-3 text-sm hover:shadow-md transition-all duration-200">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center shrink-0">
-                  <Calendar className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Créée le</p>
-                  <p className="font-medium text-sm leading-tight">
-                    {new Date(fiche.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
-                  </p>
-                </div>
-              </div>
-              <Separator />
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Modifiée le</p>
-                  <p className="font-medium text-sm leading-tight">
-                    {new Date(fiche.updated_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                </div>
-              </div>
-              {fiche.assigned_to && (
-                <>
-                  <Separator />
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-950/40 flex items-center justify-center shrink-0">
-                      <UserCheck className="w-3.5 h-3.5 text-orange-500" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Commercial</p>
-                      <p className="font-medium text-sm leading-tight">
-                        {commercials.find((c) => c.id === fiche.assigned_to)
-                          ? `${commercials.find((c) => c.id === fiche.assigned_to)!.first_name} ${commercials.find((c) => c.id === fiche.assigned_to)!.last_name}`
-                          : "—"}
-                      </p>
-                    </div>
-                  </div>
-                </>
-              )}
-              {fiche.consentement_rgpd && (
-                <>
-                  <Separator />
-                  <div className="flex items-center gap-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="text-xs font-medium text-emerald-800 dark:text-emerald-300">Consentement RGPD obtenu</span>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* RGPD note */}
-            {fiche.status === "ACCEPTEE" && (
-              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 flex items-start gap-3">
-                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed">
-                  Fiche acceptée. Les données du prospect sont conservées conformément à la politique RGPD.
-                </p>
-              </div>
-            )}
-          </div>
+          <FicheSidebar
+            fiche={fiche}
+            history={history}
+            showHistory={showHistory}
+            setShowHistory={setShowHistory}
+            commercials={commercials}
+          />
         </div>
 
         {/* ── Barre de validation bas de page — direction uniquement ───────── */}
@@ -1899,197 +1307,21 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       </Dialog>
 
       {/* ── Dialog : motif obligatoire pour tout changement de statut ───── */}
-      <Dialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); setNewRdvDate(""); } }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className={`flex items-center gap-2 ${
-              pendingStatus === "REFUSEE" || pendingStatus === "BROUILLON"
-                ? "text-red-600 dark:text-red-400"
-                : pendingStatus === "RETRACTATION"
-                  ? "text-purple-600 dark:text-purple-400"
-                  : pendingStatus === "ACCEPTEE"
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : pendingStatus === "ARCHIVEE"
-                      ? "text-slate-600 dark:text-slate-400"
-                      : pendingStatus === "RDV_A_REPRENDRE" || (pendingStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE")
-                        ? "text-amber-600 dark:text-amber-400"
-                        : "text-foreground"
-            }`}>
-              {pendingStatus === "REFUSEE"
-                ? <><Ban className="w-5 h-5" />Refus Client</>
-                : pendingStatus === "BROUILLON"
-                  ? <><Ban className="w-5 h-5" />Renvoyer en brouillon</>
-                  : pendingStatus === "RETRACTATION"
-                    ? <><Clock className="w-5 h-5" />Attente Acceptation Client</>
-                    : pendingStatus === "ACCEPTEE"
-                      ? <><CheckCircle2 className="w-5 h-5" />Acceptation Client</>
-                      : pendingStatus === "ARCHIVEE"
-                        ? <><ShieldCheck className="w-5 h-5" />Archiver la fiche</>
-                        : pendingStatus === "RDV_A_REPRENDRE"
-                          ? <><UserX className="w-5 h-5" />Client absent — RDV à reprendre</>
-                          : pendingStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE"
-                            ? <><Calendar className="w-5 h-5" />Confirmer le nouveau RDV</>
-                            : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
-              }
-            </DialogTitle>
-            <DialogDescription>
-              {pendingStatus === "AFFECTEE" && fiche?.status === "RDV_A_REPRENDRE"
-                ? "Indiquez la nouvelle date de rendez-vous et ajoutez un commentaire pour le commercial."
-                : "Le motif est obligatoire et sera conservé dans l'historique de la fiche."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-2 space-y-3">
-            {pendingStatus === "AFFECTEE" && fiche?.status === "RDV_A_REPRENDRE" && (
-              <div className="space-y-1.5">
-                <label htmlFor="new-rdv-date" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Nouvelle date de rendez-vous <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="new-rdv-date"
-                  type="date"
-                  value={newRdvDate}
-                  onChange={(e) => setNewRdvDate(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                  className={`w-full h-10 rounded-lg border bg-card px-3 text-sm transition-colors ${
-                    !newRdvDate ? "border-red-300 dark:border-red-700" : "border-amber-300 dark:border-amber-700"
-                  }`}
-                />
-                {!newRdvDate && (
-                  <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />La nouvelle date de rendez-vous est obligatoire.
-                  </p>
-                )}
-              </div>
-            )}
-            {pendingStatus === "REFUSEE" && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Type de refus <span className="text-red-500">*</span>
-                </label>
-                <Select value={selectedMotifRefus} onValueChange={(v) => setSelectedMotifRefus(v as MotifRefus)}>
-                  <SelectTrigger className="rounded-xl bg-card">
-                    <SelectValue placeholder="Sélectionner le type de refus…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(MOTIF_REFUS_LABELS) as MotifRefus[]).map((m) => (
-                      <SelectItem key={m} value={m}>{MOTIF_REFUS_LABELS[m]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {!selectedMotifRefus && (
-                  <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />Veuillez sélectionner le type de refus.
-                  </p>
-                )}
-              </div>
-            )}
-            {pendingStatus === "ACCEPTEE" && (
-              <div className="space-y-1.5">
-                <label htmlFor="montant-ht" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Montant HT du contrat (€) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  id="montant-ht"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="Ex : 12500.00"
-                  value={montantHtInput}
-                  onChange={(e) => setMontantHtInput(e.target.value)}
-                  className={`w-full h-10 rounded-lg border bg-card px-3 text-sm transition-colors ${
-                    !montantHtInput || parseFloat(montantHtInput) <= 0
-                      ? "border-red-300 dark:border-red-700 focus-visible:ring-red-400/30"
-                      : "border-emerald-300 dark:border-emerald-700"
-                  }`}
-                />
-                {(!montantHtInput || parseFloat(montantHtInput) <= 0) && (
-                  <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />Le montant HT est obligatoire pour une acceptation.
-                  </p>
-                )}
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <label htmlFor="textarea-motif" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Motif <span className="text-red-500">*</span>
-              </label>
-              <Textarea
-                id="textarea-motif"
-                placeholder="Indiquez la raison de ce changement de statut…"
-                value={statusComment}
-                onChange={(e) => setStatusComment(e.target.value)}
-                rows={4}
-                className={`bg-card resize-none transition-colors ${
-                  statusComment.trim().length === 0
-                    ? "border-red-300 dark:border-red-700 focus-visible:ring-red-400/30"
-                    : "border-emerald-300 dark:border-emerald-700"
-                }`}
-              />
-              {statusComment.trim().length === 0 && (
-                <p className="text-xs text-red-500 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" />Veuillez saisir un motif avant de confirmer.
-                </p>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); setMontantHtInput(""); setNewRdvDate(""); }}>Annuler</Button>
-            <Button
-              onClick={async () => {
-                if (!pendingStatus) return;
-                if (!statusComment.trim()) {
-                  toast.error("Veuillez saisir un motif avant de confirmer.");
-                  return;
-                }
-                if (pendingStatus === "REFUSEE" && !selectedMotifRefus) {
-                  toast.error("Veuillez sélectionner le type de refus.");
-                  return;
-                }
-                if (pendingStatus === "ACCEPTEE" && (!montantHtInput || parseFloat(montantHtInput) <= 0)) {
-                  toast.error("Veuillez saisir le montant HT du contrat.");
-                  return;
-                }
-                if (pendingStatus === "AFFECTEE" && fiche?.status === "RDV_A_REPRENDRE" && !newRdvDate) {
-                  toast.error("Veuillez indiquer la nouvelle date de rendez-vous.");
-                  return;
-                }
-                await handleStatusChange(pendingStatus, statusComment.trim(), selectedMotifRefus as MotifRefus || undefined, newRdvDate || undefined);
-                setPendingStatus(null);
-                setStatusComment("");
-                setSelectedMotifRefus("");
-                setMontantHtInput("");
-                setNewRdvDate("");
-              }}
-              disabled={transitioning || !statusComment.trim() || (pendingStatus === "REFUSEE" && !selectedMotifRefus) || (pendingStatus === "ACCEPTEE" && (!montantHtInput || parseFloat(montantHtInput) <= 0)) || (pendingStatus === "AFFECTEE" && fiche?.status === "RDV_A_REPRENDRE" && !newRdvDate)}
-              className={`rounded-xl gap-2 text-white ${
-                pendingStatus === "REFUSEE"
-                  ? "bg-red-600 hover:bg-red-700"
-                  : pendingStatus === "RETRACTATION"
-                    ? "bg-purple-600 hover:bg-purple-700"
-                    : pendingStatus === "ACCEPTEE"
-                      ? "bg-emerald-600 hover:bg-emerald-700"
-                      : "bg-[#F97316] hover:bg-[#EA580C]"
-              }`}
-            >
-              {transitioning
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : pendingStatus === "REFUSEE"
-                  ? <Ban className="w-4 h-4" />
-                  : pendingStatus === "RETRACTATION" || pendingStatus === "ACCEPTEE"
-                    ? <CheckCircle2 className="w-4 h-4" />
-                    : null
-              }
-              {pendingStatus === "REFUSEE"
-                ? "Confirmer le refus"
-                : pendingStatus === "ACCEPTEE"
-                  ? "Confirmer l'acceptation"
-                  : "Confirmer"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FicheStatusChangeDialog
+        fiche={fiche}
+        pendingStatus={pendingStatus}
+        setPendingStatus={setPendingStatus}
+        statusComment={statusComment}
+        setStatusComment={setStatusComment}
+        selectedMotifRefus={selectedMotifRefus}
+        setSelectedMotifRefus={setSelectedMotifRefus}
+        montantHtInput={montantHtInput}
+        setMontantHtInput={setMontantHtInput}
+        newRdvDate={newRdvDate}
+        setNewRdvDate={setNewRdvDate}
+        transitioning={transitioning}
+        handleStatusChange={handleStatusChange}
+      />
 
       {/* ── Dialog : rejet de validation (direction) ──────────────────────── */}
       <Dialog open={showRejetDialog} onOpenChange={(open) => { if (!open) { setShowRejetDialog(false); setRejetMotif(""); } }}>

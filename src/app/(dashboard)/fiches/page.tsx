@@ -107,7 +107,7 @@ export default function FichesPage() {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [firstFicheDate, setFirstFicheDate] = useState<string | null>(null);
   const [validationStats, setValidationStats] = useState<{ label: string; soumises: number; affectees: number; validees: number }[]>([]);
-  const [loadingValidation, setLoadingValidation] = useState(false);
+  const [loadingValidation, setLoadingValidation] = useState(true);
   const [quarterLabel, setQuarterLabel] = useState("");
 
   // Plage de dates personnalisée (prioritaire sur les préréglages de période)
@@ -322,7 +322,7 @@ export default function FichesPage() {
 
   // Évolution des validations par semaine (trimestre en cours) — mode validation uniquement
   useEffect(() => {
-    if (!isValidationMode || !profile || !isAdminOrDG) return;
+    if (!isValidationMode || !profile || !isAdminOrDG) { setLoadingValidation(false); return; }
     setLoadingValidation(true);
     async function loadValidationStats() {
       const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;

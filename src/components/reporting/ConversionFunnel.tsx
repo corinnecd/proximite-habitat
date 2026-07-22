@@ -39,7 +39,7 @@ export function ConversionFunnel({
           <TrendingUp className="w-4 h-4 text-[#1E3A5F] dark:text-blue-300" />
         </div>
         <div>
-          <h3 className="font-semibold text-sm">Funnel de conversion{periodSuffix}</h3>
+          <h3 className="font-semibold text-sm">Conversion des fiches{periodSuffix}</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">Parcours des fiches de la soumission à la décision finale</p>
         </div>
       </div>

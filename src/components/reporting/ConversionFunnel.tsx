@@ -6,14 +6,14 @@ import type { FicheStatus } from "@/types/database";
 interface StatusCount { status: FicheStatus; count: number; }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; textColor: string }> = {
-  SOUMISE:         { label: "Soumises",        color: "bg-blue-300",     textColor: "text-blue-500" },
-  VALIDEE:         { label: "Validées",        color: "bg-teal-300",     textColor: "text-teal-500" },
-  AFFECTEE:        { label: "Affectées",       color: "bg-orange-300",   textColor: "text-orange-500" },
-  RDV_A_REPRENDRE: { label: "RDV à reprendre", color: "bg-amber-300",   textColor: "text-amber-500" },
-  RETRACTATION:    { label: "Rétractation",    color: "bg-purple-300",   textColor: "text-purple-500" },
-  ACCEPTEE:        { label: "Acceptées",       color: "bg-emerald-300",  textColor: "text-emerald-500" },
-  REFUSEE:         { label: "Refusées",        color: "bg-red-300",      textColor: "text-red-500" },
-  ARCHIVEE:        { label: "Archivées",       color: "bg-slate-300",    textColor: "text-slate-500" },
+  SOUMISE:         { label: "Soumises",        color: "bg-blue-400",     textColor: "text-blue-500" },
+  VALIDEE:         { label: "Validées",        color: "bg-teal-400",     textColor: "text-teal-500" },
+  AFFECTEE:        { label: "Affectées",       color: "bg-orange-400",   textColor: "text-orange-500" },
+  RDV_A_REPRENDRE: { label: "RDV à reprendre", color: "bg-amber-400",   textColor: "text-amber-500" },
+  RETRACTATION:    { label: "Rétractation",    color: "bg-purple-400",   textColor: "text-purple-500" },
+  ACCEPTEE:        { label: "Acceptées",       color: "bg-emerald-400",  textColor: "text-emerald-500" },
+  REFUSEE:         { label: "Refusées",        color: "bg-red-400",      textColor: "text-red-500" },
+  ARCHIVEE:        { label: "Archivées",       color: "bg-slate-400",    textColor: "text-slate-500" },
 };
 
 const DIRECTION_ORDER: FicheStatus[] = [

@@ -380,14 +380,6 @@ export default function ReportingPage() {
     Acceptées: p.accepted,
   }));
 
-  const commChartData = commerciaux.map((c) => ({
-    name: c.name.split(" ")[0],
-    fullName: c.name,
-    Affectées: c.assigned,
-    Acceptées: c.accepted,
-    Refusées: c.refused,
-  }));
-
 
 
 
@@ -692,24 +684,6 @@ export default function ReportingPage() {
                 {showAllCommerciaux ? <><ChevronUp className="w-3.5 h-3.5" />Voir moins</> : <><ChevronDown className="w-3.5 h-3.5" />Voir plus ({commerciaux.length - 5} restant{commerciaux.length - 5 > 1 ? "s" : ""})</>}
               </button>
             )}
-            <div className="mt-5">
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={commChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: "#f1f5f9", radius: 6 }} />
-                  <Bar dataKey="Affectées" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-                  <Bar dataKey="Acceptées" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-                  <Bar dataKey="Refusées" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} animationDuration={700} />
-                </BarChart>
-              </ResponsiveContainer>
-              <div className="flex items-center gap-4 pt-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-500 inline-block" />Affectées</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" />Refusées</span>
-              </div>
-            </div>
           </div>
         )}
 

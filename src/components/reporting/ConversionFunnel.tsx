@@ -16,21 +16,32 @@ export function ConversionFunnel({
   periodSuffix: string;
 }) {
   const rdvReprendre = statusCounts.find((s) => s.status === "RDV_A_REPRENDRE")?.count ?? 0;
+  const affecteesCount = affectees + rdvReprendre + accepted + refused;
+  // Fiches affectées qui n'ont pas encore reçu de décision (ni acceptée, ni refusée) :
+  // ajoutée pour que En attente + Acceptées + Refusées reconstitue bien 100% des Affectées.
+  const enAttente = Math.max(0, affecteesCount - accepted - refused);
   const steps = isCommercial
     ? [
-        { label: "Affectées", count: affectees + rdvReprendre + accepted + refused, color: "bg-orange-500", textColor: "text-orange-600" },
+        { label: "Affectées", count: affecteesCount, color: "bg-orange-500", textColor: "text-orange-600" },
         { label: "RDV effectués", count: accepted + refused, color: "bg-blue-500", textColor: "text-blue-600" },
+        { label: "En attente", count: enAttente, color: "bg-slate-400", textColor: "text-slate-500" },
         { label: "Acceptées", count: accepted, color: "bg-emerald-500", textColor: "text-emerald-600" },
         { label: "Refusées", count: refused, color: "bg-red-500", textColor: "text-red-500" },
       ]
     : [
         { label: "Soumises", count: soumises + validees + affectees + rdvReprendre + accepted + refused, color: "bg-blue-500", textColor: "text-blue-600" },
         { label: "Validées", count: validees + affectees + rdvReprendre + accepted + refused, color: "bg-teal-500", textColor: "text-teal-600" },
-        { label: "Affectées", count: affectees + rdvReprendre + accepted + refused, color: "bg-orange-500", textColor: "text-orange-600" },
+        { label: "Affectées", count: affecteesCount, color: "bg-orange-500", textColor: "text-orange-600" },
+        { label: "En attente", count: enAttente, color: "bg-slate-400", textColor: "text-slate-500" },
         { label: "Acceptées", count: accepted, color: "bg-emerald-500", textColor: "text-emerald-600" },
         { label: "Refusées", count: refused, color: "bg-red-500", textColor: "text-red-500" },
       ];
   const maxCount = steps[0]?.count || 1;
+  // En attente / Acceptées / Refusées sont 3 issues distinctes d'une même base (Affectées)
+  // — pas une suite séquentielle les unes des autres. Leurs % sont donc calculés par rapport
+  // à cette base commune, et se somment (à l'arrondi près) à 100% des fiches affectées.
+  const BRANCH_LABELS = new Set(["En attente", "Acceptées", "Refusées"]);
+  const parentCount = affecteesCount || 1;
 
   return (
     <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
@@ -39,15 +50,25 @@ export function ConversionFunnel({
           <TrendingUp className="w-4 h-4 text-[#1E3A5F] dark:text-blue-300" />
         </div>
         <div>
-          <h3 className="font-semibold text-sm">Conversion des fiches{periodSuffix}</h3>
+          <h3 className="font-semibold text-sm">Taux de conversion des fiches{periodSuffix}</h3>
           <p className="text-[11px] text-muted-foreground mt-0.5">Parcours des fiches de la soumission à la décision finale</p>
         </div>
       </div>
       <div className="space-y-2">
         {steps.map((step, i) => {
           const widthPct = Math.max(4, Math.round((step.count / maxCount) * 100));
-          const prevCount = i > 0 ? steps[i - 1].count : step.count;
-          const dropPct = prevCount > 0 ? Math.round(((prevCount - step.count) / prevCount) * 100) : 0;
+          const isBranch = BRANCH_LABELS.has(step.label);
+          let pct: number;
+          if (i === 0) {
+            pct = 100;
+          } else if (isBranch) {
+            // Part de la base commune (Affectées / RDV effectués), pas de l'étape précédente
+            pct = parentCount > 0 ? Math.round((step.count / parentCount) * 100) : 0;
+          } else {
+            // Taux de rétention séquentiel par rapport à l'étape précédente
+            const prevCount = steps[i - 1].count;
+            pct = prevCount > 0 ? Math.round((step.count / prevCount) * 100) : 0;
+          }
           return (
             <div key={step.label} className="flex items-center gap-3">
               <span className="text-xs font-medium w-20 text-right shrink-0 text-muted-foreground">{step.label}</span>
@@ -62,12 +83,14 @@ export function ConversionFunnel({
                 </div>
               </div>
               <span className="text-[11px] w-14 text-right shrink-0 tabular-nums">
-                {i > 0 && dropPct > 0 ? (
-                  <span className="text-red-500 font-medium">-{dropPct}%</span>
-                ) : i === 0 ? (
-                  <span className="text-muted-foreground">100%</span>
+                {i === 0 ? (
+                  <span className="text-muted-foreground">{pct}%</span>
+                ) : isBranch ? (
+                  <span className={`${step.textColor} font-medium`}>{pct}%</span>
                 ) : (
-                  <span className="text-emerald-600 font-medium">0%</span>
+                  <span className={pct >= 90 ? "text-emerald-600 font-medium" : pct >= 70 ? "text-orange-500 font-medium" : "text-red-500 font-medium"}>
+                    {pct}%
+                  </span>
                 )}
               </span>
             </div>

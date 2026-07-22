@@ -339,7 +339,7 @@ export default function FichesPage() {
       current.setDate(current.getDate() - dayOfWeek);
       let weekNum = 1;
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      while (current <= quarterEnd) {
+      while (current <= quarterEnd && weeks.length < 8) {
         const monday = new Date(current);
         if (monday > today) break;
         const sunday = new Date(current);

@@ -14,9 +14,12 @@ import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel as getReportPeriodLabel } from "@/lib/periods";
 import {
   BarChart3, TrendingUp, Users, FileText, Search, X, ChevronDown, ChevronUp,
-  CheckCircle2, XCircle, Clock, ArrowUp, ArrowDown, Minus, Euro,
-  Trophy, RefreshCw, CalendarDays, MapPin, Target, Save, Pencil,
+  CheckCircle2, XCircle, Clock, Euro,
+  Trophy, RefreshCw, CalendarDays, MapPin,
 } from "lucide-react";
+import { KpiCard, CustomTooltip } from "@/components/reporting/KpiCard";
+import { ConversionFunnel } from "@/components/reporting/ConversionFunnel";
+import { ObjectifsSection } from "@/components/reporting/ObjectifsSection";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -57,54 +60,6 @@ function Bar2({ value, max, colorClass }: { value: number; max: number; colorCla
   );
 }
 
-function KpiCard({
-  label, value, sub, Icon, iconBg, iconColor, border, trend,
-}: {
-  label: string; value: string | number; sub?: string;
-  Icon: React.ElementType; iconBg: string; iconColor: string; border: string;
-  trend?: { delta: number };
-}) {
-  return (
-    <div className={`bg-card/80 backdrop-blur-sm border border-border border-l-4 ${border} rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center`}>
-          <Icon className={`w-5 h-5 ${iconColor}`} />
-        </div>
-        {trend !== undefined && trend.delta !== 0 && (
-          <span className={`flex items-center text-xs font-medium ${trend.delta > 0 ? "text-emerald-600" : "text-red-500"}`}>
-            {trend.delta > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
-            {Math.abs(trend.delta)}
-          </span>
-        )}
-        {trend !== undefined && trend.delta === 0 && (
-          <span className="flex items-center text-xs text-muted-foreground">
-            <Minus className="w-3 h-3" />
-          </span>
-        )}
-      </div>
-      <p className="text-2xl sm:text-3xl font-bold tabular-nums">{value}</p>
-      <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{label}</p>
-      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-    </div>
-  );
-}
-
-// Tooltip personnalisé pour les charts
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-popover border border-border rounded-xl px-3 py-2 shadow-lg text-xs space-y-1">
-      <p className="font-semibold text-foreground capitalize">{label}</p>
-      {payload.map((p) => (
-        <div key={p.name} className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
-          <span className="text-muted-foreground">{p.name}</span>
-          <span className="font-bold ml-auto pl-3">{p.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -630,79 +585,17 @@ export default function ReportingPage() {
 
         {/* ── Funnel de conversion ────────────────────────────────────────── */}
         {!loading && totalFiches > 0 && (
-          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-9 h-9 rounded-xl bg-[#1E3A5F]/10 dark:bg-[#1E3A5F]/30 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-4 h-4 text-[#1E3A5F] dark:text-blue-300" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">Funnel de conversion{periodSuffix}</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Parcours des fiches de la soumission à la décision finale</p>
-              </div>
-            </div>
-            {(() => {
-              const rdvReprendre = statusCounts.find((s) => s.status === "RDV_A_REPRENDRE")?.count ?? 0;
-              const steps = isCommercial
-                ? [
-                    { label: "Affectées", count: affectees + rdvReprendre + accepted + refused, color: "bg-orange-500", textColor: "text-orange-600" },
-                    { label: "RDV effectués", count: accepted + refused, color: "bg-blue-500", textColor: "text-blue-600" },
-                    { label: "Acceptées", count: accepted, color: "bg-emerald-500", textColor: "text-emerald-600" },
-                    { label: "Refusées", count: refused, color: "bg-red-500", textColor: "text-red-500" },
-                  ]
-                : [
-                    { label: "Soumises", count: soumises + validees + affectees + rdvReprendre + accepted + refused, color: "bg-blue-500", textColor: "text-blue-600" },
-                    { label: "Validées", count: validees + affectees + rdvReprendre + accepted + refused, color: "bg-teal-500", textColor: "text-teal-600" },
-                    { label: "Affectées", count: affectees + rdvReprendre + accepted + refused, color: "bg-orange-500", textColor: "text-orange-600" },
-                    { label: "Acceptées", count: accepted, color: "bg-emerald-500", textColor: "text-emerald-600" },
-                    { label: "Refusées", count: refused, color: "bg-red-500", textColor: "text-red-500" },
-                  ];
-              const maxCount = steps[0]?.count || 1;
-              return (
-                <div className="space-y-2">
-                  {steps.map((step, i) => {
-                    const widthPct = Math.max(4, Math.round((step.count / maxCount) * 100));
-                    const prevCount = i > 0 ? steps[i - 1].count : step.count;
-                    const dropPct = prevCount > 0 ? Math.round(((prevCount - step.count) / prevCount) * 100) : 0;
-                    return (
-                      <div key={step.label} className="flex items-center gap-3">
-                        <span className="text-xs font-medium w-20 text-right shrink-0 text-muted-foreground">{step.label}</span>
-                        <div className="flex-1 relative">
-                          <div
-                            className={`${step.color} h-9 rounded-lg flex items-center transition-all duration-700`}
-                            style={{ width: `${widthPct}%` }}
-                          >
-                            <span className="text-white text-xs font-bold px-3 whitespace-nowrap">
-                              {step.count}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[11px] w-14 text-right shrink-0 tabular-nums">
-                          {i > 0 && dropPct > 0 ? (
-                            <span className="text-red-500 font-medium">-{dropPct}%</span>
-                          ) : i === 0 ? (
-                            <span className="text-muted-foreground">100%</span>
-                          ) : (
-                            <span className="text-emerald-600 font-medium">0%</span>
-                          )}
-                        </span>
-                      </div>
-                    );
-                  })}
-                  {!isCommercial && accepted + refused > 0 && (
-                    <div className="mt-3 pt-3 border-t border-border flex items-center gap-4 text-xs">
-                      <span className="text-muted-foreground">Taux global de conversion :</span>
-                      <span className={`font-bold text-sm ${acceptanceRate >= 50 ? "text-emerald-600" : acceptanceRate >= 25 ? "text-orange-500" : "text-red-500"}`}>
-                        {acceptanceRate}%
-                      </span>
-                      <span className="text-muted-foreground">
-                        ({accepted} acceptée{accepted > 1 ? "s" : ""} sur {maxCount} soumise{maxCount > 1 ? "s" : ""})
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
+          <ConversionFunnel
+            statusCounts={statusCounts}
+            isCommercial={isCommercial}
+            soumises={soumises}
+            validees={validees}
+            affectees={affectees}
+            accepted={accepted}
+            refused={refused}
+            acceptanceRate={acceptanceRate}
+            periodSuffix={periodSuffix}
+          />
         )}
 
         {/* ── Vue comparative succursales (DG, vue globale) ────────────────── */}
@@ -885,141 +778,20 @@ export default function ReportingPage() {
 
         {/* ── Objectifs du mois par commercial ──────────────────────────── */}
         {!loading && commerciaux.length > 0 && (
-          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
-                  <Target className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Objectifs du mois</h3>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {new Date().toLocaleDateString("fr-FR", { month: "long", year: "numeric" })} — {isCommercial ? "Mon objectif" : "par commercial"}
-                  </p>
-                </div>
-              </div>
-              {isAdminOrDG && !editingObjectifs && (
-                <button
-                  type="button"
-                  onClick={startEditingObjectifs}
-                  className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 px-3 py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
-                >
-                  <Pencil className="w-3.5 h-3.5" />Configurer
-                </button>
-              )}
-              {isAdminOrDG && editingObjectifs && (
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditingObjectifs(false)}
-                    className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-lg transition-colors"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="button"
-                    onClick={saveObjectifs}
-                    disabled={savingObjectifs}
-                    className="flex items-center gap-1.5 text-xs font-medium text-white bg-primary hover:bg-primary/90 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <Save className="w-3.5 h-3.5" />{savingObjectifs ? "Enregistrement…" : "Enregistrer"}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {isCommercial && profile ? (() => {
-              const obj = objectifs[profile.id];
-              const myComm = commerciaux.find((c) => c.id === profile.id);
-              if (!obj) return (
-                <p className="text-sm text-muted-foreground text-center py-4">Aucun objectif défini pour ce mois</p>
-              );
-              const fichePct = obj.objectif_fiches > 0 ? Math.min(100, Math.round(((myComm?.accepted ?? 0) / obj.objectif_fiches) * 100)) : 0;
-              const caPct = obj.objectif_ca > 0 ? Math.min(100, Math.round(((myComm?.ca ?? 0) / Number(obj.objectif_ca)) * 100)) : 0;
-              return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-border p-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Fiches acceptées</span>
-                      <span className="font-bold">{myComm?.accepted ?? 0} / {obj.objectif_fiches}</span>
-                    </div>
-                    <div className="h-3 bg-muted rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-700 ${fichePct >= 100 ? "bg-emerald-500" : fichePct >= 50 ? "bg-blue-500" : "bg-orange-500"}`} style={{ width: `${fichePct}%` }} />
-                    </div>
-                    <p className="text-[11px] text-right font-medium tabular-nums">{fichePct}%</p>
-                  </div>
-                  <div className="rounded-xl border border-border p-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">CA HT</span>
-                      <span className="font-bold">{(myComm?.ca ?? 0).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€ / {Number(obj.objectif_ca).toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€</span>
-                    </div>
-                    <div className="h-3 bg-muted rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-700 ${caPct >= 100 ? "bg-emerald-500" : caPct >= 50 ? "bg-blue-500" : "bg-orange-500"}`} style={{ width: `${caPct}%` }} />
-                    </div>
-                    <p className="text-[11px] text-right font-medium tabular-nums">{caPct}%</p>
-                  </div>
-                </div>
-              );
-            })() : (
-              <div>
-                <div className="grid grid-cols-[1fr_80px_80px_60px_80px_60px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
-                  <span>Commercial</span>
-                  <span className="text-right">Obj. fiches</span>
-                  <span className="text-right">Obj. CA</span>
-                  <span className="text-right">Accept.</span>
-                  <span className="text-right">CA réel</span>
-                  <span className="text-right">Atteinte</span>
-                </div>
-                <div className="space-y-0 max-h-[350px] overflow-y-auto">
-                  {commerciaux.map((c) => {
-                    const obj = objectifs[c.id];
-                    const fichePct = obj && obj.objectif_fiches > 0 ? Math.min(999, Math.round((c.accepted / obj.objectif_fiches) * 100)) : null;
-                    return (
-                      <div key={c.id} className="grid grid-cols-[1fr_80px_80px_60px_80px_60px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
-                        <span className="text-sm font-medium truncate">{c.name}</span>
-                        {editingObjectifs ? (
-                          <>
-                            <input
-                              type="number"
-                              min={0}
-                              value={objDraft[c.id]?.fiches ?? ""}
-                              onChange={(e) => setObjDraft((d) => ({ ...d, [c.id]: { ...d[c.id], fiches: e.target.value } }))}
-                              placeholder="0"
-                              className="w-full text-right text-sm tabular-nums px-2 py-1 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
-                            />
-                            <input
-                              type="number"
-                              min={0}
-                              value={objDraft[c.id]?.ca ?? ""}
-                              onChange={(e) => setObjDraft((d) => ({ ...d, [c.id]: { ...d[c.id], ca: e.target.value } }))}
-                              placeholder="0"
-                              className="w-full text-right text-sm tabular-nums px-2 py-1 rounded-lg border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-sm text-right tabular-nums text-muted-foreground">{obj?.objectif_fiches ?? "—"}</span>
-                            <span className="text-sm text-right tabular-nums text-muted-foreground">{obj ? Number(obj.objectif_ca).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€" : "—"}</span>
-                          </>
-                        )}
-                        <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{c.accepted}</span>
-                        <span className="text-sm text-right tabular-nums text-amber-600 font-medium">{c.ca > 0 ? c.ca.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€" : "—"}</span>
-                        <span className="text-right">
-                          {fichePct !== null ? (
-                            <span className={`text-xs font-bold tabular-nums px-1.5 py-0.5 rounded-full ${fichePct >= 100 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400" : fichePct >= 50 ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400" : "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400"}`}>
-                              {fichePct}%
-                            </span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">—</span>
-                          )}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+          <ObjectifsSection
+            commerciaux={commerciaux}
+            objectifs={objectifs}
+            isCommercial={isCommercial}
+            isAdminOrDG={isAdminOrDG}
+            profileId={profile?.id}
+            editingObjectifs={editingObjectifs}
+            setEditingObjectifs={setEditingObjectifs}
+            objDraft={objDraft}
+            setObjDraft={setObjDraft}
+            savingObjectifs={savingObjectifs}
+            startEditingObjectifs={startEditingObjectifs}
+            saveObjectifs={saveObjectifs}
+          />
         )}
 
         {/* ── Ligne 2 : Pie chart + Référents ──────────────────────────── */}

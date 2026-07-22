@@ -10,10 +10,10 @@
 
 | Catégorie | Score | Remarque |
 |-----------|-------|----------|
-| Fonctionnel | **95%** | Cœur métier + funnel + objectifs + import CSV |
-| Performance | **85%** | Skeletons + pagination serveur + cache offline |
-| UX / Loading | **90%** | Skeleton loading.tsx 9/9 routes, page offline |
-| PWA / Mobile | **80%** | Manifest + icônes + cache offline + fallback |
+| Fonctionnel | **97%** | Cœur métier + funnel + objectifs + import CSV + relances auto |
+| Performance | **88%** | Skeletons + pagination serveur + cache offline + composants extraits |
+| UX / Loading | **92%** | Skeleton loading.tsx 9/9 routes, page offline, import CSV |
+| PWA / Mobile | **82%** | Manifest + icônes + cache offline + fallback |
 | Design | **78%** | Cohérent, dark mode OK |
 
 ---
@@ -175,14 +175,14 @@ Pas de fallback offline. Quand la connexion tombe, l'utilisateur voit la page d'
 | **P1** | Objectifs configurables par commercial | Management par la performance | 4h | ✅ Fait |
 | **P1** | Favicon PNG + apple-touch-icon | Identité visuelle sur tous les supports | 30 min | ✅ Fait |
 | **P1** | Tests E2E Playwright (flux critiques) | Filet de sécurité pour les déploiements | 6h | ✅ Fait |
-| **P2** | Découper les pages monolithiques en composants | Maintenabilité + performances HMR | 6h | ❌ À faire |
+| **P2** | Découper les pages monolithiques en composants | Maintenabilité + performances HMR | 6h | ✅ Fait |
 | **P2** | Pagination serveur sur fiches et notifications | Scalabilité au-delà de 500 fiches | 4h | ✅ Déjà implémenté |
 | **P2** | Détection doublons prospects (téléphone/adresse) | Qualité des données | 2h | ✅ Déjà implémenté |
 | **P2** | Import CSV prospects | Gain de temps saisie | 3h | ✅ Fait |
 | **P2** | Cache offline + page offline dans le service worker | Utilisabilité en zone blanche | 3h | ✅ Fait |
 | **P3** | Nettoyer `public/` (SVG Next.js par défaut) | Propreté | 5 min | ✅ Fait |
 | **P3** | Supprimer `NavigationProgress.tsx` (code mort) | Propreté | 1 min | ✅ Fait |
-| **P3** | Relances automatiques (Edge Functions / cron) | Moins de fiches oubliées | 4h | ❌ À faire |
+| **P3** | Relances automatiques (Edge Functions / cron) | Moins de fiches oubliées | 4h | ✅ Fait |
 
 ---
 
@@ -210,6 +210,7 @@ Pas de fallback offline. Quand la connexion tombe, l'utilisateur voit la page d'
 | ✅ OK | Skeletons loading | loading.tsx sur 9/9 routes, zéro page blanche |
 | ✅ OK | Filtres avancés fiches | Date, ville, commercial, référent, département (admin/DG) |
 | ✅ OK | Détection doublons | Match téléphone ou nom+CP à la création de fiche |
-| ❌ Absent | Mode offline | Aucun cache, aucun fallback hors-ligne |
-| ❌ Absent | Import CSV | Pas d'import en masse |
-| ❌ Absent | Détection doublons | Pas de contrôle à la création |
+| ✅ OK | Mode offline | Cache SW network-first + page /offline fallback |
+| ✅ OK | Import CSV | Import en masse avec détection doublons |
+| ✅ OK | Relances automatiques | Cron Vercel lun-ven 8h, notifications auto |
+| ✅ OK | Composants extraits | KpiCard, ConversionFunnel, ObjectifsSection |

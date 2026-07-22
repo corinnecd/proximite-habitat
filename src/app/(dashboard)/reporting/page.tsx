@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { KpiCard, CustomTooltip } from "@/components/reporting/KpiCard";
 import { ConversionFunnel } from "@/components/reporting/ConversionFunnel";
-import { ObjectifsSection } from "@/components/reporting/ObjectifsSection";
+
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -88,13 +88,9 @@ export default function ReportingPage() {
   const [motifRefusCounts, setMotifRefusCounts] = useState<Record<MotifRefus, number>>({ RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 });
   const [caTotal, setCaTotal] = useState(0);
   const [branchStats, setBranchStats] = useState<BranchRow[]>([]);
-  const [objectifs, setObjectifs] = useState<Record<string, { objectif_fiches: number; objectif_ca: number }>>({});
-  const [editingObjectifs, setEditingObjectifs] = useState(false);
-  const [objDraft, setObjDraft] = useState<Record<string, { fiches: string; ca: string }>>({});
-  const [savingObjectifs, setSavingObjectifs] = useState(false);
 
   const isCommercial = profile?.role === "COMMERCIAL";
-  const isAdminOrDG = profile?.role === "ADMIN" || profile?.role === "DIRECTION_GENERALE";
+
 
   async function loadData(profileId: string, role: string, period: PeriodFilter = "ALL") {
     const isComm = role === "COMMERCIAL";
@@ -268,20 +264,6 @@ export default function ReportingPage() {
     })).sort((a, b) => b.assigned - a.assigned);
     setCommerciaux(commRows);
 
-    // ── Objectifs du mois courant ──
-    const currentMonth = new Date();
-    currentMonth.setDate(1);
-    const monthStr = currentMonth.toISOString().slice(0, 10);
-    const { data: objRows } = await supabase
-      .from("objectifs_commerciaux")
-      .select("commercial_id, objectif_fiches, objectif_ca")
-      .eq("period_month", monthStr);
-    const objMap: Record<string, { objectif_fiches: number; objectif_ca: number }> = {};
-    for (const o of objRows ?? []) {
-      objMap[o.commercial_id] = { objectif_fiches: o.objectif_fiches, objectif_ca: o.objectif_ca };
-    }
-    setObjectifs(objMap);
-
     // CA total depuis la source primaire (toutes les fiches ACCEPTEE du dataset filtré)
     setCaTotal(fiches.filter((f) => f.status === "ACCEPTEE").reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0));
     type PlanifRow = { ville_id: string; zones_villes: { nom: string } };
@@ -360,52 +342,6 @@ export default function ReportingPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, periodFilter, selectedBranchId]);
 
-  async function saveObjectifs() {
-    if (!profile) return;
-    setSavingObjectifs(true);
-    const currentMonth = new Date();
-    currentMonth.setDate(1);
-    const monthStr = currentMonth.toISOString().slice(0, 10);
-
-    for (const [commId, draft] of Object.entries(objDraft)) {
-      const fiches = parseInt(draft.fiches) || 0;
-      const ca = parseFloat(draft.ca) || 0;
-      if (fiches === 0 && ca === 0) continue;
-      await supabase.from("objectifs_commerciaux").upsert({
-        commercial_id: commId,
-        organization_id: profile.organization_id,
-        period_month: monthStr,
-        objectif_fiches: fiches,
-        objectif_ca: ca,
-        created_by: profile.id,
-      }, { onConflict: "commercial_id,period_month" });
-    }
-
-    const { data: objRows } = await supabase
-      .from("objectifs_commerciaux")
-      .select("commercial_id, objectif_fiches, objectif_ca")
-      .eq("period_month", monthStr);
-    const objMap: Record<string, { objectif_fiches: number; objectif_ca: number }> = {};
-    for (const o of objRows ?? []) {
-      objMap[o.commercial_id] = { objectif_fiches: o.objectif_fiches, objectif_ca: o.objectif_ca };
-    }
-    setObjectifs(objMap);
-    setEditingObjectifs(false);
-    setSavingObjectifs(false);
-  }
-
-  function startEditingObjectifs() {
-    const draft: Record<string, { fiches: string; ca: string }> = {};
-    for (const c of commerciaux) {
-      const obj = objectifs[c.id];
-      draft[c.id] = {
-        fiches: obj?.objectif_fiches?.toString() ?? "",
-        ca: obj?.objectif_ca?.toString() ?? "",
-      };
-    }
-    setObjDraft(draft);
-    setEditingObjectifs(true);
-  }
 
   const accepted      = statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0;
   const refused       = statusCounts.find((s) => s.status === "REFUSEE")?.count ?? 0;
@@ -775,24 +711,6 @@ export default function ReportingPage() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* ── Objectifs du mois par commercial ──────────────────────────── */}
-        {!loading && commerciaux.length > 0 && (
-          <ObjectifsSection
-            commerciaux={commerciaux}
-            objectifs={objectifs}
-            isCommercial={isCommercial}
-            isAdminOrDG={isAdminOrDG}
-            profileId={profile?.id}
-            editingObjectifs={editingObjectifs}
-            setEditingObjectifs={setEditingObjectifs}
-            objDraft={objDraft}
-            setObjDraft={setObjDraft}
-            savingObjectifs={savingObjectifs}
-            startEditingObjectifs={startEditingObjectifs}
-            saveObjectifs={saveObjectifs}
-          />
         )}
 
         {/* ── Ligne 2 : Pie chart + Référents ──────────────────────────── */}

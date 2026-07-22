@@ -107,6 +107,7 @@ export default function FichesPage() {
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [firstFicheDate, setFirstFicheDate] = useState<string | null>(null);
   const [validationStats, setValidationStats] = useState<{ label: string; soumises: number; affectees: number; validees: number }[]>([]);
+  const [loadingValidation, setLoadingValidation] = useState(false);
   const [quarterLabel, setQuarterLabel] = useState("");
 
   // Plage de dates personnalisée (prioritaire sur les préréglages de période)
@@ -322,6 +323,7 @@ export default function FichesPage() {
   // Évolution des validations par semaine (trimestre en cours) — mode validation uniquement
   useEffect(() => {
     if (!isValidationMode || !profile || !isAdminOrDG) return;
+    setLoadingValidation(true);
     async function loadValidationStats() {
       const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
       const now = new Date();
@@ -333,12 +335,13 @@ export default function FichesPage() {
 
       const weeks: { label: string; from: string; to: string }[] = [];
       const current = new Date(quarterStart);
-      // Align to Monday
       const dayOfWeek = current.getDay() === 0 ? 6 : current.getDay() - 1;
       current.setDate(current.getDate() - dayOfWeek);
       let weekNum = 1;
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       while (current <= quarterEnd) {
         const monday = new Date(current);
+        if (monday > today) break;
         const sunday = new Date(current);
         sunday.setDate(sunday.getDate() + 6);
         const effMonday = monday < quarterStart ? quarterStart : monday;
@@ -377,6 +380,7 @@ export default function FichesPage() {
       setValidationStats(results);
       const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
       setQuarterLabel(`du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}`);
+      setLoadingValidation(false);
     }
     loadValidationStats();
   }, [isValidationMode, profile, isAdminOrDG, isDG, selectedBranchId, supabase]);
@@ -746,7 +750,7 @@ export default function FichesPage() {
           </div>
         )}
 
-        <div className={`space-y-4 transition-opacity duration-200 ${loading ? "opacity-0" : "opacity-100"}`}>
+        <div className={`space-y-4 transition-opacity duration-200 ${loading || (isValidationMode && loadingValidation) ? "opacity-0" : "opacity-100"}`}>
         {/* Filtres par statut */}
         {!isValidationMode && profile && (<div className="flex gap-2 flex-wrap">
           <button

@@ -6,14 +6,14 @@ import type { FicheStatus } from "@/types/database";
 interface StatusCount { status: FicheStatus; count: number; }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; textColor: string }> = {
-  SOUMISE:         { label: "Soumises",        color: "bg-blue-500",    textColor: "text-blue-600" },
-  VALIDEE:         { label: "Validées",        color: "bg-teal-500",    textColor: "text-teal-600" },
-  AFFECTEE:        { label: "Affectées",       color: "bg-orange-500",  textColor: "text-orange-600" },
-  RDV_A_REPRENDRE: { label: "RDV à reprendre", color: "bg-amber-500",  textColor: "text-amber-600" },
-  RETRACTATION:    { label: "Rétractation",    color: "bg-purple-500",  textColor: "text-purple-600" },
-  ACCEPTEE:        { label: "Acceptées",       color: "bg-emerald-500", textColor: "text-emerald-600" },
-  REFUSEE:         { label: "Refusées",        color: "bg-red-500",     textColor: "text-red-500" },
-  ARCHIVEE:        { label: "Archivées",       color: "bg-slate-400",   textColor: "text-slate-500" },
+  SOUMISE:         { label: "Soumises",        color: "bg-blue-300",     textColor: "text-blue-500" },
+  VALIDEE:         { label: "Validées",        color: "bg-teal-300",     textColor: "text-teal-500" },
+  AFFECTEE:        { label: "Affectées",       color: "bg-orange-300",   textColor: "text-orange-500" },
+  RDV_A_REPRENDRE: { label: "RDV à reprendre", color: "bg-amber-300",   textColor: "text-amber-500" },
+  RETRACTATION:    { label: "Rétractation",    color: "bg-purple-300",   textColor: "text-purple-500" },
+  ACCEPTEE:        { label: "Acceptées",       color: "bg-emerald-300",  textColor: "text-emerald-500" },
+  REFUSEE:         { label: "Refusées",        color: "bg-red-300",      textColor: "text-red-500" },
+  ARCHIVEE:        { label: "Archivées",       color: "bg-slate-300",    textColor: "text-slate-500" },
 };
 
 const DIRECTION_ORDER: FicheStatus[] = [
@@ -46,7 +46,6 @@ export function ConversionFunnel({
     .filter((s) => s.count > 0);
 
   const total = steps.reduce((sum, s) => sum + s.count, 0);
-  const maxCount = steps[0]?.count || 1;
   const accepted = countMap.get("ACCEPTEE") ?? 0;
 
   return (
@@ -62,19 +61,19 @@ export function ConversionFunnel({
           </div>
         </div>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {steps.map((step) => {
-          const widthPct = Math.max(4, Math.round((step.count / maxCount) * 100));
           const pct = total > 0 ? Math.round((step.count / total) * 100) : 0;
+          const widthPct = Math.max(3, pct);
           return (
             <div key={step.status} className="flex items-center gap-3">
               <span className="text-xs font-medium w-28 text-right shrink-0 text-muted-foreground">{step.label}</span>
-              <div className="flex-1 relative">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <div
-                  className={`${step.color} h-9 rounded-lg flex items-center transition-all duration-700`}
+                  className={`${step.color} h-6 rounded-md flex items-center transition-all duration-700`}
                   style={{ width: `${widthPct}%` }}
                 >
-                  <span className="text-white text-xs font-bold px-3 whitespace-nowrap">
+                  <span className="text-white text-[11px] font-bold px-2.5 whitespace-nowrap">
                     {step.count}
                   </span>
                 </div>

@@ -98,6 +98,8 @@ export default function SuccursalesPage() {
     );
   }
 
+  if (loading) return null;
+
   return (
     <>
       <Topbar title="Succursales" />

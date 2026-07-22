@@ -195,6 +195,8 @@ export default function UtilisateursPage() {
     );
   }
 
+  if (loading) return null;
+
   return (
     <>
       <Topbar title="Gestion des utilisateurs" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Utilisateurs" filename="utilisateurs" /><ExportCsvButton filename="utilisateurs" getData={() => ({

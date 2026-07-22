@@ -637,6 +637,8 @@ export default function DashboardPage() {
     );
   }
 
+  if (loading) return null;
+
   return (
     <>
       <Topbar

@@ -455,6 +455,8 @@ export default function ReportingPage() {
 
 
 
+  if (loading) return null;
+
   return (
     <>
       <Topbar

@@ -191,6 +191,8 @@ export default function CalendrierPage() {
   const totalCount = filteredFiches.length;
   const selectedFiches = selectedDayKey ? fichesByDay.get(selectedDayKey) ?? [] : [];
 
+  if (loading) return null;
+
   return (
     <>
       <Topbar title="Calendrier des RDV" />

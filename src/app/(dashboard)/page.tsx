@@ -37,6 +37,7 @@ import { StatusBlock } from "@/components/dashboard/StatusBlock";
 import { PrimeSection } from "@/components/dashboard/PrimeSection";
 import { AdminKpiSection } from "@/components/dashboard/AdminKpiSection";
 import { CollapsibleList } from "@/components/dashboard/CollapsibleList";
+import { CommercialObjectifs, CommercialRdvDuJour } from "@/components/dashboard/CommercialObjectifs";
 import type { FicheAffectee, ReferentStat, CommercialStat } from "@/components/dashboard/dashboard-types";
 
 // ── Filtre période dashboard ──────────────────────────────────────────────────
@@ -964,7 +965,7 @@ export default function DashboardPage() {
         {isCommercial && (
           <div className="space-y-6">
             {/* KPI cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
                 <div className="flex items-center justify-between mb-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
@@ -992,7 +993,31 @@ export default function DashboardPage() {
                 <p className="text-2xl sm:text-3xl font-bold tabular-nums">{mesVentes > 0 ? Math.round(caTotal / mesVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}</p>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Chiffre d'affaires moyen global" : <>Chiffre d&apos;affaires moyen<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
               </div>
+              {(() => {
+                const totalTraitees = mesVentes + fichesRefusees.length;
+                const convRate = totalTraitees > 0 ? Math.round((mesVentes / totalTraitees) * 100) : 0;
+                return (
+                  <div className="bg-card border border-border border-l-4 border-l-orange-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                        <XCircle className="w-5 h-5 text-orange-600" />
+                      </div>
+                    </div>
+                    <p className="text-2xl sm:text-3xl font-bold tabular-nums">{convRate}%</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">Taux de conversion</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{mesVentes} acceptée{mesVentes > 1 ? "s" : ""} / {totalTraitees} traitée{totalTraitees > 1 ? "s" : ""}</p>
+                  </div>
+                );
+              })()}
             </div>
+
+            {/* Objectifs du mois + RDV du jour */}
+            {profile && (
+              <>
+                <CommercialObjectifs profileId={profile.id} orgId={profile.organization_id} accepted={mesVentes} ca={caTotal} />
+                <CommercialRdvDuJour profileId={profile.id} />
+              </>
+            )}
 
             {/* Détail CA par fiche acceptée */}
             {fichesAcceptees.length > 0 && (

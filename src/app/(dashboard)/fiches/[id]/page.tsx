@@ -212,15 +212,27 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
     if (newStatus === "REFUSEE" && motifRefus) {
       await supabase.from("fiches").update({ motif_refus: motifRefus }).eq("id", fiche.id);
+      await supabase.from("fiche_history").insert({
+        fiche_id: fiche.id, organization_id: profile.organization_id, user_id: profile.id,
+        action: "Motif de refus renseigné", comment: MOTIF_REFUS_LABELS[motifRefus],
+      });
     }
 
     const montantHtValue = newStatus === "ACCEPTEE" && montantHtInput ? parseFloat(montantHtInput) : null;
     if (newStatus === "ACCEPTEE" && montantHtValue) {
       await supabase.from("fiches").update({ montant_ht: montantHtValue }).eq("id", fiche.id);
+      await supabase.from("fiche_history").insert({
+        fiche_id: fiche.id, organization_id: profile.organization_id, user_id: profile.id,
+        action: "Montant HT renseigné", comment: `${montantHtValue.toLocaleString("fr-FR")} €`,
+      });
     }
 
     if (newStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE" && rdvDateParam) {
       await supabase.from("fiches").update({ rdv_date: rdvDateParam }).eq("id", fiche.id);
+      await supabase.from("fiche_history").insert({
+        fiche_id: fiche.id, organization_id: profile.organization_id, user_id: profile.id,
+        action: "Nouvelle date de RDV", comment: new Date(rdvDateParam).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+      });
     }
 
     setFiche({

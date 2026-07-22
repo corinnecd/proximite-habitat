@@ -404,13 +404,36 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
       }
       setSubmitting(true);
       try {
-        await saveDraft(); // UPDATE — conserve le statut existant
+        const currentValues = methods.getValues();
+        const changedFields: string[] = [];
+        const FIELD_LABELS: Record<string, string> = {
+          prospect_nom: "Nom", prospect_prenom: "Prénom", prospect_adresse: "Adresse",
+          prospect_cp: "Code postal", prospect_ville: "Ville", prospect_telephone: "Téléphone",
+          prospect_email: "Email", rdv_date: "Date RDV", observations: "Observations",
+          modes_chauffage: "Chauffage", systemes_ventilation: "Ventilation",
+          surface_chauffee: "Surface", nb_habitants: "Habitants", consommation: "Consommation",
+          cout_annuel: "Coût annuel", nature_isolant: "Isolant",
+        };
+        if (initialData) {
+          for (const key of Object.keys(currentValues) as (keyof typeof currentValues)[]) {
+            const oldVal = initialData[key];
+            const newVal = currentValues[key];
+            if (JSON.stringify(oldVal ?? "") !== JSON.stringify(newVal ?? "")) {
+              changedFields.push(FIELD_LABELS[key] || key);
+            }
+          }
+        }
+        await saveDraft();
         if (ficheIdRef.current) {
+          const detail = changedFields.length > 0
+            ? changedFields.slice(0, 5).join(", ") + (changedFields.length > 5 ? ` (+${changedFields.length - 5})` : "")
+            : "modifications mineures";
           await supabase.from("fiche_history").insert({
             fiche_id: ficheIdRef.current,
             organization_id: profile.organization_id,
             user_id: profile.id,
             action: `Fiche modifiée par ${profile.first_name} ${profile.last_name}`,
+            comment: `Champs modifiés : ${detail}`,
             old_status: null,
             new_status: null,
           });

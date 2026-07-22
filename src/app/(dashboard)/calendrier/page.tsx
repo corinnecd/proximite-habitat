@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, ChevronLeft, ChevronRight, Clock, MapPin, Phone, User } from "lucide-react";
+import { CalendarClock, ChevronLeft, ChevronRight, Clock, MapPin, Phone, Search, X, User } from "lucide-react";
 import Link from "next/link";
 import { Topbar } from "@/components/layout/Topbar";
 import { Button } from "@/components/ui/button";
@@ -73,6 +73,7 @@ export default function CalendrierPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
   const [editingFiche, setEditingFiche] = useState<RdvFiche | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const grid = useMemo<Date[][]>(
     () => (viewMode === "month" ? getMonthGrid(refDate) : [getWeekDays(refDate)]),
@@ -146,16 +147,27 @@ export default function CalendrierPage() {
     fetchRdvs();
   }, [fetchRdvs]);
 
+  const filteredFiches = useMemo(() => {
+    if (!searchQuery.trim()) return fiches;
+    const q = searchQuery.toLowerCase().trim();
+    return fiches.filter((f) => {
+      const nom = `${f.prospect_nom ?? ""} ${f.prospect_prenom ?? ""}`.toLowerCase();
+      const ville = (f.prospect_ville ?? "").toLowerCase();
+      const commercial = f.assigned_to_profile ? `${f.assigned_to_profile.first_name} ${f.assigned_to_profile.last_name}`.toLowerCase() : "";
+      return nom.includes(q) || ville.includes(q) || commercial.includes(q) || (f.reference ?? "").toLowerCase().includes(q);
+    });
+  }, [fiches, searchQuery]);
+
   const fichesByDay = useMemo(() => {
     const map = new Map<string, RdvFiche[]>();
-    for (const f of fiches) {
+    for (const f of filteredFiches) {
       const key = f.rdv_date;
       const list = map.get(key) ?? [];
       list.push(f);
       map.set(key, list);
     }
     return map;
-  }, [fiches]);
+  }, [filteredFiches]);
 
   const goPrev = () => setRefDate((d) => (viewMode === "month" ? addMonths(d, -1) : addWeeks(d, -1)));
   const goNext = () => setRefDate((d) => (viewMode === "month" ? addMonths(d, 1) : addWeeks(d, 1)));
@@ -166,7 +178,7 @@ export default function CalendrierPage() {
       ? formatMonthLabel(refDate)
       : `${grid[0][0].getDate()} ${MOIS_NOMS[grid[0][0].getMonth()]} – ${grid[0][6].getDate()} ${MOIS_NOMS[grid[0][6].getMonth()]} ${grid[0][6].getFullYear()}`;
 
-  const totalCount = fiches.length;
+  const totalCount = filteredFiches.length;
   const selectedFiches = selectedDayKey ? fichesByDay.get(selectedDayKey) ?? [] : [];
 
   return (
@@ -188,6 +200,26 @@ export default function CalendrierPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative w-48">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Rechercher un RDV…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-8 py-1.5 h-[34px] text-sm rounded-xl border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/30"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="Effacer la recherche"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
             {isAdminOrDG && (
               <Select value={commercialFilter} onValueChange={(v) => setCommercialFilter(v ?? "ALL")}>
                 <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm w-[180px]">

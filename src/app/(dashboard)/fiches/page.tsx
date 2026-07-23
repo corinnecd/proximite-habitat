@@ -266,7 +266,7 @@ export default function FichesPage() {
   // supabase est stable (useMemo), pas besoin dans les deps
   }, [statusFilter, search, profile, periodFilter, referentFilter, commercialFilter, selectedBranchId, isDG, customFrom, customTo, villeFilter, departementFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Validation stats — chargées en parallèle (pas séquentiellement dans fetchFiches)
+  // Validation stats — une seule requête au lieu de 24
   useEffect(() => {
     if (!isValidationMode || !isAdminOrDG || !profile) return;
     async function loadValidationStats() {
@@ -301,27 +301,29 @@ export default function FichesPage() {
         weekNum++;
       }
 
-      const countHistory = async (status: FicheStatus, wFrom: string, wTo: string) => {
+      try {
         let hq = supabase
           .from("fiche_history")
-          .select("*", { count: "exact", head: true })
-          .eq("new_status", status)
-          .gte("created_at", `${wFrom}T00:00:00Z`)
-          .lte("created_at", `${wTo}T23:59:59Z`);
+          .select("new_status, created_at")
+          .in("new_status", ["SOUMISE", "AFFECTEE", "VALIDEE"])
+          .gte("created_at", `${fmtDate(quarterStart)}T00:00:00Z`)
+          .lte("created_at", `${fmtDate(quarterEnd)}T23:59:59Z`);
         if (branchFilter) hq = hq.eq("organization_id", branchFilter);
-        const { count } = await hq;
-        return count ?? 0;
-      };
+        const { data: rows } = await hq;
 
-      try {
-        const results = await Promise.all(weeks.map(async (w) => {
-          const [soumises, affectees, validees] = await Promise.all([
-            countHistory("SOUMISE", w.from, w.to),
-            countHistory("AFFECTEE", w.from, w.to),
-            countHistory("VALIDEE", w.from, w.to),
-          ]);
+        const results = weeks.map((w) => {
+          const wFrom = `${w.from}T00:00:00Z`;
+          const wTo = `${w.to}T23:59:59Z`;
+          let soumises = 0, affectees = 0, validees = 0;
+          for (const r of rows ?? []) {
+            if (r.created_at >= wFrom && r.created_at <= wTo) {
+              if (r.new_status === "SOUMISE") soumises++;
+              else if (r.new_status === "AFFECTEE") affectees++;
+              else if (r.new_status === "VALIDEE") validees++;
+            }
+          }
           return { label: w.label, soumises, affectees, validees };
-        }));
+        });
         setValidationStats(results);
         const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
         setQuarterLabel(`du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}`);

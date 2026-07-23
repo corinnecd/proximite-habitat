@@ -198,7 +198,6 @@ export function Sidebar() {
 
       {/* Navigation principale */}
       <nav className="flex-1 px-3 pt-3 pb-2 overflow-y-auto">
-        {profileLoading ? null : (
           <>
             <div className="space-y-0.5">
               {/* Tableau de bord */}
@@ -285,7 +284,6 @@ export function Sidebar() {
               </>
             )}
           </>
-        )}
       </nav>
 
       {/* Footer utilisateur */}

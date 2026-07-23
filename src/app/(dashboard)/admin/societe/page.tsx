@@ -49,8 +49,6 @@ export default function SocietePage() {
     );
   }
 
-  if (loading) return null;
-
   return (
     <>
       <Topbar title="Société" />

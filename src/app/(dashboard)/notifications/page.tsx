@@ -500,8 +500,6 @@ export default function NotificationsPage() {
   const totalDisplayed = displayed.length;
   const isReferent     = profile?.role === "PROSPECTEUR";
 
-  if (loading) return null;
-
   return (
     <>
       <Topbar title="Notifications" actions={!isReferent ? <div className="flex items-center gap-2"><ExportPdfButton title="Notifications" filename="notifications" /><ExportCsvButton filename="notifications" getData={() => ({

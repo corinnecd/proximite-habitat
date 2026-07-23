@@ -5,9 +5,10 @@ interface Props {
   value: number;
   className?: string;
   duration?: number;
+  loading?: boolean;
 }
 
-export function AnimatedCounter({ value, className, duration }: Props) {
+export function AnimatedCounter({ value, className, duration, loading }: Props) {
   const displayed = useCountUp(value, duration);
-  return <span className={className}>{displayed}</span>;
+  return <span className={className}>{loading ? "—" : displayed}</span>;
 }

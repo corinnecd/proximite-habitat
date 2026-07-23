@@ -465,52 +465,52 @@ export default function ReportingPage() {
             </div>
         </div>
 
-        {!loading && <div className="space-y-6">
+        <div className="space-y-6">
 
         {/* ── KPIs (6 indicateurs clés — 2 lignes de 3) ────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <KpiCard
             label={(isAllPeriod ? (isCommercial ? "Mes fiches globales" : "Total global fiches") : (isCommercial ? "Mes fiches" : "Total fiches")) + periodSuffix} value={totalFiches}
             Icon={FileText} iconBg="bg-primary/10" iconColor="text-primary"
-            border="border-l-primary"
+            border="border-l-primary" loading={loading}
           />
           <KpiCard
             label={(isAllPeriod ? (isCommercial ? "Mon CA global HT" : "CA global HT consolidé") : (isCommercial ? "Mon CA HT" : "CA HT consolidé")) + periodSuffix}
             value={caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
             sub={`${accepted} contrat${accepted > 1 ? "s" : ""} signé${accepted > 1 ? "s" : ""}`}
             Icon={Euro} iconBg="bg-amber-100 dark:bg-amber-900/30" iconColor="text-amber-600"
-            border="border-l-amber-500"
+            border="border-l-amber-500" loading={loading}
           />
           <KpiCard
             label={(isAllPeriod ? "Chiffre d'affaires moyen global" : "Chiffre d'affaires moyen") + periodSuffix}
             value={accepted > 0 ? Math.round(caTotal / accepted).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}
             sub={accepted > 0 ? `sur ${accepted} contrat${accepted > 1 ? "s" : ""}` : "Aucun contrat"}
             Icon={BarChart3} iconBg="bg-blue-100 dark:bg-blue-900/30" iconColor="text-blue-600"
-            border="border-l-blue-500"
+            border="border-l-blue-500" loading={loading}
           />
           <KpiCard
             label={(isAllPeriod ? "Taux global de refus" : "Taux de refus") + periodSuffix} value={`${refusalRate}%`}
             sub={`${refused} refusée${refused > 1 ? "s" : ""} / ${baseActive} affectée${baseActive > 1 ? "s" : ""}`}
             Icon={XCircle} iconBg="bg-red-100 dark:bg-red-900/30" iconColor="text-red-500"
-            border="border-l-red-500"
+            border="border-l-red-500" loading={loading}
           />
           <KpiCard
             label={(isAllPeriod ? "Taux global en cours" : "Taux en cours") + periodSuffix} value={`${inProgressRate}%`}
             sub={`${inProgress} fiche${inProgress > 1 ? "s" : ""} · à valider, validées, affectées, attente client`}
             Icon={Clock} iconBg="bg-orange-100 dark:bg-orange-900/30" iconColor="text-orange-600"
-            border="border-l-orange-500"
+            border="border-l-orange-500" loading={loading}
           />
           <KpiCard
             label={(isAllPeriod ? (isCommercial ? "Mon taux global d'acceptation" : "Taux global d'acceptation") : (isCommercial ? "Mon taux d'acceptation" : "Taux d'acceptation global")) + periodSuffix}
             value={`${acceptanceRate}%`}
             sub={isCommercial ? "Mes fiches acceptées / affectées" : "Toutes les fiches"}
             Icon={TrendingUp} iconBg="bg-emerald-100 dark:bg-emerald-900/30" iconColor="text-emerald-600"
-            border="border-l-emerald-500"
+            border="border-l-emerald-500" loading={loading}
           />
         </div>
 
         {/* ── Funnel de conversion ────────────────────────────────────────── */}
-        {!loading && totalFiches > 0 && (
+        {totalFiches > 0 && (
           <ConversionFunnel
             statusCounts={statusCounts}
             isCommercial={isCommercial}
@@ -1099,7 +1099,7 @@ export default function ReportingPage() {
             )}
           </div>
         )}
-        </div>}
+        </div>
       </div>
     </>
   );

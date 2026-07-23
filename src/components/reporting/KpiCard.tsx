@@ -3,11 +3,11 @@
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
 
 export function KpiCard({
-  label, value, sub, Icon, iconBg, iconColor, border, trend,
+  label, value, sub, Icon, iconBg, iconColor, border, trend, loading,
 }: {
   label: string; value: string | number; sub?: string;
   Icon: React.ElementType; iconBg: string; iconColor: string; border: string;
-  trend?: { delta: number };
+  trend?: { delta: number }; loading?: boolean;
 }) {
   return (
     <div className={`bg-card/80 backdrop-blur-sm border border-border border-l-4 ${border} rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200`}>
@@ -27,7 +27,7 @@ export function KpiCard({
           </span>
         )}
       </div>
-      <p className="text-2xl sm:text-3xl font-bold tabular-nums">{value}</p>
+      <p className="text-2xl sm:text-3xl font-bold tabular-nums">{loading ? "—" : value}</p>
       <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{label}</p>
       {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
     </div>

@@ -819,6 +819,67 @@ export default function FichesPage() {
           </div>
         )}
 
+        {/* Évolution des validations par semaine (trimestre en cours) — admin/DG uniquement */}
+        {isValidationMode && validationStats.length > 0 && (
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-1">
+              <p className="text-sm font-semibold text-foreground">Évolution des validations par semaine</p>
+              {quarterLabel && (
+                <p className="text-xs text-muted-foreground">Trimestre en cours ({quarterLabel})</p>
+              )}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b border-border">
+                    <th className="py-1.5 pr-3 font-medium">Semaine</th>
+                    <th className="py-1.5 px-3 font-medium text-right">Soumises</th>
+                    <th className="py-1.5 px-3 font-medium text-right">Affectées</th>
+                    <th className="py-1.5 pl-3 font-medium text-right">Validées</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {validationStats.map((w) => {
+                    const max = Math.max(w.soumises, w.affectees, w.validees, 1);
+                    return (
+                      <tr key={w.label} className="border-b border-border/50 last:border-0">
+                        <td className="py-1.5 pr-3 text-foreground whitespace-nowrap">{w.label}</td>
+                        <td className="py-1.5 px-3 text-right">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className="h-1.5 rounded-full bg-blue-400"
+                              style={{ width: `${Math.max((w.soumises / max) * 24, w.soumises > 0 ? 3 : 0)}px` }}
+                            />
+                            <span className="tabular-nums text-foreground">{w.soumises}</span>
+                          </span>
+                        </td>
+                        <td className="py-1.5 px-3 text-right">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className="h-1.5 rounded-full bg-amber-400"
+                              style={{ width: `${Math.max((w.affectees / max) * 24, w.affectees > 0 ? 3 : 0)}px` }}
+                            />
+                            <span className="tabular-nums text-foreground">{w.affectees}</span>
+                          </span>
+                        </td>
+                        <td className="py-1.5 pl-3 text-right">
+                          <span className="inline-flex items-center gap-1.5 justify-end w-full">
+                            <span
+                              className="h-1.5 rounded-full bg-emerald-400"
+                              style={{ width: `${Math.max((w.validees / max) * 24, w.validees > 0 ? 3 : 0)}px` }}
+                            />
+                            <span className="tabular-nums text-foreground">{w.validees}</span>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-4">
         {/* Filtres par statut */}
         {!isValidationMode && profile && (<div className="flex gap-2 flex-wrap">
@@ -977,66 +1038,6 @@ export default function FichesPage() {
           </div>
         )}
 
-        {/* Évolution des validations par semaine (trimestre en cours) — admin/DG uniquement */}
-        {isValidationMode && validationStats.length > 0 && (
-          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-1">
-              <p className="text-sm font-semibold text-foreground">Évolution des validations par semaine</p>
-              {quarterLabel && (
-                <p className="text-xs text-muted-foreground">Trimestre en cours ({quarterLabel})</p>
-              )}
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-1.5 pr-3 font-medium">Semaine</th>
-                    <th className="py-1.5 px-3 font-medium text-right">Soumises</th>
-                    <th className="py-1.5 px-3 font-medium text-right">Affectées</th>
-                    <th className="py-1.5 pl-3 font-medium text-right">Validées</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {validationStats.map((w) => {
-                    const max = Math.max(w.soumises, w.affectees, w.validees, 1);
-                    return (
-                      <tr key={w.label} className="border-b border-border/50 last:border-0">
-                        <td className="py-1.5 pr-3 text-foreground whitespace-nowrap">{w.label}</td>
-                        <td className="py-1.5 px-3 text-right">
-                          <span className="inline-flex items-center gap-1.5">
-                            <span
-                              className="h-1.5 rounded-full bg-blue-400"
-                              style={{ width: `${Math.max((w.soumises / max) * 24, w.soumises > 0 ? 3 : 0)}px` }}
-                            />
-                            <span className="tabular-nums text-foreground">{w.soumises}</span>
-                          </span>
-                        </td>
-                        <td className="py-1.5 px-3 text-right">
-                          <span className="inline-flex items-center gap-1.5">
-                            <span
-                              className="h-1.5 rounded-full bg-amber-400"
-                              style={{ width: `${Math.max((w.affectees / max) * 24, w.affectees > 0 ? 3 : 0)}px` }}
-                            />
-                            <span className="tabular-nums text-foreground">{w.affectees}</span>
-                          </span>
-                        </td>
-                        <td className="py-1.5 pl-3 text-right">
-                          <span className="inline-flex items-center gap-1.5 justify-end w-full">
-                            <span
-                              className="h-1.5 rounded-full bg-emerald-400"
-                              style={{ width: `${Math.max((w.validees / max) * 24, w.validees > 0 ? 3 : 0)}px` }}
-                            />
-                            <span className="tabular-nums text-foreground">{w.validees}</span>
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         </div>
       </div>

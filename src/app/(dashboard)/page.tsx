@@ -940,20 +940,9 @@ export default function DashboardPage() {
                             {new Date(fiche.created_at).toLocaleDateString("fr-FR")}
                           </div>
                           <UrgencyBadge days={days} />
-                          {isAdmin && (
-                          <Button
-                            size="sm"
-                            className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-4 text-xs gap-1.5 h-8"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setAssignCommercialId("");
-                              setFicheToAssign({ id: fiche.id, reference: fiche.reference, nom: `${fiche.prospect_prenom} ${fiche.prospect_nom}`, created_by: fiche.created_by });
-                            }}
-                          >
-                            <UserCheck className="w-3.5 h-3.5" />Affecter
-                          </Button>
-                          )}
+                          <span className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-4 text-xs gap-1.5 h-8 font-medium inline-flex items-center transition-colors">
+                            <CheckCircle2 className="w-3.5 h-3.5" />À Valider
+                          </span>
                         </div>
                       </div>
                     </Link>

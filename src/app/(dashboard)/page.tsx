@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -161,9 +161,36 @@ export default function DashboardPage() {
   const [dashPeriod, setDashPeriod] = useState<DashPeriod>("ALL");
   const supabase = useMemo(() => createClient(), []);
 
+  // ── Cache localStorage : affichage instantané au chargement ─────────────
+  const cacheKey = profile ? `dash_cache_${profile.id}` : null;
+
+  useLayoutEffect(() => {
+    if (!cacheKey) return;
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (!raw) return;
+      const c = JSON.parse(raw);
+      if (c.counts) setCounts(c.counts);
+      if (c.caTotal != null) setCaTotal(c.caTotal);
+      if (c.totalVentes != null) setTotalVentes(c.totalVentes);
+      if (c.mesVentes != null) setMesVentes(c.mesVentes);
+      if (c.referentsStats) setReferentsStats(c.referentsStats);
+      if (c.commerciauxStats) setCommerciauxStats(c.commerciauxStats);
+      setLoading(false);
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cacheKey]);
+
+  const saveCache = useCallback((data: Record<string, unknown>) => {
+    if (!cacheKey) return;
+    try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch { /* ignore */ }
+  }, [cacheKey]);
+
   const fetchData = useCallback(async (period: DashPeriod = "ALL") => {
     if (!profile) return;
     const isReferent = profile.role === "PROSPECTEUR";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cd: Record<string, any> = {};
     try {
     const isAdmin       = profile.role === "DIRECTION" || profile.role === "DIRECTION_GENERALE" || profile.role === "SUPER_ADMIN";
     const isCommercial  = profile.role === "COMMERCIAL";
@@ -320,6 +347,7 @@ export default function DashboardPage() {
       if (allCounts[row.status] !== undefined) allCounts[row.status]++;
     }
     setCounts(allCounts);
+    cd.counts = allCounts;
 
     if (isAdmin) {
       setCommercials(r.get("commercials") ?? []);
@@ -332,9 +360,11 @@ export default function DashboardPage() {
 
     if (isAdmin || isCommercial || isReferent) {
       const rows = ((r.get("ventes")?.data ?? r.get("ventes")) as unknown as VenteRow[]) ?? [];
+      const computedCa = rows.reduce((sum, v) => sum + (v.montant_ht ? Number(v.montant_ht) : 0), 0);
       setTotalVentes(rows.length);
-      setCaTotal(rows.reduce((sum, v) => sum + (v.montant_ht ? Number(v.montant_ht) : 0), 0));
+      setCaTotal(computedCa);
       if (isCommercial || isReferent) setMesVentes(rows.length);
+      cd.totalVentes = rows.length; cd.caTotal = computedCa; cd.mesVentes = rows.length;
 
       if (isAdmin) {
         const now = new Date();
@@ -357,10 +387,12 @@ export default function DashboardPage() {
           entry.ventesParMois.set(ym, (entry.ventesParMois.get(ym) ?? 0) + 1);
           if (ym === currentYM) entry.ventesMoisCourant++;
         }
-        setReferentsStats(Array.from(pMap.values()).map((p) => {
+        const sortedRef = Array.from(pMap.values()).map((p) => {
           const primes = Array.from(p.ventesParMois.values()).filter((x) => x >= 3).length;
           return { id: p.id, nom: p.nom, ventes: p.ventes, ventesMoisCourant: p.ventesMoisCourant, primes, prochainPalier: Math.max(0, 3 - p.ventesMoisCourant), ca: p.ca };
-        }).sort((a, b) => b.ventes - a.ventes));
+        }).sort((a, b) => b.ventes - a.ventes);
+        setReferentsStats(sortedRef);
+        cd.referentsStats = sortedRef;
 
         const cMap = new Map<string, CommercialStat>();
         for (const p of (r.get("allCommerciaux")?.data ?? [])) {
@@ -376,7 +408,9 @@ export default function DashboardPage() {
             cMap.set(v.assigned_to, { id: v.assigned_to, nom, ventes: 1, ca: mt });
           }
         }
-        setCommerciauxStats(Array.from(cMap.values()).sort((a, b) => b.ventes - a.ventes));
+        const sortedComm = Array.from(cMap.values()).sort((a, b) => b.ventes - a.ventes);
+        setCommerciauxStats(sortedComm);
+        cd.commerciauxStats = sortedComm;
       }
     }
 
@@ -391,6 +425,7 @@ export default function DashboardPage() {
       const commCA = commAccepteesRows.reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0);
       setMesVentes(commAccepteesRows.length);
       setCaTotal(commCA);
+      cd.mesVentes = commAccepteesRows.length; cd.caTotal = commCA;
     }
 
     if (!isReferent) setAnterieures((r.get("anterieures")?.data as typeof anterieures) ?? []);
@@ -407,13 +442,14 @@ export default function DashboardPage() {
     }
 
 
+    saveCache(cd);
     setLoading(false);
     } catch (err) {
       console.error("fetchData error", err);
       setFetchError("Erreur lors du chargement des données. Veuillez recharger la page.");
       setLoading(false);
     }
-  }, [profile, supabase, isDG, selectedBranchId]);
+  }, [profile, supabase, isDG, selectedBranchId, saveCache]);
 
   useEffect(() => {
     if (!profile) return;

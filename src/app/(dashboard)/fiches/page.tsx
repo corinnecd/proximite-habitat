@@ -940,7 +940,7 @@ export default function FichesPage() {
         )}
 
         {/* Liste des fiches */}
-        {loading ? null : fetchError ? (
+        {fetchError ? (
           <div className="text-center py-16 bg-card rounded-2xl border border-border space-y-3">
             <AlertCircle className="w-10 h-10 mx-auto text-destructive opacity-60" />
             <p className="font-medium text-sm text-foreground">Erreur de chargement</p>

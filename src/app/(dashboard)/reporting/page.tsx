@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
@@ -91,6 +91,25 @@ export default function ReportingPage() {
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
+  const rpCacheKey = profile ? `rpt_cache_${profile.id}` : null;
+  useLayoutEffect(() => {
+    if (!rpCacheKey) return;
+    try {
+      const raw = localStorage.getItem(rpCacheKey);
+      if (!raw) return;
+      const c = JSON.parse(raw);
+      if (c.statusCounts) setStatusCounts(c.statusCounts);
+      if (c.totalFiches != null) setTotalFiches(c.totalFiches);
+      if (c.caTotal != null) setCaTotal(c.caTotal);
+      setLoading(false);
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rpCacheKey]);
+
+  const saveRptCache = useCallback((data: Record<string, unknown>) => {
+    if (!rpCacheKey) return;
+    try { localStorage.setItem(rpCacheKey, JSON.stringify(data)); } catch { /* ignore */ }
+  }, [rpCacheKey]);
 
   async function loadData(profileId: string, role: string, period: PeriodFilter = "ALL") {
     const isComm = role === "COMMERCIAL";
@@ -328,6 +347,7 @@ export default function ReportingPage() {
     });
     setWeeklyData(weekBuckets);
 
+    saveRptCache({ statusCounts: countResults, totalFiches: countResults.reduce((a: number, b: StatusCount) => a + b.count, 0), caTotal: fiches.filter((f) => f.status === "ACCEPTEE").reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0) });
     setLoading(false);
   }
 

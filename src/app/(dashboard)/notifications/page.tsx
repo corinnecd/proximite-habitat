@@ -29,14 +29,16 @@ import { toast } from "sonner";
 const PAGE_SIZE = 20;
 
 // ── Période ──────────────────────────────────────────────────────────────────
-type PeriodFilter = "all" | "today" | "week" | "month" | "custom";
+type PeriodFilter = "all" | "today" | "week" | "month" | "quarter" | "year" | "custom";
 
 const PERIOD_LABELS: Record<PeriodFilter, string> = {
-  all:    "Toutes",
-  today:  "Aujourd'hui",
-  week:   "Cette semaine",
-  month:  "Ce mois",
-  custom: "Période",
+  all:     "Toutes",
+  today:   "Aujourd'hui",
+  week:    "Cette semaine",
+  month:   "Ce mois",
+  quarter: "Ce trimestre",
+  year:    "Cette année",
+  custom:  "Période",
 };
 
 function getDateRange(period: PeriodFilter, customFrom: string, customTo: string): { dateFrom?: string; dateTo?: string } {
@@ -54,6 +56,13 @@ function getDateRange(period: PeriodFilter, customFrom: string, customTo: string
   }
   if (period === "month") {
     return { dateFrom: new Date(now.getFullYear(), now.getMonth(), 1).toISOString() };
+  }
+  if (period === "quarter") {
+    const q = Math.floor(now.getMonth() / 3);
+    return { dateFrom: new Date(now.getFullYear(), q * 3, 1).toISOString() };
+  }
+  if (period === "year") {
+    return { dateFrom: new Date(now.getFullYear(), 0, 1).toISOString() };
   }
   if (period === "custom") {
     return {
@@ -571,7 +580,7 @@ export default function NotificationsPage() {
 
             {/* Filtres période chips */}
             <div className="flex flex-wrap gap-1.5">
-              {(["all", "today", "week", "month"] as PeriodFilter[]).map((p) => (
+              {(["all", "today", "week", "month", "quarter", "year"] as PeriodFilter[]).map((p) => (
                 <button
                   key={p}
                   type="button"

@@ -463,11 +463,6 @@ export default function FichesPage() {
     setCustomFrom(""); setCustomTo("");
   }
 
-  // Ne rien rendre tant que les données ne sont pas chargées.
-  // Next.js garde la page précédente visible pendant la navigation,
-  // donc l'utilisateur ne voit ni skeleton ni page blanche.
-  if (loading) return null;
-
   return (
     <>
       <Topbar title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} actions={<div className="flex items-center gap-2"><ExportPdfButton title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} filename={isValidationMode ? "fiches-a-valider" : "fiches-preview"} /><ExportCsvButton filename="fiches" getData={() => ({

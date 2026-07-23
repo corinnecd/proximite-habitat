@@ -978,7 +978,7 @@ export default function FichesPage() {
         )}
 
         {/* Évolution des validations par semaine (trimestre en cours) — admin/DG uniquement */}
-        {isValidationMode && isAdminOrDG && validationStats.length > 0 && (
+        {isValidationMode && validationStats.length > 0 && (
           <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-1">
               <p className="text-sm font-semibold text-foreground">Évolution des validations par semaine</p>

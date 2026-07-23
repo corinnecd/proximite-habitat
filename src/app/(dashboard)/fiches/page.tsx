@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -126,6 +126,20 @@ export default function FichesPage() {
 
   // Stable — ne change pas entre les renders
   const supabase = useMemo(() => createClient(), []);
+
+  // ── Cache localStorage : affichage instantané ───────────────────────────
+  const fichesCacheKey = profile ? `fiches_cache_${profile.id}_${statusFilter}` : null;
+  useLayoutEffect(() => {
+    if (!fichesCacheKey) return;
+    try {
+      const raw = localStorage.getItem(fichesCacheKey);
+      if (!raw) return;
+      const c = JSON.parse(raw);
+      if (c.fiches?.length) { setFiches(c.fiches); setLoading(false); }
+      if (c.statusCounts) setStatusCounts(c.statusCounts);
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fichesCacheKey]);
 
   const visibleStatuses: FicheStatus[] = isReferent
     ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
@@ -345,9 +359,13 @@ export default function FichesPage() {
       const rows = (fichesResult.data as unknown as FicheRow[]) || [];
 
       // Tout mettre à jour en un seul batch → un seul rendu
-      setFiches((prev) => (append ? [...prev, ...rows] : rows));
+      const newFiches = append ? [...fiches, ...rows] : rows;
+      setFiches(newFiches);
       if (!append) setVisibleCount(VISIBLE_INIT);
       setFetchError(null);
+      if (!append && fichesCacheKey) {
+        try { localStorage.setItem(fichesCacheKey, JSON.stringify({ fiches: newFiches.slice(0, 30) })); } catch { /* ignore */ }
+      }
       if (statsResult) {
         setValidationStats(statsResult.results);
         setQuarterLabel(statsResult.quarterLabel);
@@ -526,7 +544,9 @@ export default function FichesPage() {
                   {isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"}
                 </h1>
                 <p className="text-sm text-white/60 mt-2">
-                  {isValidationMode
+                  {loading && fiches.length === 0
+                    ? <span className="inline-block h-4 w-56 bg-white/10 rounded animate-pulse align-middle" />
+                    : isValidationMode
                     ? `${fiches.length} fiche${fiches.length > 1 ? "s" : ""} en attente de votre validation`
                     : (
                       <>
@@ -940,7 +960,7 @@ export default function FichesPage() {
         )}
 
         {/* Liste des fiches */}
-        {fetchError ? (
+        {loading ? null : fetchError ? (
           <div className="text-center py-16 bg-card rounded-2xl border border-border space-y-3">
             <AlertCircle className="w-10 h-10 mx-auto text-destructive opacity-60" />
             <p className="font-medium text-sm text-foreground">Erreur de chargement</p>

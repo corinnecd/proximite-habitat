@@ -108,6 +108,8 @@ export default function FichesPage() {
   const [firstFicheDate, setFirstFicheDate] = useState<string | null>(null);
   const [validationStats, setValidationStats] = useState<{ label: string; soumises: number; affectees: number; validees: number }[]>([]);
   const [quarterLabel, setQuarterLabel] = useState("");
+  const [showAllStats, setShowAllStats] = useState(false);
+  const STATS_VISIBLE = 8;
 
   // Plage de dates personnalisée (prioritaire sur les préréglages de période)
   const [customFrom, setCustomFrom] = useState("");
@@ -285,7 +287,7 @@ export default function FichesPage() {
           cur.setDate(cur.getDate() + 7);
           weekNum++;
         }
-        const weeks = allWeeks.slice(-8).reverse();
+        const weeks = allWeeks.reverse();
 
         let hqSoumises = supabase
           .from("fiche_history")
@@ -841,7 +843,7 @@ export default function FichesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {validationStats.map((w) => {
+                  {(showAllStats ? validationStats : validationStats.slice(0, STATS_VISIBLE)).map((w) => {
                     const max = Math.max(w.soumises, w.affectees, w.validees, 1);
                     return (
                       <tr key={w.label} className="border-b border-border/50 last:border-0">
@@ -879,6 +881,18 @@ export default function FichesPage() {
                 </tbody>
               </table>
             </div>
+            {validationStats.length > STATS_VISIBLE && (
+              <div className="flex justify-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAllStats((v) => !v)}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAllStats ? "rotate-180" : ""}`} />
+                  {showAllStats ? "Voir moins" : `Voir plus (${validationStats.length - STATS_VISIBLE} semaines)`}
+                </button>
+              </div>
+            )}
           </div>
         )}
 

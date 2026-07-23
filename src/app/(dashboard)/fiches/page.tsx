@@ -263,13 +263,13 @@ export default function FichesPage() {
         const rangeStart = effectiveDates ? new Date(effectiveDates.from) : new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
         const rangeEnd = effectiveDates ? new Date(effectiveDates.to) : new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 + 3, 0);
 
-        const weeks: { label: string; from: string; to: string }[] = [];
+        const allWeeks: { label: string; from: string; to: string }[] = [];
         const cur = new Date(rangeStart);
         const dayOfWeek = cur.getDay() === 0 ? 6 : cur.getDay() - 1;
         cur.setDate(cur.getDate() - dayOfWeek);
         let weekNum = 1;
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        while (cur <= rangeEnd && weeks.length < 53) {
+        while (cur <= rangeEnd) {
           const monday = new Date(cur);
           if (monday > today) break;
           const sunday = new Date(cur);
@@ -277,7 +277,7 @@ export default function FichesPage() {
           const effMonday = monday < rangeStart ? rangeStart : monday;
           const effSunday = sunday > rangeEnd ? rangeEnd : sunday;
           const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
-          weeks.push({
+          allWeeks.push({
             label: `S${weekNum} (${shortDate(effMonday)}-${shortDate(effSunday)})`,
             from: fmtDate(effMonday),
             to: fmtDate(effSunday),
@@ -285,6 +285,7 @@ export default function FichesPage() {
           cur.setDate(cur.getDate() + 7);
           weekNum++;
         }
+        const weeks = allWeeks.slice(-8).reverse();
 
         let hqSoumises = supabase
           .from("fiche_history")

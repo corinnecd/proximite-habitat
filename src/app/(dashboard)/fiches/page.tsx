@@ -284,27 +284,49 @@ export default function FichesPage() {
           weekNum++;
         }
 
-        let hq = supabase
+        let hqSoumises = supabase
           .from("fiche_history")
-          .select("new_status, created_at")
-          .in("new_status", ["SOUMISE", "AFFECTEE", "VALIDEE"])
+          .select("fiche_id, created_at")
+          .eq("new_status", "SOUMISE")
           .gte("created_at", `${fmtDate(quarterStart)}T00:00:00Z`)
           .lte("created_at", `${fmtDate(quarterEnd)}T23:59:59Z`);
-        if (branchFilter) hq = hq.eq("organization_id", branchFilter);
-        const { data: rows } = await hq;
+        if (branchFilter) hqSoumises = hqSoumises.eq("organization_id", branchFilter);
+        const { data: soumisesRows } = await hqSoumises;
+
+        const allFicheIds = [...new Set((soumisesRows ?? []).map((r) => r.fiche_id))];
+
+        let affectedSet = new Set<string>();
+        let validatedSet = new Set<string>();
+        if (allFicheIds.length > 0) {
+          let hqNext = supabase
+            .from("fiche_history")
+            .select("fiche_id, new_status")
+            .in("fiche_id", allFicheIds)
+            .in("new_status", ["AFFECTEE", "VALIDEE"]);
+          if (branchFilter) hqNext = hqNext.eq("organization_id", branchFilter);
+          const { data: nextRows } = await hqNext;
+          for (const r of nextRows ?? []) {
+            if (r.new_status === "AFFECTEE") affectedSet.add(r.fiche_id);
+            else if (r.new_status === "VALIDEE") validatedSet.add(r.fiche_id);
+          }
+        }
 
         const results = weeks.map((w) => {
           const wFrom = `${w.from}T00:00:00Z`;
           const wTo = `${w.to}T23:59:59Z`;
-          let soumises = 0, affectees = 0, validees = 0;
-          for (const r of rows ?? []) {
+          const weekFicheIds: string[] = [];
+          for (const r of soumisesRows ?? []) {
             if (r.created_at >= wFrom && r.created_at <= wTo) {
-              if (r.new_status === "SOUMISE") soumises++;
-              else if (r.new_status === "AFFECTEE") affectees++;
-              else if (r.new_status === "VALIDEE") validees++;
+              weekFicheIds.push(r.fiche_id);
             }
           }
-          return { label: w.label, soumises, affectees, validees };
+          const uniqueIds = [...new Set(weekFicheIds)];
+          return {
+            label: w.label,
+            soumises: uniqueIds.length,
+            affectees: uniqueIds.filter((id) => affectedSet.has(id)).length,
+            validees: uniqueIds.filter((id) => validatedSet.has(id)).length,
+          };
         });
         const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
         return { results, quarterLabel: `du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}` };
@@ -840,67 +862,6 @@ export default function FichesPage() {
           </p>
         )}
 
-        {/* Évolution des validations par semaine (trimestre en cours) — admin/DG uniquement */}
-        {isValidationMode && isAdminOrDG && validationStats.length > 0 && (
-          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-1">
-              <p className="text-sm font-semibold text-foreground">Évolution des validations par semaine</p>
-              {quarterLabel && (
-                <p className="text-xs text-muted-foreground">Trimestre en cours ({quarterLabel})</p>
-              )}
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-1.5 pr-3 font-medium">Semaine</th>
-                    <th className="py-1.5 px-3 font-medium text-right">Soumises</th>
-                    <th className="py-1.5 px-3 font-medium text-right">Affectées</th>
-                    <th className="py-1.5 pl-3 font-medium text-right">Validées</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {validationStats.map((w) => {
-                    const max = Math.max(w.soumises, w.affectees, w.validees, 1);
-                    return (
-                      <tr key={w.label} className="border-b border-border/50 last:border-0">
-                        <td className="py-1.5 pr-3 text-foreground whitespace-nowrap">{w.label}</td>
-                        <td className="py-1.5 px-3 text-right">
-                          <span className="inline-flex items-center gap-1.5">
-                            <span
-                              className="h-1.5 rounded-full bg-blue-400"
-                              style={{ width: `${Math.max((w.soumises / max) * 24, w.soumises > 0 ? 3 : 0)}px` }}
-                            />
-                            <span className="tabular-nums text-foreground">{w.soumises}</span>
-                          </span>
-                        </td>
-                        <td className="py-1.5 px-3 text-right">
-                          <span className="inline-flex items-center gap-1.5">
-                            <span
-                              className="h-1.5 rounded-full bg-amber-400"
-                              style={{ width: `${Math.max((w.affectees / max) * 24, w.affectees > 0 ? 3 : 0)}px` }}
-                            />
-                            <span className="tabular-nums text-foreground">{w.affectees}</span>
-                          </span>
-                        </td>
-                        <td className="py-1.5 pl-3 text-right">
-                          <span className="inline-flex items-center gap-1.5 justify-end w-full">
-                            <span
-                              className="h-1.5 rounded-full bg-emerald-400"
-                              style={{ width: `${Math.max((w.validees / max) * 24, w.validees > 0 ? 3 : 0)}px` }}
-                            />
-                            <span className="tabular-nums text-foreground">{w.validees}</span>
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
         {/* Liste des fiches */}
         {loading ? null : fetchError ? (
           <div className="text-center py-16 bg-card rounded-2xl border border-border space-y-3">
@@ -1013,6 +974,67 @@ export default function FichesPage() {
                 Voir moins
               </Button>
             ) : null}
+          </div>
+        )}
+
+        {/* Évolution des validations par semaine (trimestre en cours) — admin/DG uniquement */}
+        {isValidationMode && isAdminOrDG && validationStats.length > 0 && (
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-1">
+              <p className="text-sm font-semibold text-foreground">Évolution des validations par semaine</p>
+              {quarterLabel && (
+                <p className="text-xs text-muted-foreground">Trimestre en cours ({quarterLabel})</p>
+              )}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-muted-foreground border-b border-border">
+                    <th className="py-1.5 pr-3 font-medium">Semaine</th>
+                    <th className="py-1.5 px-3 font-medium text-right">Soumises</th>
+                    <th className="py-1.5 px-3 font-medium text-right">Affectées</th>
+                    <th className="py-1.5 pl-3 font-medium text-right">Validées</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {validationStats.map((w) => {
+                    const max = Math.max(w.soumises, w.affectees, w.validees, 1);
+                    return (
+                      <tr key={w.label} className="border-b border-border/50 last:border-0">
+                        <td className="py-1.5 pr-3 text-foreground whitespace-nowrap">{w.label}</td>
+                        <td className="py-1.5 px-3 text-right">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className="h-1.5 rounded-full bg-blue-400"
+                              style={{ width: `${Math.max((w.soumises / max) * 24, w.soumises > 0 ? 3 : 0)}px` }}
+                            />
+                            <span className="tabular-nums text-foreground">{w.soumises}</span>
+                          </span>
+                        </td>
+                        <td className="py-1.5 px-3 text-right">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className="h-1.5 rounded-full bg-amber-400"
+                              style={{ width: `${Math.max((w.affectees / max) * 24, w.affectees > 0 ? 3 : 0)}px` }}
+                            />
+                            <span className="tabular-nums text-foreground">{w.affectees}</span>
+                          </span>
+                        </td>
+                        <td className="py-1.5 pl-3 text-right">
+                          <span className="inline-flex items-center gap-1.5 justify-end w-full">
+                            <span
+                              className="h-1.5 rounded-full bg-emerald-400"
+                              style={{ width: `${Math.max((w.validees / max) * 24, w.validees > 0 ? 3 : 0)}px` }}
+                            />
+                            <span className="tabular-nums text-foreground">{w.validees}</span>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

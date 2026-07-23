@@ -1,6 +1,8 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
+
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
 
@@ -53,15 +55,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   }, [supabase]);
 
-  useEffect(() => {
-    // Lecture cache côté client uniquement (useEffect ne tourne pas en SSR)
+  useIsomorphicLayoutEffect(() => {
     const cached = readCache<Profile>(PROFILE_CACHE_KEY);
     if (cached) {
       setProfile(cached);
       setOrganizationName(readCache<string>(ORG_CACHE_KEY));
-      setLoading(false); // affiche le contenu immédiatement depuis le cache
+      setLoading(false);
     }
-    fetchProfile(); // actualise en arrière-plan dans tous les cas
+    fetchProfile();
   }, [fetchProfile]);
 
   return (

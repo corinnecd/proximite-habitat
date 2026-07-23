@@ -180,10 +180,11 @@ export default function FichesPage() {
   }, [isAdminOrDG, _branchFilterForUsers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchFiches = useCallback(async (pageToLoad = 0, append = false) => {
+    if (!profile) return;
     if (!append) setLoading(true);
 
     // Calculé ici pour éviter les closures périmées
-    const role = profile?.role;
+    const role = profile.role;
     const _isAdmin       = role === "DIRECTION" || role === "DIRECTION_GENERALE" || role === "SUPER_ADMIN";
     const _isReferent = role === "PROSPECTEUR" || role === "CHEF_EQUIPE";
     const _branchFilter  = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;

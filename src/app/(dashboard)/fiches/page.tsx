@@ -255,26 +255,27 @@ export default function FichesPage() {
       const shouldLoadStats = !append && isValidationMode && _isAdmin;
       const statsPromise = shouldLoadStats ? (async () => {
         const branchFilter = _branchFilter;
-        const now = new Date();
-        const qtr = Math.floor(now.getMonth() / 3);
-        const quarterStart = new Date(now.getFullYear(), qtr * 3, 1);
-        const quarterEnd = new Date(now.getFullYear(), qtr * 3 + 3, 0);
         const pad = (n: number) => String(n).padStart(2, "0");
         const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const shortDateFull = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+
+        const now = new Date();
+        const rangeStart = effectiveDates ? new Date(effectiveDates.from) : new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+        const rangeEnd = effectiveDates ? new Date(effectiveDates.to) : new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 + 3, 0);
 
         const weeks: { label: string; from: string; to: string }[] = [];
-        const cur = new Date(quarterStart);
+        const cur = new Date(rangeStart);
         const dayOfWeek = cur.getDay() === 0 ? 6 : cur.getDay() - 1;
         cur.setDate(cur.getDate() - dayOfWeek);
         let weekNum = 1;
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        while (cur <= quarterEnd && weeks.length < 8) {
+        while (cur <= rangeEnd && weeks.length < 53) {
           const monday = new Date(cur);
           if (monday > today) break;
           const sunday = new Date(cur);
           sunday.setDate(sunday.getDate() + 6);
-          const effMonday = monday < quarterStart ? quarterStart : monday;
-          const effSunday = sunday > quarterEnd ? quarterEnd : sunday;
+          const effMonday = monday < rangeStart ? rangeStart : monday;
+          const effSunday = sunday > rangeEnd ? rangeEnd : sunday;
           const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
           weeks.push({
             label: `S${weekNum} (${shortDate(effMonday)}-${shortDate(effSunday)})`,
@@ -289,8 +290,8 @@ export default function FichesPage() {
           .from("fiche_history")
           .select("fiche_id, created_at")
           .eq("new_status", "SOUMISE")
-          .gte("created_at", `${fmtDate(quarterStart)}T00:00:00Z`)
-          .lte("created_at", `${fmtDate(quarterEnd)}T23:59:59Z`);
+          .gte("created_at", `${fmtDate(rangeStart)}T00:00:00Z`)
+          .lte("created_at", `${fmtDate(rangeEnd)}T23:59:59Z`);
         if (branchFilter) hqSoumises = hqSoumises.eq("organization_id", branchFilter);
         const { data: soumisesRows } = await hqSoumises;
 
@@ -329,8 +330,7 @@ export default function FichesPage() {
             validees: uniqueIds.filter((id) => validatedSet.has(id)).length,
           };
         });
-        const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-        return { results, quarterLabel: `du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}` };
+        return { results, quarterLabel: `du ${shortDateFull(rangeStart)} au ${shortDateFull(rangeEnd)}` };
       })() : null;
 
       const [fichesResult, statsResult] = await Promise.all([
@@ -826,7 +826,7 @@ export default function FichesPage() {
             <div className="flex items-center justify-between flex-wrap gap-1">
               <p className="text-sm font-semibold text-foreground">Évolution des validations par semaine</p>
               {quarterLabel && (
-                <p className="text-xs text-muted-foreground">Trimestre en cours ({quarterLabel})</p>
+                <p className="text-xs text-muted-foreground">Période ({quarterLabel})</p>
               )}
             </div>
             <div className="overflow-x-auto">

@@ -249,59 +249,41 @@ export default function FichesPage() {
 
     try {
       const from = pageToLoad * PAGE_SIZE;
-      const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
-      if (error) throw error;
-      const rows = (data as unknown as FicheRow[]) || [];
-      setFiches((prev) => (append ? [...prev, ...rows] : rows));
-      if (!append) setVisibleCount(VISIBLE_INIT);
-      setFetchError(null);
 
-    } catch (err) {
-      console.error("fetchFiches error", err);
-      setFetchError("Erreur lors du chargement des fiches.");
-      toast.error("Erreur lors du chargement des fiches");
-    } finally {
-      if (!append) setLoading(false);
-    }
-  // supabase est stable (useMemo), pas besoin dans les deps
-  }, [statusFilter, search, profile, periodFilter, referentFilter, commercialFilter, selectedBranchId, isDG, customFrom, customTo, villeFilter, departementFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+      // En mode validation + admin : charger fiches ET stats en parallèle
+      const shouldLoadStats = !append && isValidationMode && _isAdmin;
+      const statsPromise = shouldLoadStats ? (async () => {
+        const branchFilter = _branchFilter;
+        const now = new Date();
+        const qtr = Math.floor(now.getMonth() / 3);
+        const quarterStart = new Date(now.getFullYear(), qtr * 3, 1);
+        const quarterEnd = new Date(now.getFullYear(), qtr * 3 + 3, 0);
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-  // Validation stats — une seule requête au lieu de 24
-  useEffect(() => {
-    if (!isValidationMode || !isAdminOrDG || !profile) return;
-    async function loadValidationStats() {
-      const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
-      const now = new Date();
-      const qtr = Math.floor(now.getMonth() / 3);
-      const quarterStart = new Date(now.getFullYear(), qtr * 3, 1);
-      const quarterEnd = new Date(now.getFullYear(), qtr * 3 + 3, 0);
-      const pad = (n: number) => String(n).padStart(2, "0");
-      const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const weeks: { label: string; from: string; to: string }[] = [];
+        const cur = new Date(quarterStart);
+        const dayOfWeek = cur.getDay() === 0 ? 6 : cur.getDay() - 1;
+        cur.setDate(cur.getDate() - dayOfWeek);
+        let weekNum = 1;
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        while (cur <= quarterEnd && weeks.length < 8) {
+          const monday = new Date(cur);
+          if (monday > today) break;
+          const sunday = new Date(cur);
+          sunday.setDate(sunday.getDate() + 6);
+          const effMonday = monday < quarterStart ? quarterStart : monday;
+          const effSunday = sunday > quarterEnd ? quarterEnd : sunday;
+          const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
+          weeks.push({
+            label: `S${weekNum} (${shortDate(effMonday)}-${shortDate(effSunday)})`,
+            from: fmtDate(effMonday),
+            to: fmtDate(effSunday),
+          });
+          cur.setDate(cur.getDate() + 7);
+          weekNum++;
+        }
 
-      const weeks: { label: string; from: string; to: string }[] = [];
-      const cur = new Date(quarterStart);
-      const dayOfWeek = cur.getDay() === 0 ? 6 : cur.getDay() - 1;
-      cur.setDate(cur.getDate() - dayOfWeek);
-      let weekNum = 1;
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      while (cur <= quarterEnd && weeks.length < 8) {
-        const monday = new Date(cur);
-        if (monday > today) break;
-        const sunday = new Date(cur);
-        sunday.setDate(sunday.getDate() + 6);
-        const effMonday = monday < quarterStart ? quarterStart : monday;
-        const effSunday = sunday > quarterEnd ? quarterEnd : sunday;
-        const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
-        weeks.push({
-          label: `S${weekNum} (${shortDate(effMonday)}-${shortDate(effSunday)})`,
-          from: fmtDate(effMonday),
-          to: fmtDate(effSunday),
-        });
-        cur.setDate(cur.getDate() + 7);
-        weekNum++;
-      }
-
-      try {
         let hq = supabase
           .from("fiche_history")
           .select("new_status, created_at")
@@ -324,15 +306,36 @@ export default function FichesPage() {
           }
           return { label: w.label, soumises, affectees, validees };
         });
-        setValidationStats(results);
         const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-        setQuarterLabel(`du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}`);
-      } catch (e) {
-        console.error("loadValidationStats error", e);
+        return { results, quarterLabel: `du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}` };
+      })() : null;
+
+      const [fichesResult, statsResult] = await Promise.all([
+        query.range(from, from + PAGE_SIZE - 1),
+        statsPromise,
+      ]);
+
+      if (fichesResult.error) throw fichesResult.error;
+      const rows = (fichesResult.data as unknown as FicheRow[]) || [];
+
+      // Tout mettre à jour en un seul batch → un seul rendu
+      setFiches((prev) => (append ? [...prev, ...rows] : rows));
+      if (!append) setVisibleCount(VISIBLE_INIT);
+      setFetchError(null);
+      if (statsResult) {
+        setValidationStats(statsResult.results);
+        setQuarterLabel(statsResult.quarterLabel);
       }
+
+    } catch (err) {
+      console.error("fetchFiches error", err);
+      setFetchError("Erreur lors du chargement des fiches.");
+      toast.error("Erreur lors du chargement des fiches");
+    } finally {
+      if (!append) setLoading(false);
     }
-    loadValidationStats();
-  }, [isValidationMode, isAdminOrDG, profile, isDG, selectedBranchId, supabase]);
+  // supabase est stable (useMemo), pas besoin dans les deps
+  }, [statusFilter, search, profile, periodFilter, referentFilter, commercialFilter, selectedBranchId, isDG, customFrom, customTo, villeFilter, departementFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fiches antérieures au trimestre (toujours chargées)
   useEffect(() => {

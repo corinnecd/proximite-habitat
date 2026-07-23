@@ -75,7 +75,8 @@ export default function UtilisateursPage() {
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
-    if (!profile || (profile.role !== "SUPER_ADMIN" && profile.role !== "DIRECTION" && profile.role !== "DIRECTION_GENERALE")) {
+    if (!profile) return;
+    if (profile.role !== "SUPER_ADMIN" && profile.role !== "DIRECTION" && profile.role !== "DIRECTION_GENERALE") {
       setLoading(false);
       return;
     }

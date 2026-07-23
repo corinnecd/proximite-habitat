@@ -776,7 +776,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Tout le contenu data-driven apparaît d'un coup */}
-        <div className="space-y-6">
+        {!loading && <div className="space-y-6">
 
         {/* Compteurs par statut */}
         <div>
@@ -1447,7 +1447,7 @@ export default function DashboardPage() {
           </>
         )}
 
-        </div>{/* fin wrapper opacity */}
+        </div>}{/* fin wrapper opacity */}
       </div>
 
       {assignDialog}

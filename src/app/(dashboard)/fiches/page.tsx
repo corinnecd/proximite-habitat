@@ -350,13 +350,55 @@ export default function FichesPage() {
         return { results, quarterLabel: `du ${shortDateFull(rangeStart)} au ${shortDateFull(rangeEnd)}` };
       })() : null;
 
-      const [fichesResult, statsResult] = await Promise.all([
+      // ── Compteurs par statut (intégrés au même batch) ──
+      const countStatuses: FicheStatus[] = _isReferent
+        ? ["BROUILLON", "SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+        : isCommercial
+        ? ["AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
+        : ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+      const countPromises = !append ? countStatuses.map((s) => {
+        let cq = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
+        if (_isReferent && profile.id) cq = cq.eq("created_by", profile.id);
+        else if (isCommercial && profile.id) cq = cq.eq("assigned_to", profile.id);
+        if (_branchFilter) cq = cq.eq("organization_id", _branchFilter);
+        return cq;
+      }) : [];
+      let firstQ = !append ? supabase.from("fiches").select("created_at").order("created_at", { ascending: true }).limit(1) : null;
+      if (firstQ) {
+        if (_isReferent && profile.id) firstQ = firstQ.eq("created_by", profile.id);
+        else if (isCommercial && profile.id) firstQ = firstQ.eq("assigned_to", profile.id);
+        else firstQ = firstQ.neq("status", "BROUILLON");
+        if (_branchFilter) firstQ = firstQ.eq("organization_id", _branchFilter);
+      }
+
+      const [fichesResult, statsResult, ...countResults] = await Promise.all([
         query.range(from, from + PAGE_SIZE - 1),
         statsPromise,
+        ...countPromises,
+        ...(firstQ ? [firstQ] : []),
       ]);
 
       if (fichesResult.error) throw fichesResult.error;
       const rows = (fichesResult.data as unknown as FicheRow[]) || [];
+
+      // ── Compteurs par statut ──
+      if (!append && countResults.length > 0) {
+        const counts: Record<string, number> = {};
+        let total = 0;
+        const hasFirstQ = firstQ != null;
+        const countData = hasFirstQ ? countResults.slice(0, -1) : countResults;
+        countStatuses.forEach((s, i) => {
+          const c = (countData[i] as { count: number | null })?.count ?? 0;
+          counts[s] = c;
+          total += c;
+        });
+        counts["ALL"] = total;
+        setStatusCounts(counts);
+        if (hasFirstQ) {
+          const firstData = (countResults[countResults.length - 1] as { data: { created_at: string }[] | null })?.data;
+          setFirstFicheDate(firstData?.[0]?.created_at ?? null);
+        }
+      }
 
       // Tout mettre à jour en un seul batch → un seul rendu
       const newFiches = append ? [...fiches, ...rows] : rows;
@@ -402,41 +444,6 @@ export default function FichesPage() {
     loadAnterieures();
   }, [profile, isReferent, isCommercial, supabase, isDG, selectedBranchId]);
 
-  // Compteurs par statut
-  useEffect(() => {
-    if (!profile) return;
-    async function loadStatusCounts() {
-      const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
-      const statuses: FicheStatus[] = isReferent
-        ? ["BROUILLON", "SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
-        : isCommercial
-        ? ["AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
-        : ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
-      // Date de la fiche la plus ancienne (visible pour le rôle courant)
-      let firstQ = supabase.from("fiches").select("created_at").order("created_at", { ascending: true }).limit(1);
-      if (isReferent && profile.id) firstQ = firstQ.eq("created_by", profile.id);
-      else if (isCommercial && profile.id) firstQ = firstQ.eq("assigned_to", profile.id);
-      else firstQ = firstQ.neq("status", "BROUILLON");
-      if (branchFilter) firstQ = firstQ.eq("organization_id", branchFilter);
-
-      const counts: Record<string, number> = {};
-      let total = 0;
-      const countPromises = statuses.map(async (s) => {
-        let q = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
-        if (isReferent && profile.id) q = q.eq("created_by", profile.id);
-        else if (isCommercial && profile.id) q = q.eq("assigned_to", profile.id);
-        if (branchFilter) q = q.eq("organization_id", branchFilter);
-        const { count } = await q;
-        counts[s] = count ?? 0;
-        total += count ?? 0;
-      });
-      const [, { data: firstData }] = await Promise.all([Promise.all(countPromises), firstQ]);
-      counts["ALL"] = total;
-      setStatusCounts(counts);
-      setFirstFicheDate(firstData?.[0]?.created_at ?? null);
-    }
-    loadStatusCounts();
-  }, [profile, isReferent, isCommercial, supabase, isDG, selectedBranchId]);
 
 
 

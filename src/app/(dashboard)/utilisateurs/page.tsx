@@ -181,7 +181,7 @@ export default function UtilisateursPage() {
   }
 
   // Accès refusé — attendre que le profil soit chargé avant de juger le rôle
-  if (profile?.role !== "SUPER_ADMIN" && profile?.role !== "DIRECTION" && profile?.role !== "DIRECTION_GENERALE") {
+  if (profile && profile.role !== "SUPER_ADMIN" && profile.role !== "DIRECTION" && profile.role !== "DIRECTION_GENERALE") {
     return (
       <>
         <Topbar title="Utilisateurs" />

@@ -256,67 +256,6 @@ export default function FichesPage() {
       if (!append) setVisibleCount(VISIBLE_INIT);
       setFetchError(null);
 
-      if (!append && isValidationMode && _isAdmin) {
-        try {
-          const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
-          const now = new Date();
-          const qtr = Math.floor(now.getMonth() / 3);
-          const quarterStart = new Date(now.getFullYear(), qtr * 3, 1);
-          const quarterEnd = new Date(now.getFullYear(), qtr * 3 + 3, 0);
-          const pad = (n: number) => String(n).padStart(2, "0");
-          const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-          const weeks: { label: string; from: string; to: string }[] = [];
-          const cur = new Date(quarterStart);
-          const dayOfWeek = cur.getDay() === 0 ? 6 : cur.getDay() - 1;
-          cur.setDate(cur.getDate() - dayOfWeek);
-          let weekNum = 1;
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          while (cur <= quarterEnd && weeks.length < 8) {
-            const monday = new Date(cur);
-            if (monday > today) break;
-            const sunday = new Date(cur);
-            sunday.setDate(sunday.getDate() + 6);
-            const effMonday = monday < quarterStart ? quarterStart : monday;
-            const effSunday = sunday > quarterEnd ? quarterEnd : sunday;
-            const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
-            weeks.push({
-              label: `S${weekNum} (${shortDate(effMonday)}-${shortDate(effSunday)})`,
-              from: fmtDate(effMonday),
-              to: fmtDate(effSunday),
-            });
-            cur.setDate(cur.getDate() + 7);
-            weekNum++;
-          }
-
-          const countHistory = async (status: FicheStatus, wFrom: string, wTo: string) => {
-            let hq = supabase
-              .from("fiche_history")
-              .select("*", { count: "exact", head: true })
-              .eq("new_status", status)
-              .gte("created_at", `${wFrom}T00:00:00Z`)
-              .lte("created_at", `${wTo}T23:59:59Z`);
-            if (branchFilter) hq = hq.eq("organization_id", branchFilter);
-            const { count } = await hq;
-            return count ?? 0;
-          };
-
-          const results = await Promise.all(weeks.map(async (w) => {
-            const [soumises, affectees, validees] = await Promise.all([
-              countHistory("SOUMISE", w.from, w.to),
-              countHistory("AFFECTEE", w.from, w.to),
-              countHistory("VALIDEE", w.from, w.to),
-            ]);
-            return { label: w.label, soumises, affectees, validees };
-          }));
-
-          setValidationStats(results);
-          const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-          setQuarterLabel(`du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}`);
-        } catch (e) {
-          console.error("loadValidationStats error", e);
-        }
-      }
     } catch (err) {
       console.error("fetchFiches error", err);
       setFetchError("Erreur lors du chargement des fiches.");
@@ -326,6 +265,72 @@ export default function FichesPage() {
     }
   // supabase est stable (useMemo), pas besoin dans les deps
   }, [statusFilter, search, profile, periodFilter, referentFilter, commercialFilter, selectedBranchId, isDG, customFrom, customTo, villeFilter, departementFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Validation stats — chargées en parallèle (pas séquentiellement dans fetchFiches)
+  useEffect(() => {
+    if (!isValidationMode || !isAdminOrDG || !profile) return;
+    async function loadValidationStats() {
+      const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
+      const now = new Date();
+      const qtr = Math.floor(now.getMonth() / 3);
+      const quarterStart = new Date(now.getFullYear(), qtr * 3, 1);
+      const quarterEnd = new Date(now.getFullYear(), qtr * 3 + 3, 0);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+      const weeks: { label: string; from: string; to: string }[] = [];
+      const cur = new Date(quarterStart);
+      const dayOfWeek = cur.getDay() === 0 ? 6 : cur.getDay() - 1;
+      cur.setDate(cur.getDate() - dayOfWeek);
+      let weekNum = 1;
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      while (cur <= quarterEnd && weeks.length < 8) {
+        const monday = new Date(cur);
+        if (monday > today) break;
+        const sunday = new Date(cur);
+        sunday.setDate(sunday.getDate() + 6);
+        const effMonday = monday < quarterStart ? quarterStart : monday;
+        const effSunday = sunday > quarterEnd ? quarterEnd : sunday;
+        const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
+        weeks.push({
+          label: `S${weekNum} (${shortDate(effMonday)}-${shortDate(effSunday)})`,
+          from: fmtDate(effMonday),
+          to: fmtDate(effSunday),
+        });
+        cur.setDate(cur.getDate() + 7);
+        weekNum++;
+      }
+
+      const countHistory = async (status: FicheStatus, wFrom: string, wTo: string) => {
+        let hq = supabase
+          .from("fiche_history")
+          .select("*", { count: "exact", head: true })
+          .eq("new_status", status)
+          .gte("created_at", `${wFrom}T00:00:00Z`)
+          .lte("created_at", `${wTo}T23:59:59Z`);
+        if (branchFilter) hq = hq.eq("organization_id", branchFilter);
+        const { count } = await hq;
+        return count ?? 0;
+      };
+
+      try {
+        const results = await Promise.all(weeks.map(async (w) => {
+          const [soumises, affectees, validees] = await Promise.all([
+            countHistory("SOUMISE", w.from, w.to),
+            countHistory("AFFECTEE", w.from, w.to),
+            countHistory("VALIDEE", w.from, w.to),
+          ]);
+          return { label: w.label, soumises, affectees, validees };
+        }));
+        setValidationStats(results);
+        const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+        setQuarterLabel(`du ${shortDate(quarterStart)} au ${shortDate(quarterEnd)}`);
+      } catch (e) {
+        console.error("loadValidationStats error", e);
+      }
+    }
+    loadValidationStats();
+  }, [isValidationMode, isAdminOrDG, profile, isDG, selectedBranchId, supabase]);
 
   // Fiches antérieures au trimestre (toujours chargées)
   useEffect(() => {

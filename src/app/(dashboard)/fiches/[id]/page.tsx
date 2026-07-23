@@ -573,34 +573,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     return (
       <>
         <Topbar title="Détail de la fiche" />
-        <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
-          {/* Skeleton hero */}
-          <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-muted animate-pulse shrink-0" />
-              <div className="flex-1 space-y-3">
-                <div className="h-3 w-24 bg-muted rounded animate-pulse" />
-                <div className="h-7 w-48 bg-muted rounded animate-pulse" />
-                <div className="h-3 w-36 bg-muted rounded animate-pulse" />
-              </div>
-            </div>
-            <div className="mt-5 pt-5 border-t border-border flex gap-2">
-              <div className="h-8 w-28 bg-muted rounded-xl animate-pulse" />
-              <div className="h-8 w-28 bg-muted rounded-xl animate-pulse" />
-            </div>
-          </div>
-          {/* Skeleton content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              <div className="h-40 bg-muted rounded-2xl animate-pulse" />
-              <div className="h-32 bg-muted rounded-2xl animate-pulse" />
-            </div>
-            <div className="space-y-4">
-              <div className="h-48 bg-muted rounded-2xl animate-pulse" />
-              <div className="h-24 bg-muted rounded-2xl animate-pulse" />
-            </div>
-          </div>
-        </div>
+        <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto" />
       </>
     );
   }

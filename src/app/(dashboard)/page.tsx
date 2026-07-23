@@ -165,7 +165,7 @@ export default function DashboardPage() {
     if (!profile) return;
     const isReferent = profile.role === "PROSPECTEUR";
     try {
-    const isAdmin       = profile.role === "ADMIN" || profile.role === "DIRECTION_GENERALE";
+    const isAdmin       = profile.role === "DIRECTION" || profile.role === "DIRECTION_GENERALE" || profile.role === "SUPER_ADMIN";
     const isCommercial  = profile.role === "COMMERCIAL";
     const branchFilter  = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
     const periodDates = getDashPeriodDates(period);
@@ -495,7 +495,7 @@ export default function DashboardPage() {
 
   const totalFiches   = Object.values(counts).reduce((a, b) => a + b, 0);
   const isReferent = profile?.role === "PROSPECTEUR";
-  const isAdmin       = profile?.role === "ADMIN";
+  const isAdmin       = profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN";
   const isAdminOrDG   = isAdmin || profile?.role === "DIRECTION_GENERALE";
   const isCommercial  = profile?.role === "COMMERCIAL";
 
@@ -551,7 +551,7 @@ export default function DashboardPage() {
         </SelectTrigger>
           <SelectContent>
             {commercials
-              .filter((c) => c.role === "COMMERCIAL" || c.role === "ADMIN")
+              .filter((c) => c.role === "COMMERCIAL" || c.role === "DIRECTION")
               .map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.first_name} {c.last_name}</SelectItem>
               ))}

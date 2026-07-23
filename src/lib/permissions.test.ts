@@ -14,18 +14,18 @@ describe("canTransition", () => {
 
   it("seul l'admin peut valider une fiche soumise", () => {
     expect(canTransition("COMMERCIAL", "SOUMISE", "VALIDEE")).toBe(false);
-    expect(canTransition("ADMIN", "SOUMISE", "VALIDEE")).toBe(true);
+    expect(canTransition("DIRECTION", "SOUMISE", "VALIDEE")).toBe(true);
   });
 
   it("seul l'admin peut affecter une fiche validée", () => {
-    expect(canTransition("ADMIN", "VALIDEE", "AFFECTEE")).toBe(true);
+    expect(canTransition("DIRECTION", "VALIDEE", "AFFECTEE")).toBe(true);
     expect(canTransition("COMMERCIAL", "VALIDEE", "AFFECTEE")).toBe(false);
   });
 
   it("autorise commercial et admin à accepter/refuser une fiche affectée", () => {
     expect(canTransition("COMMERCIAL", "AFFECTEE", "ACCEPTEE")).toBe(true);
     expect(canTransition("COMMERCIAL", "AFFECTEE", "REFUSEE")).toBe(true);
-    expect(canTransition("ADMIN", "AFFECTEE", "ACCEPTEE")).toBe(true);
+    expect(canTransition("DIRECTION", "AFFECTEE", "ACCEPTEE")).toBe(true);
   });
 
   it("interdit un référent d'accepter une fiche affectée", () => {
@@ -33,18 +33,18 @@ describe("canTransition", () => {
   });
 
   it("interdit toute transition depuis ARCHIVEE (état terminal)", () => {
-    expect(canTransition("ADMIN", "ARCHIVEE", "SOUMISE")).toBe(false);
-    expect(getAvailableTransitions("ADMIN", "ARCHIVEE")).toEqual([]);
+    expect(canTransition("DIRECTION", "ARCHIVEE", "SOUMISE")).toBe(false);
+    expect(getAvailableTransitions("DIRECTION", "ARCHIVEE")).toEqual([]);
   });
 
   it("interdit une transition non déclarée", () => {
-    expect(canTransition("ADMIN", "BROUILLON", "ARCHIVEE")).toBe(false);
+    expect(canTransition("DIRECTION", "BROUILLON", "ARCHIVEE")).toBe(false);
   });
 });
 
 describe("getAvailableTransitions", () => {
   it("liste les cibles d'un admin sur une fiche refusée", () => {
-    expect(getAvailableTransitions("ADMIN", "REFUSEE").sort()).toEqual(
+    expect(getAvailableTransitions("DIRECTION", "REFUSEE").sort()).toEqual(
       ["AFFECTEE", "ARCHIVEE"].sort()
     );
   });
@@ -62,11 +62,11 @@ describe("getAvailableTransitions", () => {
 
 describe("helpers de rôle", () => {
   it("ADMIN et DIRECTION_GENERALE gèrent les utilisateurs, seul ADMIN affecte les fiches", () => {
-    expect(canManageUsers("ADMIN")).toBe(true);
+    expect(canManageUsers("DIRECTION")).toBe(true);
     expect(canManageUsers("DIRECTION_GENERALE")).toBe(true);
     expect(canManageUsers("COMMERCIAL")).toBe(false);
     expect(canManageUsers("PROSPECTEUR")).toBe(false);
-    expect(canAssignFiche("ADMIN")).toBe(true);
+    expect(canAssignFiche("DIRECTION")).toBe(true);
     expect(canAssignFiche("DIRECTION_GENERALE")).toBe(false);
     expect(canAssignFiche("COMMERCIAL")).toBe(false);
   });
@@ -77,7 +77,7 @@ describe("canEditFiche", () => {
   const other = "user-2";
 
   it("l'admin peut toujours éditer", () => {
-    expect(canEditFiche("ADMIN", me, other, null, "SOUMISE")).toBe(true);
+    expect(canEditFiche("DIRECTION", me, other, null, "SOUMISE")).toBe(true);
   });
 
   it("le commercial édite ses fiches ou celles qui lui sont affectées", () => {
@@ -97,7 +97,7 @@ describe("canEditFiche", () => {
   });
 
   it("une fiche archivée n'est jamais éditable, même par l'admin", () => {
-    expect(canEditFiche("ADMIN", me, me, null, "ARCHIVEE")).toBe(false);
+    expect(canEditFiche("DIRECTION", me, me, null, "ARCHIVEE")).toBe(false);
     expect(canEditFiche("COMMERCIAL", me, me, me, "ARCHIVEE")).toBe(false);
     expect(canEditFiche("PROSPECTEUR", me, me, null, "ARCHIVEE")).toBe(false);
   });

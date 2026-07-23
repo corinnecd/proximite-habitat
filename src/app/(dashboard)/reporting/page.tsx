@@ -333,7 +333,7 @@ export default function ReportingPage() {
 
   useEffect(() => {
     if (!profile) return;
-    if (profile.role !== "ADMIN" && profile.role !== "COMMERCIAL" && profile.role !== "DIRECTION_GENERALE") { router.replace("/"); return; }
+    if (profile.role !== "DIRECTION" && profile.role !== "COMMERCIAL" && profile.role !== "DIRECTION_GENERALE" && profile.role !== "SUPER_ADMIN") { router.replace("/"); return; }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData(profile.id, profile.role, periodFilter);
     setShowAllVilles(false);
@@ -345,7 +345,6 @@ export default function ReportingPage() {
 
   const accepted      = statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0;
   const refused       = statusCounts.find((s) => s.status === "REFUSEE")?.count ?? 0;
-  const archived      = statusCounts.find((s) => s.status === "ARCHIVEE")?.count ?? 0;
   const soumises      = statusCounts.find((s) => s.status === "SOUMISE")?.count ?? 0;
   const validees      = statusCounts.find((s) => s.status === "VALIDEE")?.count ?? 0;
   const affectees     = statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0;

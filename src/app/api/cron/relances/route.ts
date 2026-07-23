@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
         .from("profiles")
         .select("id")
         .eq("organization_id", orgId)
-        .in("role", ["ADMIN", "DIRECTION_GENERALE"])
+        .in("role", ["DIRECTION", "SUPER_ADMIN", "DIRECTION_GENERALE"])
         .eq("is_active", true);
 
       const orgFiches = soumFiches.filter((f) => f.organization_id === orgId);

@@ -686,7 +686,7 @@ export default function NotificationsPage() {
                 </div>
                 <div className="space-y-2">
                   {(showAllUnread ? sorted.unread : sorted.unread.slice(0, VISIBLE_COUNT)).map((n) => (
-                    <NotifCard key={n.id} notif={n} ficheStatus={n.fiche_id ? ficheStatuses[n.fiche_id] : undefined} onClick={handleClick} onMarkRead={markAsRead} onDelete={profile?.role === "ADMIN" ? handleDeleteRequest : undefined} />
+                    <NotifCard key={n.id} notif={n} ficheStatus={n.fiche_id ? ficheStatuses[n.fiche_id] : undefined} onClick={handleClick} onMarkRead={markAsRead} onDelete={profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN" ? handleDeleteRequest : undefined} />
                   ))}
                 </div>
                 {sorted.unread.length > VISIBLE_COUNT && (
@@ -711,7 +711,7 @@ export default function NotificationsPage() {
                 </div>
                 <div className="space-y-2">
                   {visibleRead.map((n) => (
-                    <NotifCard key={n.id} notif={n} ficheStatus={n.fiche_id ? ficheStatuses[n.fiche_id] : undefined} onClick={handleClick} onMarkRead={markAsRead} onDelete={profile?.role === "ADMIN" ? handleDeleteRequest : undefined} />
+                    <NotifCard key={n.id} notif={n} ficheStatus={n.fiche_id ? ficheStatuses[n.fiche_id] : undefined} onClick={handleClick} onMarkRead={markAsRead} onDelete={profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN" ? handleDeleteRequest : undefined} />
                   ))}
                 </div>
                 {totalRead > VISIBLE_COUNT && (

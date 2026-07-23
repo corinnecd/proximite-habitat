@@ -69,7 +69,7 @@ export default function CalendrierPage() {
   const supabase = useMemo(() => createClient(), []);
 
   const role = profile?.role;
-  const isAdminOrDG = role === "ADMIN" || role === "DIRECTION_GENERALE";
+  const isAdminOrDG = role === "DIRECTION" || role === "DIRECTION_GENERALE" || role === "SUPER_ADMIN";
 
   const [refDate, setRefDate] = useState(() => new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");

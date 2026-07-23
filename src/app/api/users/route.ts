@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
   const { data: caller } = await supabase.from("profiles").select("role, organization_id").eq("id", user.id).single();
-  if (!caller || (caller.role !== "ADMIN" && caller.role !== "DIRECTION_GENERALE"))
+  if (!caller || (caller.role !== "SUPER_ADMIN" && caller.role !== "DIRECTION" && caller.role !== "DIRECTION_GENERALE"))
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
 
   const body = await request.json();
@@ -21,12 +21,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Prénom requis" }, { status: 400 });
   if (!last_name || typeof last_name !== "string" || last_name.trim().length === 0)
     return NextResponse.json({ error: "Nom requis" }, { status: 400 });
-  const validRoles = ["ADMIN", "COMMERCIAL", "PROSPECTEUR", "CHEF_EQUIPE", "DIRECTION_GENERALE"];
+  const validRoles = ["SUPER_ADMIN", "DIRECTION", "COMMERCIAL", "PROSPECTEUR", "CHEF_EQUIPE", "DIRECTION_GENERALE"];
   if (!role || !validRoles.includes(role))
     return NextResponse.json({ error: "Rôle invalide" }, { status: 400 });
 
-  // ADMIN : même organisation uniquement. DG : n'importe quelle succursale de sa société.
-  if (caller.role === "ADMIN") {
+  // DIRECTION : même organisation uniquement. DG/SUPER_ADMIN : n'importe quelle succursale de sa société.
+  if (caller.role === "DIRECTION") {
     if (organization_id !== caller.organization_id)
       return NextResponse.json({ error: "Organisation invalide" }, { status: 403 });
   } else if (caller.role === "DIRECTION_GENERALE") {
@@ -53,7 +53,7 @@ export async function PATCH(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
   const { data: caller } = await supabase.from("profiles").select("role, organization_id").eq("id", user.id).single();
-  if (!caller || (caller.role !== "ADMIN" && caller.role !== "DIRECTION_GENERALE"))
+  if (!caller || (caller.role !== "SUPER_ADMIN" && caller.role !== "DIRECTION" && caller.role !== "DIRECTION_GENERALE"))
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
 
   const svc = await createServiceClient();
@@ -64,7 +64,7 @@ export async function PATCH(request: NextRequest) {
   const { data: target } = await svc.from("profiles").select("organization_id").eq("id", id).single();
   if (!target) return NextResponse.json({ error: "Utilisateur introuvable" }, { status: 404 });
 
-  if (caller.role === "ADMIN") {
+  if (caller.role === "DIRECTION") {
     if (target.organization_id !== caller.organization_id)
       return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   } else if (caller.role === "DIRECTION_GENERALE") {

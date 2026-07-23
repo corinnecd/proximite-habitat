@@ -1,14 +1,14 @@
 import type { UserRole, FicheStatus, MotifRefus } from "@/types/database";
 
 const STATUS_TRANSITIONS: Record<FicheStatus, { to: FicheStatus[]; roles: UserRole[] }[]> = {
-  BROUILLON: [{ to: ["SOUMISE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE", "COMMERCIAL", "ADMIN"] }],
-  SOUMISE: [{ to: ["VALIDEE"], roles: ["ADMIN"] }, { to: ["BROUILLON"], roles: ["ADMIN", "PROSPECTEUR", "CHEF_EQUIPE"] }],
-  VALIDEE: [{ to: ["AFFECTEE"], roles: ["ADMIN"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
-  AFFECTEE: [{ to: ["RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE", "RDV_A_REPRENDRE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["SOUMISE"], roles: ["ADMIN"] }],
-  RDV_A_REPRENDRE: [{ to: ["AFFECTEE"], roles: ["ADMIN", "PROSPECTEUR", "CHEF_EQUIPE"] }],
-  RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
-  ACCEPTEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }],
-  REFUSEE: [{ to: ["ARCHIVEE"], roles: ["ADMIN", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["ADMIN"] }],
+  BROUILLON: [{ to: ["SOUMISE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE", "COMMERCIAL", "DIRECTION"] }],
+  SOUMISE: [{ to: ["VALIDEE"], roles: ["DIRECTION"] }, { to: ["BROUILLON"], roles: ["DIRECTION", "PROSPECTEUR", "CHEF_EQUIPE"] }],
+  VALIDEE: [{ to: ["AFFECTEE"], roles: ["DIRECTION"] }, { to: ["SOUMISE"], roles: ["DIRECTION"] }],
+  AFFECTEE: [{ to: ["RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE", "RDV_A_REPRENDRE"], roles: ["DIRECTION", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["SOUMISE"], roles: ["DIRECTION"] }],
+  RDV_A_REPRENDRE: [{ to: ["AFFECTEE"], roles: ["DIRECTION", "PROSPECTEUR", "CHEF_EQUIPE"] }],
+  RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["AFFECTEE"], roles: ["DIRECTION"] }],
+  ACCEPTEE: [{ to: ["ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }],
+  REFUSEE: [{ to: ["ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["DIRECTION"] }],
   ARCHIVEE: [],
 };
 
@@ -20,8 +20,8 @@ export function getAvailableTransitions(role: UserRole, currentStatus: FicheStat
   return STATUS_TRANSITIONS[currentStatus].filter((t) => t.roles.includes(role)).flatMap((t) => t.to);
 }
 
-export function canManageUsers(role: UserRole): boolean { return role === "ADMIN" || role === "DIRECTION_GENERALE"; }
-export function canAssignFiche(role: UserRole): boolean { return role === "ADMIN"; }
+export function canManageUsers(role: UserRole): boolean { return role === "SUPER_ADMIN"; }
+export function canAssignFiche(role: UserRole): boolean { return role === "DIRECTION"; }
 export function isDirectionGenerale(role: UserRole): boolean { return role === "DIRECTION_GENERALE"; }
 
 export function canEditFiche(
@@ -33,7 +33,7 @@ export function canEditFiche(
 ): boolean {
   if (status === "ARCHIVEE") return false;
   if (role === "DIRECTION_GENERALE") return false;
-  if (role === "ADMIN") return true;
+  if (role === "DIRECTION" || role === "SUPER_ADMIN") return true;
   if (role === "COMMERCIAL") return ficheCreatedBy === userId || ficheAssignedTo === userId;
   if (role === "PROSPECTEUR" || role === "CHEF_EQUIPE") {
     if (ficheCreatedBy !== userId) return false;
@@ -51,7 +51,7 @@ export function canEditRdvDate(
 ): boolean {
   if (status === "ARCHIVEE") return false;
   if (role === "DIRECTION_GENERALE") return false;
-  if (role === "ADMIN") return true;
+  if (role === "DIRECTION" || role === "SUPER_ADMIN") return true;
   if (role === "COMMERCIAL") return ficheAssignedTo === userId;
   if (role === "PROSPECTEUR" || role === "CHEF_EQUIPE") return ficheCreatedBy === userId;
   return false;
@@ -77,7 +77,7 @@ export const STATUS_COLORS: Record<FicheStatus, string> = {
 };
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  DIRECTION_GENERALE: "Direction Générale", ADMIN: "Direction", COMMERCIAL: "Commercial", PROSPECTEUR: "Référent", CHEF_EQUIPE: "Chef d'équipe",
+  SUPER_ADMIN: "Super Admin", DIRECTION_GENERALE: "Direction Générale", DIRECTION: "Direction", COMMERCIAL: "Commercial", PROSPECTEUR: "Référent", CHEF_EQUIPE: "Chef d'équipe",
 };
 
 export const MOTIF_REFUS_LABELS: Record<MotifRefus, string> = {

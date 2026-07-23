@@ -85,7 +85,7 @@ export async function getAdminIds(db: Db, organizationId: string): Promise<strin
     .from("profiles")
     .select("id")
     .eq("organization_id", organizationId)
-    .eq("role", "ADMIN")
+    .eq("role", "DIRECTION")
     .eq("is_active", true);
   return (data ?? []).map((r) => r.id);
 }

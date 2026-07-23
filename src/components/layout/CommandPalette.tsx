@@ -96,14 +96,14 @@ export function CommandPalette({ open, onClose }: Props) {
   const { profile } = useProfile();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isAdminOrDG = profile?.role === "ADMIN" || profile?.role === "DIRECTION_GENERALE";
+  const isAdminOrDG = profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN" || profile?.role === "DIRECTION_GENERALE";
 
   // Pages filtrées selon le rôle
   const availablePages = useMemo(() => {
     if (!profile) return [];
     const role = profile.role;
     return ALL_PAGES.filter((p) => {
-      if (p.href === "/utilisateurs" || p.href === "/reporting") return role === "ADMIN" || role === "DIRECTION_GENERALE" || role === "COMMERCIAL";
+      if (p.href === "/utilisateurs" || p.href === "/reporting") return role === "DIRECTION" || role === "SUPER_ADMIN" || role === "DIRECTION_GENERALE" || role === "COMMERCIAL";
       if (p.href === "/admin/societe" || p.href === "/admin/succursales") return role === "DIRECTION_GENERALE";
       return true;
     });
@@ -183,7 +183,6 @@ export function CommandPalette({ open, onClose }: Props) {
   if (!open) return null;
 
   const hasQuery = query.trim().length >= 2;
-  const hasResults = hasQuery && (fiches.length > 0 || users.length > 0 || filteredPages.length > 0);
   const noResults = hasQuery && !loading && fiches.length === 0 && users.length === 0 && filteredPages.length === 0;
 
   // Offset pour les indices clavier : pages d'abord, puis fiches, puis users

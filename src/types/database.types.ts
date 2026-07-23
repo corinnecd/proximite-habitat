@@ -1,7 +1,7 @@
 // Types de la base de données — reflètent le schéma de `supabase/migrations/0001_initial_schema.sql`.
 // À terme, régénérer avec : `supabase gen types typescript --project-id <ref> > src/types/database.types.ts`.
 
-export type UserRole = "ADMIN" | "COMMERCIAL" | "PROSPECTEUR" | "CHEF_EQUIPE" | "DIRECTION_GENERALE";
+export type UserRole = "SUPER_ADMIN" | "DIRECTION" | "COMMERCIAL" | "PROSPECTEUR" | "CHEF_EQUIPE" | "DIRECTION_GENERALE";
 export type MotifRefus = "RDC" | "ANNULATION" | "REFUS_CLASSIQUE";
 export type FicheStatus =
   | "BROUILLON"

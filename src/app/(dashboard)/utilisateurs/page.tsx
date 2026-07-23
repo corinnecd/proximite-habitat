@@ -32,7 +32,8 @@ const VISIBLE_INIT = 5;
 // ── Palette rôle ──────────────────────────────────────────────────────────────
 
 const ROLE_STYLE: Record<UserRole, { border: string; avatarBg: string; avatarText: string; badge: string }> = {
-  ADMIN:       { border: "border-l-purple-500", avatarBg: "bg-purple-100 dark:bg-purple-900/40", avatarText: "text-purple-700 dark:text-purple-300", badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
+  SUPER_ADMIN: { border: "border-l-red-500", avatarBg: "bg-red-100 dark:bg-red-900/40", avatarText: "text-red-700 dark:text-red-300", badge: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+  DIRECTION:   { border: "border-l-purple-500", avatarBg: "bg-purple-100 dark:bg-purple-900/40", avatarText: "text-purple-700 dark:text-purple-300", badge: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
   COMMERCIAL:  { border: "border-l-blue-500",   avatarBg: "bg-blue-100 dark:bg-blue-900/40",    avatarText: "text-blue-700 dark:text-blue-300",    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
   PROSPECTEUR: { border: "border-l-emerald-500",avatarBg: "bg-emerald-100 dark:bg-emerald-900/40", avatarText: "text-emerald-700 dark:text-emerald-300", badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
   CHEF_EQUIPE: { border: "border-l-amber-500", avatarBg: "bg-amber-100 dark:bg-amber-900/40", avatarText: "text-amber-700 dark:text-amber-300", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
@@ -42,7 +43,8 @@ const ROLE_STYLE: Record<UserRole, { border: string; avatarBg: string; avatarTex
 const ROLE_FILTERS: Array<{ value: UserRole | "ALL"; label: string }> = [
   { value: "ALL", label: "Tous" },
   { value: "DIRECTION_GENERALE", label: "Direction Générale" },
-  { value: "ADMIN", label: "Direction" },
+  { value: "SUPER_ADMIN", label: "Super Admin" },
+  { value: "DIRECTION", label: "Direction" },
   { value: "COMMERCIAL", label: "Commerciaux" },
   { value: "PROSPECTEUR", label: "Référents" },
   { value: "CHEF_EQUIPE", label: "Chefs d'équipe" },
@@ -73,7 +75,7 @@ export default function UtilisateursPage() {
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
-    if (!profile || (profile.role !== "ADMIN" && profile.role !== "DIRECTION_GENERALE")) {
+    if (!profile || (profile.role !== "SUPER_ADMIN" && profile.role !== "DIRECTION" && profile.role !== "DIRECTION_GENERALE")) {
       setLoading(false);
       return;
     }
@@ -108,7 +110,7 @@ export default function UtilisateursPage() {
   const stats = useMemo(() => ({
     total: branchScopedUsers.length,
     active: branchScopedUsers.filter((u) => u.is_active).length,
-    admins: branchScopedUsers.filter((u) => u.role === "ADMIN").length,
+    admins: branchScopedUsers.filter((u) => u.role === "DIRECTION" || u.role === "SUPER_ADMIN").length,
     commercials: branchScopedUsers.filter((u) => u.role === "COMMERCIAL").length,
     référents: branchScopedUsers.filter((u) => u.role === "PROSPECTEUR").length,
     chefsEquipe: branchScopedUsers.filter((u) => u.role === "CHEF_EQUIPE").length,
@@ -178,7 +180,7 @@ export default function UtilisateursPage() {
   }
 
   // Accès refusé — attendre que le profil soit chargé avant de juger le rôle
-  if (profile?.role !== "ADMIN" && profile?.role !== "DIRECTION_GENERALE") {
+  if (profile?.role !== "SUPER_ADMIN" && profile?.role !== "DIRECTION" && profile?.role !== "DIRECTION_GENERALE") {
     return (
       <>
         <Topbar title="Utilisateurs" />
@@ -267,7 +269,7 @@ export default function UtilisateursPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="DIRECTION_GENERALE">Direction Générale</SelectItem>
-                      <SelectItem value="ADMIN">Direction</SelectItem>
+                      <SelectItem value="DIRECTION">Direction</SelectItem>
                       <SelectItem value="COMMERCIAL">Commercial</SelectItem>
                       <SelectItem value="CHEF_EQUIPE">Chef d&apos;équipe</SelectItem>
                       <SelectItem value="PROSPECTEUR">Référent</SelectItem>
@@ -477,7 +479,7 @@ export default function UtilisateursPage() {
                 <SelectTrigger className="bg-card rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="DIRECTION_GENERALE">Direction Générale</SelectItem>
-                  <SelectItem value="ADMIN">Direction</SelectItem>
+                  <SelectItem value="DIRECTION">Direction</SelectItem>
                   <SelectItem value="COMMERCIAL">Commercial</SelectItem>
                   <SelectItem value="CHEF_EQUIPE">Chef d&apos;équipe</SelectItem>
                   <SelectItem value="PROSPECTEUR">Référent</SelectItem>

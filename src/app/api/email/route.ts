@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
 
   // PROSPECTEUR autorisé uniquement pour FICHE_SOUMISE (soumettre sa propre fiche)
   // ADMIN et COMMERCIAL autorisés pour tous les types
-  if (!["ADMIN", "COMMERCIAL"].includes(caller.role) && body.type !== "FICHE_SOUMISE") {
+  if (!["DIRECTION", "SUPER_ADMIN", "COMMERCIAL"].includes(caller.role) && body.type !== "FICHE_SOUMISE") {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
 
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
     if (type === "FICHE_SOUMISE") {
       // Résoudre les admins et le referent depuis la DB
       const [{ data: admins }, { data: referent }] = await Promise.all([
-        supabase.from("profiles").select("email").eq("organization_id", fiche.organization_id).eq("role", "ADMIN").eq("is_active", true),
+        supabase.from("profiles").select("email").eq("organization_id", fiche.organization_id).eq("role", "DIRECTION").eq("is_active", true),
         supabase.from("profiles").select("first_name, last_name").eq("id", fiche.created_by).single(),
       ]);
       const adminEmails = (admins ?? []).map((a) => a.email).filter(Boolean) as string[];

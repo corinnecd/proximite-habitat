@@ -85,7 +85,7 @@ export default function FichesPage() {
   const { profile } = useProfile();
   const { selectedBranchId, isDG } = useBranch();
   const isReferent = profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE";
-  const isAdmin       = profile?.role === "ADMIN";
+  const isAdmin       = profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN";
   const isAdminOrDG   = isAdmin || profile?.role === "DIRECTION_GENERALE";
   const isCommercial  = profile?.role === "COMMERCIAL";
 
@@ -184,7 +184,7 @@ export default function FichesPage() {
 
     // Calculé ici pour éviter les closures périmées
     const role = profile?.role;
-    const _isAdmin       = role === "ADMIN" || role === "DIRECTION_GENERALE";
+    const _isAdmin       = role === "DIRECTION" || role === "DIRECTION_GENERALE" || role === "SUPER_ADMIN";
     const _isReferent = role === "PROSPECTEUR" || role === "CHEF_EQUIPE";
     const _branchFilter  = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
 
@@ -658,7 +658,7 @@ export default function FichesPage() {
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
                         showAdvancedFilters || advancedFiltersCount > 0
                           ? "bg-primary/5 border-primary/30 text-foreground"
-                          : "bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                          : "bg-slate-200 dark:bg-slate-700 border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
                       }`}
                       aria-expanded={showAdvancedFilters}
                     >
@@ -680,7 +680,7 @@ export default function FichesPage() {
                     <div className="flex flex-col gap-1">
                       <label className="text-xs text-muted-foreground uppercase tracking-wide">Référents</label>
                       <Select value={referentFilter} onValueChange={(v) => setReferentFilter(v ?? "ALL")}>
-                        <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
+                        <SelectTrigger className="h-[34px] bg-slate-200 dark:bg-slate-700 rounded-xl text-sm">
                           <SelectValue>
                             {referentFilter === "ALL"
                               ? "Tous les référents"
@@ -700,7 +700,7 @@ export default function FichesPage() {
                     <div className="flex flex-col gap-1">
                       <label className="text-xs text-muted-foreground uppercase tracking-wide">Commerciaux</label>
                       <Select value={commercialFilter} onValueChange={(v) => setCommercialFilter(v ?? "ALL")}>
-                        <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
+                        <SelectTrigger className="h-[34px] bg-slate-200 dark:bg-slate-700 rounded-xl text-sm">
                           <SelectValue>
                             {commercialFilter === "ALL"
                               ? "Tous les commerciaux"
@@ -720,7 +720,7 @@ export default function FichesPage() {
                     <div className="flex flex-col gap-1">
                       <label className="text-xs text-muted-foreground uppercase tracking-wide">Ville</label>
                       <Select value={villeFilter} onValueChange={(v) => setVilleFilter(v ?? "ALL")}>
-                        <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
+                        <SelectTrigger className="h-[34px] bg-slate-200 dark:bg-slate-700 rounded-xl text-sm">
                           <SelectValue>{villeFilter === "ALL" ? "Toutes les villes" : villeFilter}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -734,7 +734,7 @@ export default function FichesPage() {
                     <div className="flex flex-col gap-1">
                       <label className="text-xs text-muted-foreground uppercase tracking-wide">Département</label>
                       <Select value={departementFilter} onValueChange={(v) => setDepartementFilter(v ?? "ALL")}>
-                        <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm">
+                        <SelectTrigger className="h-[34px] bg-slate-200 dark:bg-slate-700 rounded-xl text-sm">
                           <SelectValue>{departementFilter === "ALL" ? "Tous les départements" : departementFilter}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -752,7 +752,7 @@ export default function FichesPage() {
                           type="date"
                           value={customFrom}
                           onChange={(e) => setCustomFrom(e.target.value)}
-                          className="h-[34px] px-2 bg-background border rounded-xl text-sm flex-1"
+                          className="h-[34px] px-2 bg-slate-200 dark:bg-slate-700 border rounded-xl text-sm flex-1"
                           aria-label="Du"
                         />
                         <span className="text-xs text-muted-foreground">→</span>
@@ -760,7 +760,7 @@ export default function FichesPage() {
                           type="date"
                           value={customTo}
                           onChange={(e) => setCustomTo(e.target.value)}
-                          className="h-[34px] px-2 bg-background border rounded-xl text-sm flex-1"
+                          className="h-[34px] px-2 bg-slate-200 dark:bg-slate-700 border rounded-xl text-sm flex-1"
                           aria-label="Au"
                         />
                         {(customFrom || customTo) && (

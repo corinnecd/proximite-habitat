@@ -90,8 +90,8 @@ export default function PlanificationPage() {
   sunday.setDate(currentMonday.getDate() + 6);
   const sundayStr = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, "0")}-${String(sunday.getDate()).padStart(2, "0")}`;
 
-  const isAdmin = profile?.role === "ADMIN" || profile?.role === "CHEF_EQUIPE" || profile?.role === "COMMERCIAL";
-  const canEditParcours = profile?.role === "ADMIN" || profile?.role === "CHEF_EQUIPE" || profile?.role === "COMMERCIAL";
+  const isAdmin = profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN" || profile?.role === "CHEF_EQUIPE" || profile?.role === "COMMERCIAL";
+  const canEditParcours = profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN" || profile?.role === "CHEF_EQUIPE" || profile?.role === "COMMERCIAL";
 
   const fetchPlan = useCallback(async () => {
     if (!profile) return;

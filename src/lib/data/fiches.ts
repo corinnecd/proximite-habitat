@@ -228,7 +228,7 @@ export async function getActiveCommercialsAndAdmins(db: Db) {
   const { data } = await db
     .from("profiles")
     .select("id, first_name, last_name, role")
-    .in("role", ["COMMERCIAL", "ADMIN"])
+    .in("role", ["COMMERCIAL", "DIRECTION"])
     .eq("is_active", true);
   return data ?? [];
 }

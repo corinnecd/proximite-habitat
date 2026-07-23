@@ -121,7 +121,7 @@ export function Sidebar() {
       const [{ count: ficheCount }, { count: notifCount }, { count: soumisesCount }] = await Promise.all([
         ficheQuery,
         supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", profile!.id).eq("read", false),
-        profile?.role === "ADMIN"
+        profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN"
           ? supabase.from("fiches").select("id", { count: "exact", head: true }).eq("status", "SOUMISE")
           : Promise.resolve({ count: 0 }),
       ]);
@@ -208,7 +208,7 @@ export function Sidebar() {
                 onClick={close}
               />
               {/* Fiches à valider (admin + DG) — au-dessus de Statut des Fiches */}
-              {(profile?.role === "ADMIN" || profile?.role === "DIRECTION_GENERALE") && (
+              {(profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN" || profile?.role === "DIRECTION_GENERALE") && (
                 <NavItem
                   item={{ name: "Fiches à valider", href: "/fiches?status=SOUMISE", icon: ClipboardCheck }}
                   isActive={pathname === "/fiches" && searchParams.get("status") === "SOUMISE"}
@@ -254,7 +254,7 @@ export function Sidebar() {
               ))}
             </div>
 
-            {(profile?.role === "ADMIN" || profile?.role === "DIRECTION_GENERALE") && (
+            {(profile?.role === "SUPER_ADMIN" || profile?.role === "DIRECTION" || profile?.role === "DIRECTION_GENERALE") && (
               <>
                 <SectionLabel label="Administration" />
                 <div className="space-y-0.5">

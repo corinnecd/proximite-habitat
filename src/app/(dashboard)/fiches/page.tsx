@@ -142,7 +142,8 @@ export default function FichesPage() {
   const supabase = useMemo(() => createClient(), []);
 
   // ── Cache localStorage : affichage instantané ───────────────────────────
-  const fichesCacheKey = profile ? `fiches_cache_${profile.id}_${statusFilter}` : null;
+  const effectiveStatus = isValidationMode ? "SOUMISE" : statusFilter;
+  const fichesCacheKey = profile ? `fiches_cache_${profile.id}_${effectiveStatus}` : null;
   useLayoutEffect(() => {
     if (!fichesCacheKey) return;
     try {
@@ -229,7 +230,6 @@ export default function FichesPage() {
       .order("created_at", { ascending: false });
 
     // Filtre statut — en mode validation, toujours forcer SOUMISE
-    const effectiveStatus = isValidationMode ? "SOUMISE" : statusFilter;
     if (effectiveStatus !== "ALL") {
       query = query.eq("status", effectiveStatus);
     } else if (!_isReferent) {

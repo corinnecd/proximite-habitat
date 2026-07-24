@@ -104,7 +104,6 @@ export default function FichesPage() {
       if (prev !== newStatus) {
         setFiches([]);
         setLoading(true);
-        setValidationStats([]);
         return newStatus;
       }
       return prev;
@@ -120,10 +119,6 @@ export default function FichesPage() {
   const [anterieures, setAnterieures] = useState<{ id: string }[]>([]);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [firstFicheDate, setFirstFicheDate] = useState<string | null>(null);
-  const [validationStats, setValidationStats] = useState<{ label: string; soumises: number; affectees: number; validees: number }[]>([]);
-  const [quarterLabel, setQuarterLabel] = useState("");
-  const [showAllStats, setShowAllStats] = useState(false);
-  const STATS_VISIBLE = 8;
 
   // Plage de dates personnalisée (prioritaire sur les préréglages de période)
   const [customFrom, setCustomFrom] = useState("");
@@ -282,88 +277,6 @@ export default function FichesPage() {
       const from = pageToLoad * PAGE_SIZE;
 
       // En mode validation + admin : charger fiches ET stats en parallèle
-      const shouldLoadStats = !append && isValidationMode && _isAdmin;
-      const statsPromise = shouldLoadStats ? (async () => {
-        const branchFilter = _branchFilter;
-        const pad = (n: number) => String(n).padStart(2, "0");
-        const fmtDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-        const shortDateFull = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-
-        const now = new Date();
-        const rangeStart = effectiveDates ? new Date(effectiveDates.from) : new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-        const rangeEnd = effectiveDates ? new Date(effectiveDates.to) : new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3 + 3, 0);
-
-        const allWeeks: { label: string; from: string; to: string }[] = [];
-        const cur = new Date(rangeStart);
-        const dayOfWeek = cur.getDay() === 0 ? 6 : cur.getDay() - 1;
-        cur.setDate(cur.getDate() - dayOfWeek);
-        let weekNum = 1;
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        while (cur <= rangeEnd) {
-          const monday = new Date(cur);
-          if (monday > today) break;
-          const sunday = new Date(cur);
-          sunday.setDate(sunday.getDate() + 6);
-          const effMonday = monday < rangeStart ? rangeStart : monday;
-          const effSunday = sunday > rangeEnd ? rangeEnd : sunday;
-          const shortDate = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}`;
-          allWeeks.push({
-            label: `S${weekNum} (${shortDate(effMonday)}-${shortDate(effSunday)})`,
-            from: fmtDate(effMonday),
-            to: fmtDate(effSunday),
-          });
-          cur.setDate(cur.getDate() + 7);
-          weekNum++;
-        }
-        const weeks = allWeeks.reverse();
-
-        let hqSoumises = supabase
-          .from("fiche_history")
-          .select("fiche_id, created_at")
-          .eq("new_status", "SOUMISE")
-          .gte("created_at", `${fmtDate(rangeStart)}T00:00:00Z`)
-          .lte("created_at", `${fmtDate(rangeEnd)}T23:59:59Z`);
-        if (branchFilter) hqSoumises = hqSoumises.eq("organization_id", branchFilter);
-        const { data: soumisesRows } = await hqSoumises;
-
-        const allFicheIds = [...new Set((soumisesRows ?? []).map((r) => r.fiche_id))];
-
-        let affectedSet = new Set<string>();
-        let validatedSet = new Set<string>();
-        if (allFicheIds.length > 0) {
-          let hqNext = supabase
-            .from("fiche_history")
-            .select("fiche_id, new_status")
-            .in("fiche_id", allFicheIds)
-            .in("new_status", ["AFFECTEE", "VALIDEE"]);
-          if (branchFilter) hqNext = hqNext.eq("organization_id", branchFilter);
-          const { data: nextRows } = await hqNext;
-          for (const r of nextRows ?? []) {
-            if (r.new_status === "AFFECTEE") affectedSet.add(r.fiche_id);
-            else if (r.new_status === "VALIDEE") validatedSet.add(r.fiche_id);
-          }
-        }
-
-        const results = weeks.map((w) => {
-          const wFrom = `${w.from}T00:00:00Z`;
-          const wTo = `${w.to}T23:59:59Z`;
-          const weekFicheIds: string[] = [];
-          for (const r of soumisesRows ?? []) {
-            if (r.created_at >= wFrom && r.created_at <= wTo) {
-              weekFicheIds.push(r.fiche_id);
-            }
-          }
-          const uniqueIds = [...new Set(weekFicheIds)];
-          return {
-            label: w.label,
-            soumises: uniqueIds.length,
-            affectees: uniqueIds.filter((id) => affectedSet.has(id)).length,
-            validees: uniqueIds.filter((id) => validatedSet.has(id)).length,
-          };
-        });
-        return { results, quarterLabel: `du ${shortDateFull(rangeStart)} au ${shortDateFull(rangeEnd)}` };
-      })() : null;
-
       // ── Compteurs par statut (intégrés au même batch) ──
       const countStatuses: FicheStatus[] = _isReferent
         ? ["BROUILLON", "SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
@@ -385,9 +298,8 @@ export default function FichesPage() {
         if (_branchFilter) firstQ = firstQ.eq("organization_id", _branchFilter);
       }
 
-      const [fichesResult, statsResult, ...countResults] = await Promise.all([
+      const [fichesResult, ...countResults] = await Promise.all([
         query.range(from, from + PAGE_SIZE - 1),
-        statsPromise,
         ...countPromises,
         ...(firstQ ? [firstQ] : []),
       ]);
@@ -421,10 +333,6 @@ export default function FichesPage() {
       setFetchError(null);
       if (!append && fichesCacheKey) {
         try { localStorage.setItem(fichesCacheKey, JSON.stringify({ fiches: newFiches.slice(0, 30) })); } catch { /* ignore */ }
-      }
-      if (statsResult) {
-        setValidationStats(statsResult.results);
-        setQuarterLabel(statsResult.quarterLabel);
       }
 
     } catch (err) {
@@ -864,78 +772,6 @@ export default function FichesPage() {
           </div>
         )}
 
-        {/* Évolution des validations par semaine (trimestre en cours) — admin/DG uniquement */}
-        {isValidationMode && validationStats.length > 0 && (
-          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-1">
-              <p className="text-sm font-semibold text-foreground">Évolution des validations par semaine</p>
-              {quarterLabel && (
-                <p className="text-xs text-muted-foreground">Période ({quarterLabel})</p>
-              )}
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-left text-muted-foreground border-b border-border">
-                    <th className="py-1.5 pr-3 font-medium">Semaine</th>
-                    <th className="py-1.5 px-3 font-medium text-right">Soumises</th>
-                    <th className="py-1.5 px-3 font-medium text-right">Affectées</th>
-                    <th className="py-1.5 pl-3 font-medium text-right">Validées</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(showAllStats ? validationStats : validationStats.slice(0, STATS_VISIBLE)).map((w) => {
-                    const max = Math.max(w.soumises, w.affectees, w.validees, 1);
-                    return (
-                      <tr key={w.label} className="border-b border-border/50 last:border-0">
-                        <td className="py-1.5 pr-3 text-foreground whitespace-nowrap">{w.label}</td>
-                        <td className="py-1.5 px-3 text-right">
-                          <span className="inline-flex items-center gap-1.5">
-                            <span
-                              className="h-1.5 rounded-full bg-blue-400"
-                              style={{ width: `${Math.max((w.soumises / max) * 24, w.soumises > 0 ? 3 : 0)}px` }}
-                            />
-                            <span className="tabular-nums text-foreground">{w.soumises}</span>
-                          </span>
-                        </td>
-                        <td className="py-1.5 px-3 text-right">
-                          <span className="inline-flex items-center gap-1.5">
-                            <span
-                              className="h-1.5 rounded-full bg-amber-400"
-                              style={{ width: `${Math.max((w.affectees / max) * 24, w.affectees > 0 ? 3 : 0)}px` }}
-                            />
-                            <span className="tabular-nums text-foreground">{w.affectees}</span>
-                          </span>
-                        </td>
-                        <td className="py-1.5 pl-3 text-right">
-                          <span className="inline-flex items-center gap-1.5 justify-end w-full">
-                            <span
-                              className="h-1.5 rounded-full bg-emerald-400"
-                              style={{ width: `${Math.max((w.validees / max) * 24, w.validees > 0 ? 3 : 0)}px` }}
-                            />
-                            <span className="tabular-nums text-foreground">{w.validees}</span>
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            {validationStats.length > STATS_VISIBLE && (
-              <div className="flex justify-center pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowAllStats((v) => !v)}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAllStats ? "rotate-180" : ""}`} />
-                  {showAllStats ? "Voir moins" : `Voir plus (${validationStats.length - STATS_VISIBLE} semaines)`}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
 
         <div className="space-y-4">
         {/* Filtres par statut */}

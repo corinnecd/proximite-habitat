@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -320,6 +320,23 @@ export default function NotificationsPage() {
   const router = useRouter();
   const { profile } = useProfile();
 
+  // ── Cache localStorage : affichage instantané ───────────────────────────
+  const notifCacheKey = profile ? `notif_cache_${profile.id}` : null;
+  useLayoutEffect(() => {
+    if (!notifCacheKey) return;
+    try {
+      const raw = localStorage.getItem(notifCacheKey);
+      if (!raw) return;
+      const c = JSON.parse(raw);
+      if (c.notifications?.length) {
+        setNotifications(c.notifications);
+        setInitialLoaded(true);
+        setLoading(false);
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifCacheKey]);
+
   const role = profile?.role ?? null;
   const statusOptions = useMemo(() =>
     role ? (STATUS_BY_ROLE[role] ?? []).map((v) => ({ value: v, ...TYPE_CONFIG[v] })) : [],
@@ -339,7 +356,7 @@ export default function NotificationsPage() {
     } = {},
   ) => {
     if (append) setLoadingMore(true);
-    else setLoading(true);
+    else if (notifications.length === 0) setLoading(true);
     try {
       const from = pageToLoad * PAGE_SIZE;
       const { dateFrom, dateTo } = getDateRange(opts.period ?? "all", opts.customFrom ?? "", opts.customTo ?? "");
@@ -355,6 +372,9 @@ export default function NotificationsPage() {
       setNotifications(allRows);
       setHasMore(rows.length === PAGE_SIZE);
       setPage(pageToLoad);
+      if (!append && pageToLoad === 0 && !opts.search && !opts.types?.length && (opts.period ?? "all") === "all" && notifCacheKey) {
+        try { localStorage.setItem(notifCacheKey, JSON.stringify({ notifications: allRows.slice(0, 30) })); } catch { /* ignore */ }
+      }
 
       // Fetch statuts des fiches en arrière-plan (badge décoratif — non bloquant)
       const ficheIds = [...new Set(allRows.filter((n) => n.fiche_id).map((n) => n.fiche_id!))];
@@ -655,7 +675,7 @@ export default function NotificationsPage() {
 
         {/* ── Contenu ───────────────────────────────────────────────────── */}
         <div>
-        {displayed.length === 0 ? (
+        {!initialLoaded ? null : displayed.length === 0 ? (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
               <EmptyState

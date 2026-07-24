@@ -114,31 +114,14 @@ export default function ProfilPage() {
   // ── Loading ────────────────────────────────────────────────────────────────
 
   const isProspecteur = profile?.role === "PROSPECTEUR";
-
-  if (!profile) {
-    return (
-      <>
-        <Topbar title="Mon profil" />
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-          <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
-            <div className="relative z-10">
-              <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">Mon compte</span>
-              <h1 className="font-heading text-3xl sm:text-4xl text-white tracking-tight leading-none mt-1.5">Mon profil</h1>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  const initials = `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
+  const initials = profile ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase() : "";
   const pwdStrength = passwordStrength(newPassword);
   const passwordsMatch = confirmPassword.length > 0 && newPassword === confirmPassword;
   const passwordsMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
 
   return (
     <>
-      <Topbar title="Mon profil" actions={!isProspecteur ? <div className="flex items-center gap-2"><ExportPdfButton title="Mon profil" filename="profil" /><ExportCsvButton filename="profil" getData={() => ({
+      <Topbar title="Mon profil" actions={!isProspecteur && profile ? <div className="flex items-center gap-2"><ExportPdfButton title="Mon profil" filename="profil" /><ExportCsvButton filename="profil" getData={() => ({
           columns: [
             { key: "champ", label: "Champ" },
             { key: "valeur", label: "Valeur" },
@@ -156,21 +139,23 @@ export default function ProfilPage() {
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-8">
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-5">
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#F97316] flex items-center justify-center text-3xl sm:text-4xl font-heading text-white shrink-0 select-none tracking-tight">
-              {initials}
+              {initials || <User className="w-10 h-10 text-white/60" />}
             </div>
             <div className="min-w-0 flex-1">
               <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
-                {ROLE_LABELS[profile.role]}
+                {profile ? ROLE_LABELS[profile.role] : "Mon compte"}
               </span>
               <h1 className="font-heading text-3xl sm:text-4xl text-white leading-none tracking-tight mt-1.5 mb-3">
-                {profile.first_name} {profile.last_name}
+                {profile ? `${profile.first_name} ${profile.last_name}` : "Mon profil"}
               </h1>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+                {profile?.email && (
                 <div className="flex items-center gap-1.5 text-white/70">
                   <Mail className="w-3.5 h-3.5 shrink-0 text-[#F97316]" />
                   <span className="truncate">{profile.email}</span>
                 </div>
-                {profile.phone && (
+                )}
+                {profile?.phone && (
                   <div className="flex items-center gap-1.5 text-white/70">
                     <Phone className="w-3.5 h-3.5 shrink-0 text-[#F97316]" />
                     <span>{profile.phone}</span>
@@ -191,6 +176,7 @@ export default function ProfilPage() {
 
         {/* Statistiques — masquées pour les référents (info connexion déjà dans le hero) */}
 
+        {profile && (<>
         {/* ── Informations personnelles ──────────────────────────────────── */}
         <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-5">
           <div className="flex items-center gap-3">
@@ -399,6 +385,7 @@ export default function ProfilPage() {
             )}
           </div>
         </div>
+        </>)}
       </div>
     </>
   );

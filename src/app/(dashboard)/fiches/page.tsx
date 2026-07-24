@@ -100,15 +100,8 @@ export default function FichesPage() {
   // Synchroniser statusFilter quand les searchParams changent (navigation sidebar)
   useEffect(() => {
     const newStatus = initialStatus || "ALL";
-    setStatusFilter((prev) => {
-      if (prev !== newStatus) {
-        setFiches([]);
-        setLoading(true);
-        return newStatus;
-      }
-      return prev;
-    });
-  }, [initialStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+    setStatusFilter(newStatus);
+  }, [initialStatus]);
 
   // Filtres direction uniquement
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("ALL");
@@ -207,7 +200,20 @@ export default function FichesPage() {
 
   const fetchFiches = useCallback(async (pageToLoad = 0, append = false) => {
     if (!profile) return;
-    if (!append) setLoading(true);
+    if (!append) {
+      let cacheHit = false;
+      if (fichesCacheKey) {
+        try {
+          const raw = localStorage.getItem(fichesCacheKey);
+          if (raw) {
+            const c = JSON.parse(raw);
+            if (c.fiches?.length) { setFiches(c.fiches); setLoading(false); cacheHit = true; }
+            if (c.statusCounts) setStatusCounts(c.statusCounts);
+          }
+        } catch { /* ignore */ }
+      }
+      if (!cacheHit) setLoading(true);
+    }
 
     // Calculé ici pour éviter les closures périmées
     const role = profile.role;
@@ -308,6 +314,7 @@ export default function FichesPage() {
       const rows = (fichesResult.data as unknown as FicheRow[]) || [];
 
       // ── Compteurs par statut ──
+      let freshCounts: Record<string, number> | null = null;
       if (!append && countResults.length > 0) {
         const counts: Record<string, number> = {};
         let total = 0;
@@ -319,6 +326,7 @@ export default function FichesPage() {
           total += c;
         });
         counts["ALL"] = total;
+        freshCounts = counts;
         setStatusCounts(counts);
         if (hasFirstQ) {
           const firstData = (countResults[countResults.length - 1] as { data: { created_at: string }[] | null })?.data;
@@ -332,7 +340,7 @@ export default function FichesPage() {
       if (!append) setVisibleCount(VISIBLE_INIT);
       setFetchError(null);
       if (!append && fichesCacheKey) {
-        try { localStorage.setItem(fichesCacheKey, JSON.stringify({ fiches: newFiches.slice(0, 30) })); } catch { /* ignore */ }
+        try { localStorage.setItem(fichesCacheKey, JSON.stringify({ fiches: newFiches.slice(0, 30), statusCounts: freshCounts })); } catch { /* ignore */ }
       }
 
     } catch (err) {

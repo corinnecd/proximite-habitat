@@ -101,6 +101,12 @@ export default function ReportingPage() {
       if (c.statusCounts) setStatusCounts(c.statusCounts);
       if (c.totalFiches != null) setTotalFiches(c.totalFiches);
       if (c.caTotal != null) setCaTotal(c.caTotal);
+      if (c.referents) setReferents(c.referents);
+      if (c.commerciaux) setCommerciaux(c.commerciaux);
+      if (c.villes) setVilles(c.villes);
+      if (c.weeklyData) setWeeklyData(c.weeklyData);
+      if (c.motifRefusCounts) setMotifRefusCounts(c.motifRefusCounts);
+      if (c.branchStats) setBranchStats(c.branchStats);
       setLoading(false);
     } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -219,6 +225,7 @@ export default function ReportingPage() {
     setMotifRefusCounts(motifCounts);
 
     // ── Vue comparative succursales (DG uniquement, vue globale) ──
+    let branchRows: BranchRow[] = [];
     if (isDG && !_branchFilter) {
       const bMap = new Map<string, BranchRow>();
       for (const f of fiches) {
@@ -230,15 +237,16 @@ export default function ReportingPage() {
         if (f.status === "ACCEPTEE") { b.accepted++; b.ca += Number(f.montant_ht ?? 0); }
         if (f.status === "REFUSEE") b.refused++;
       }
-      const rows = Array.from(bMap.values())
+      branchRows = Array.from(bMap.values())
         .map((b) => ({ ...b, rate: b.total > 0 ? Math.round((b.accepted / b.total) * 100) : 0 }))
         .sort((a, b) => b.accepted - a.accepted);
-      setBranchStats(rows);
+      setBranchStats(branchRows);
     } else {
       setBranchStats([]);
     }
 
     // ── 1. Productivité référents ──
+    let refRows: ReferentRow[] = [];
     if (!isComm) {
       const refMap: Record<string, ReferentRow> = {};
       for (const f of fiches) {
@@ -254,7 +262,8 @@ export default function ReportingPage() {
           if (f.montant_ht) refMap[key].ca += Number(f.montant_ht);
         }
       }
-      setReferents(Object.values(refMap).sort((a, b) => b.total - a.total));
+      refRows = Object.values(refMap).sort((a, b) => b.total - a.total);
+      setReferents(refRows);
     }
 
     // ── 2. Taux d'acceptation par commercial ──
@@ -347,7 +356,17 @@ export default function ReportingPage() {
     });
     setWeeklyData(weekBuckets);
 
-    saveRptCache({ statusCounts: countResults, totalFiches: countResults.reduce((a: number, b: StatusCount) => a + b.count, 0), caTotal: fiches.filter((f) => f.status === "ACCEPTEE").reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0) });
+    saveRptCache({
+      statusCounts: countResults,
+      totalFiches: countResults.reduce((a: number, b: StatusCount) => a + b.count, 0),
+      caTotal: fiches.filter((f) => f.status === "ACCEPTEE").reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0),
+      referents: refRows.slice(0, 20),
+      commerciaux: commRows.slice(0, 20),
+      villes: villeRows.slice(0, 30),
+      weeklyData: weekBuckets,
+      motifRefusCounts: motifCounts,
+      branchStats: branchRows,
+    });
     setLoading(false);
   }
 

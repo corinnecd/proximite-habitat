@@ -176,6 +176,21 @@ export default function DashboardPage() {
       if (c.mesVentes != null) setMesVentes(c.mesVentes);
       if (c.referentsStats) setReferentsStats(c.referentsStats);
       if (c.commerciauxStats) setCommerciauxStats(c.commerciauxStats);
+      if (c.fichesPending) setFichesPending(c.fichesPending);
+      if (c.fichesAffecteesAdmin) setFichesAffecteesAdmin(c.fichesAffecteesAdmin);
+      if (c.fichesAcceptees) setFichesAcceptees(c.fichesAcceptees);
+      if (c.fichesRefusees) setFichesRefusees(c.fichesRefusees);
+      if (c.fichesArchivees) setFichesArchivees(c.fichesArchivees);
+      if (c.fichesAffectees) setFichesAffectees(c.fichesAffectees);
+      if (c.fichesRetractationComm) setFichesRetractationComm(c.fichesRetractationComm);
+      if (c.prospBrouillons) setProspBrouillons(c.prospBrouillons);
+      if (c.prospSoumises) setProspSoumises(c.prospSoumises);
+      if (c.prospAffectees) setProspAffectees(c.prospAffectees);
+      if (c.prospRdvAReprendre) setProspRdvAReprendre(c.prospRdvAReprendre);
+      if (c.prospRetractees) setProspRetractees(c.prospRetractees);
+      if (c.prospAcceptees) setProspAcceptees(c.prospAcceptees);
+      if (c.prospRefusees) setProspRefusees(c.prospRefusees);
+      if (c.prospArchivees) setProspArchivees(c.prospArchivees);
       setLoading(false);
     } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -351,11 +366,21 @@ export default function DashboardPage() {
 
     if (isAdmin) {
       setCommercials(r.get("commercials") ?? []);
-      setFichesPending((r.get("pending")?.data as unknown as FicheEnAttente[]) ?? []);
-      setFichesAffecteesAdmin((r.get("affecteesAdmin")?.data as unknown as FicheAffectee[]) ?? []);
-      setFichesAcceptees((r.get("acceptees")?.data as unknown as FicheAffectee[]) ?? []);
-      setFichesRefusees((r.get("refusees")?.data as unknown as FicheAffectee[]) ?? []);
-      setFichesArchivees((r.get("archivees")?.data as unknown as FicheAffectee[]) ?? []);
+      const _pending = (r.get("pending")?.data as unknown as FicheEnAttente[]) ?? [];
+      const _affAdmin = (r.get("affecteesAdmin")?.data as unknown as FicheAffectee[]) ?? [];
+      const _acc = (r.get("acceptees")?.data as unknown as FicheAffectee[]) ?? [];
+      const _ref = (r.get("refusees")?.data as unknown as FicheAffectee[]) ?? [];
+      const _arch = (r.get("archivees")?.data as unknown as FicheAffectee[]) ?? [];
+      setFichesPending(_pending);
+      setFichesAffecteesAdmin(_affAdmin);
+      setFichesAcceptees(_acc);
+      setFichesRefusees(_ref);
+      setFichesArchivees(_arch);
+      cd.fichesPending = _pending.slice(0, 20);
+      cd.fichesAffecteesAdmin = _affAdmin.slice(0, 20);
+      cd.fichesAcceptees = _acc.slice(0, 20);
+      cd.fichesRefusees = _ref.slice(0, 20);
+      cd.fichesArchivees = _arch.slice(0, 20);
     }
 
     if (isAdmin || isCommercial || isReferent) {
@@ -415,13 +440,21 @@ export default function DashboardPage() {
     }
 
     if (isCommercial) {
-      setFichesAffectees((r.get("commAffectees")?.data as unknown as FicheAffectee[]) ?? []);
-      setFichesRetractationComm((r.get("commRetract")?.data as unknown as FicheAffectee[]) ?? []);
+      const _commAff = (r.get("commAffectees")?.data as unknown as FicheAffectee[]) ?? [];
+      const _commRetract = (r.get("commRetract")?.data as unknown as FicheAffectee[]) ?? [];
       const commAccepteesRows = (r.get("commAcceptees")?.data as unknown as FicheAffectee[]) ?? [];
+      const _commRef = (r.get("commRefusees")?.data as unknown as FicheAffectee[]) ?? [];
+      const _commArch = (r.get("commArchivees")?.data as unknown as FicheAffectee[]) ?? [];
+      setFichesAffectees(_commAff);
+      setFichesRetractationComm(_commRetract);
       setFichesAcceptees(commAccepteesRows);
-      setFichesRefusees((r.get("commRefusees")?.data as unknown as FicheAffectee[]) ?? []);
-      setFichesArchivees((r.get("commArchivees")?.data as unknown as FicheAffectee[]) ?? []);
-      // Recalcule KPIs commercial depuis la même source que le tableau de détail
+      setFichesRefusees(_commRef);
+      setFichesArchivees(_commArch);
+      cd.fichesAffectees = _commAff.slice(0, 20);
+      cd.fichesRetractationComm = _commRetract.slice(0, 20);
+      cd.fichesAcceptees = commAccepteesRows.slice(0, 20);
+      cd.fichesRefusees = _commRef.slice(0, 20);
+      cd.fichesArchivees = _commArch.slice(0, 20);
       const commCA = commAccepteesRows.reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0);
       setMesVentes(commAccepteesRows.length);
       setCaTotal(commCA);
@@ -431,14 +464,30 @@ export default function DashboardPage() {
     if (!isReferent) setAnterieures((r.get("anterieures")?.data as typeof anterieures) ?? []);
 
     if (isReferent) {
-      setProspBrouillons((r.get("prosp_BROUILLON")?.data as FicheListItem[]) ?? []);
-      setProspSoumises((r.get("prosp_SOUMISE")?.data as FicheListItem[]) ?? []);
-      setProspAffectees((r.get("prosp_AFFECTEE")?.data as FicheListItem[]) ?? []);
-      setProspRdvAReprendre((r.get("prosp_RDV_A_REPRENDRE")?.data as FicheListItem[]) ?? []);
-      setProspRetractees((r.get("prosp_RETRACTATION")?.data as FicheListItem[]) ?? []);
-      setProspAcceptees((r.get("prosp_ACCEPTEE")?.data as FicheListItem[]) ?? []);
-      setProspRefusees((r.get("prosp_REFUSEE")?.data as FicheListItem[]) ?? []);
-      setProspArchivees((r.get("prosp_ARCHIVEE")?.data as FicheListItem[]) ?? []);
+      const _pB = (r.get("prosp_BROUILLON")?.data as FicheListItem[]) ?? [];
+      const _pS = (r.get("prosp_SOUMISE")?.data as FicheListItem[]) ?? [];
+      const _pA = (r.get("prosp_AFFECTEE")?.data as FicheListItem[]) ?? [];
+      const _pR = (r.get("prosp_RDV_A_REPRENDRE")?.data as FicheListItem[]) ?? [];
+      const _pRt = (r.get("prosp_RETRACTATION")?.data as FicheListItem[]) ?? [];
+      const _pAc = (r.get("prosp_ACCEPTEE")?.data as FicheListItem[]) ?? [];
+      const _pRf = (r.get("prosp_REFUSEE")?.data as FicheListItem[]) ?? [];
+      const _pAr = (r.get("prosp_ARCHIVEE")?.data as FicheListItem[]) ?? [];
+      setProspBrouillons(_pB);
+      setProspSoumises(_pS);
+      setProspAffectees(_pA);
+      setProspRdvAReprendre(_pR);
+      setProspRetractees(_pRt);
+      setProspAcceptees(_pAc);
+      setProspRefusees(_pRf);
+      setProspArchivees(_pAr);
+      cd.prospBrouillons = _pB.slice(0, 20);
+      cd.prospSoumises = _pS.slice(0, 20);
+      cd.prospAffectees = _pA.slice(0, 20);
+      cd.prospRdvAReprendre = _pR.slice(0, 20);
+      cd.prospRetractees = _pRt.slice(0, 20);
+      cd.prospAcceptees = _pAc.slice(0, 20);
+      cd.prospRefusees = _pRf.slice(0, 20);
+      cd.prospArchivees = _pAr.slice(0, 20);
     }
 
 

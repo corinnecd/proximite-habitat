@@ -337,7 +337,7 @@ export default function UtilisateursPage() {
 
         {/* ── Liste ────────────────────────────────────────────────────────── */}
         <div>
-        {!loading && filtered.length === 0 ? (
+        {filtered.length === 0 && !loading ? (
           <div className="bg-card rounded-2xl border border-border">
             <EmptyState
               illustration="fiches"

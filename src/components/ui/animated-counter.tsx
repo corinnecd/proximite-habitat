@@ -10,5 +10,5 @@ interface Props {
 
 export function AnimatedCounter({ value, className, duration, loading }: Props) {
   const displayed = useCountUp(value, duration);
-  return <span className={className}>{loading ? "—" : displayed}</span>;
+  return <span className={className}>{displayed}</span>;
 }

@@ -27,7 +27,7 @@ export function KpiCard({
           </span>
         )}
       </div>
-      <p className="text-2xl sm:text-3xl font-bold tabular-nums">{loading ? "—" : value}</p>
+      <p className="text-2xl sm:text-3xl font-bold tabular-nums">{value}</p>
       <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{label}</p>
       {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
     </div>

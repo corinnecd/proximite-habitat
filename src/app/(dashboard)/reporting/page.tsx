@@ -522,7 +522,7 @@ export default function ReportingPage() {
           />
           <KpiCard
             label={(isAllPeriod ? "Chiffre d'affaires moyen global" : "Chiffre d'affaires moyen") + periodSuffix}
-            value={accepted > 0 ? Math.round(caTotal / accepted).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}
+            value={accepted > 0 ? Math.round(caTotal / accepted).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "0 €"}
             sub={accepted > 0 ? `sur ${accepted} contrat${accepted > 1 ? "s" : ""}` : "Aucun contrat"}
             Icon={BarChart3} iconBg="bg-blue-100 dark:bg-blue-900/30" iconColor="text-blue-600"
             border="border-l-blue-500" loading={loading}

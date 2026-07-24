@@ -32,7 +32,7 @@ export function AdminKpiSection({
               <Euro className="w-5 h-5 text-amber-600" />
             </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold tabular-nums">{loading ? "—" : caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
+          <p className="text-2xl sm:text-3xl font-bold tabular-nums">{caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA global HT consolidé" : <>CA HT consolidé<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{totalVentes} contrat{totalVentes > 1 ? "s" : ""} signé{totalVentes > 1 ? "s" : ""}</p>
         </div>
@@ -51,7 +51,7 @@ export function AdminKpiSection({
               <BarChart3 className="w-5 h-5 text-blue-600" />
             </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold tabular-nums">{loading ? "—" : totalVentes > 0 ? Math.round(caTotal / totalVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}</p>
+          <p className="text-2xl sm:text-3xl font-bold tabular-nums">{totalVentes > 0 ? Math.round(caTotal / totalVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "0 €"}</p>
           <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Chiffre d'affaires moyen global" : <>Chiffre d&apos;affaires moyen<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
         </div>
       </div>
@@ -72,7 +72,7 @@ export function AdminKpiSection({
                   <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{loading ? "—" : `${acceptanceRate}%`}</p>
+              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${acceptanceRate}%`}</p>
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global d'acceptation" : <>Taux d&apos;acceptation<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{counts.ACCEPTEE} acceptée{counts.ACCEPTEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>
             </div>
@@ -82,7 +82,7 @@ export function AdminKpiSection({
                   <XCircle className="w-5 h-5 text-red-500" />
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{loading ? "—" : `${refusalRate}%`}</p>
+              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${refusalRate}%`}</p>
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global de refus" : <>Taux de refus<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{counts.REFUSEE} refusée{counts.REFUSEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>
             </div>
@@ -92,7 +92,7 @@ export function AdminKpiSection({
                   <Clock className="w-5 h-5 text-orange-600" />
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{loading ? "—" : `${inProgressRate}%`}</p>
+              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${inProgressRate}%`}</p>
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global en cours" : <>Taux en cours<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{inProgress} fiche{inProgress > 1 ? "s" : ""} · à valider, affectées, attente client</p>
             </div>

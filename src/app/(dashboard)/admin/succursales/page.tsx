@@ -150,7 +150,7 @@ export default function SuccursalesPage() {
           </div>
         </div>
 
-        {loading ? null : branches.length === 0 ? (
+        {!loading && branches.length === 0 ? (
           <EmptyState
             title="Aucune succursale"
             description="Créez votre première succursale pour commencer."

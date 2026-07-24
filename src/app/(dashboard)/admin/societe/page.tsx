@@ -53,7 +53,7 @@ export default function SocietePage() {
     <>
       <Topbar title="Société" />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-        {loading ? null : !company ? (
+        {!loading && !company ? (
           <p className="text-muted-foreground">Aucune société rattachée.</p>
         ) : (
           <>
@@ -68,9 +68,9 @@ export default function SocietePage() {
                     Société mère
                   </span>
                   <h1 className="font-heading text-3xl sm:text-4xl text-white leading-none tracking-tight mt-1.5">
-                    {company.name}
+                    {company?.name ?? " "}
                   </h1>
-                  <p className="text-sm text-white/60 mt-2 font-mono">{company.slug}</p>
+                  <p className="text-sm text-white/60 mt-2 font-mono">{company?.slug ?? " "}</p>
                 </div>
               </div>
             </div>

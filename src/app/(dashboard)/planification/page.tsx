@@ -96,24 +96,48 @@ export default function PlanificationPage() {
   const fetchPlan = useCallback(async () => {
     if (!profile) return;
 
-    // Tout charger en parallèle
+    // Tout charger en parallèle (plan + parcours + départements + chefs)
     const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
+    const parcoursOrg = _branchFilter ?? profile.organization_id;
     let planQuery = supabase.from("planification_hebdo").select("id, ville_id, chef_equipe_id").eq("semaine_du", mondayStr);
     if (_branchFilter) {
       planQuery = planQuery.eq("organization_id", _branchFilter);
     } else if (!isDG) {
       planQuery = planQuery.eq("organization_id", profile.organization_id);
     }
-    const [deptRes, planRes, chefsRes] = await Promise.all([
+    const [deptRes, planRes, chefsRes, parcoursRes] = await Promise.all([
       supabase.from("zones_departements").select("*").order("code"),
       planQuery,
       isAdmin
         ? supabase.from("profiles").select("id, first_name, last_name").eq("role", "CHEF_EQUIPE").eq("is_active", true)
         : Promise.resolve({ data: null }),
+      supabase
+        .from("parcours_hebdo")
+        .select("id, waypoints, route_geometry, distance_m, duration_s, nom, date_effective")
+        .eq("organization_id", parcoursOrg)
+        .eq("semaine_du", mondayStr)
+        .is("chef_equipe_id", null)
+        .maybeSingle(),
     ]);
 
     if (deptRes.data) setDepartements(deptRes.data);
     if (chefsRes.data) setReferents(chefsRes.data);
+
+    // Parcours
+    if (parcoursRes.data) {
+      setParcoursId(parcoursRes.data.id);
+      setParcours({
+        waypoints: (parcoursRes.data.waypoints ?? []) as [number, number][],
+        route_geometry: (parcoursRes.data.route_geometry ?? []) as [number, number][],
+        distance_m: parcoursRes.data.distance_m,
+        duration_s: parcoursRes.data.duration_s,
+        nom: parcoursRes.data.nom,
+        date_effective: parcoursRes.data.date_effective,
+      });
+    } else {
+      setParcoursId(null);
+      setParcours(null);
+    }
 
     const data = planRes.data;
     if (data && data.length > 0) {
@@ -144,38 +168,6 @@ export default function PlanificationPage() {
     if (profileLoading || !profile) return;
     fetchPlan();
   }, [profileLoading, profile, fetchPlan]);
-
-  // Charger le parcours de la semaine (parcours "équipe" par défaut, chef_equipe_id null)
-  const fetchParcours = useCallback(async () => {
-    if (!profile) return;
-    const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : profile.organization_id;
-    const { data } = await supabase
-      .from("parcours_hebdo")
-      .select("id, waypoints, route_geometry, distance_m, duration_s, nom, date_effective")
-      .eq("organization_id", branchFilter)
-      .eq("semaine_du", mondayStr)
-      .is("chef_equipe_id", null)
-      .maybeSingle();
-    if (data) {
-      setParcoursId(data.id);
-      setParcours({
-        waypoints: (data.waypoints ?? []) as [number, number][],
-        route_geometry: (data.route_geometry ?? []) as [number, number][],
-        distance_m: data.distance_m,
-        duration_s: data.duration_s,
-        nom: data.nom,
-        date_effective: data.date_effective,
-      });
-    } else {
-      setParcoursId(null);
-      setParcours(null);
-    }
-  }, [profile, isDG, selectedBranchId, mondayStr, supabase]);
-
-  useEffect(() => {
-    if (profileLoading || !profile) return;
-    fetchParcours();
-  }, [profileLoading, profile, fetchParcours]);
 
   const handleSaveParcours = useCallback(async (data: RouteData) => {
     if (!profile) return;

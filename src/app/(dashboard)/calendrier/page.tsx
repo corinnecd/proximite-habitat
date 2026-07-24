@@ -92,24 +92,7 @@ export default function CalendrierPage() {
   const rangeStartKey = toDateKey(rangeStart);
   const rangeEndKey = toDateKey(rangeEnd);
 
-  // Liste des commerciaux pour le filtre (direction uniquement)
   const branchFilterForUsers = isDG && selectedBranchId !== "all" ? selectedBranchId : null;
-  useEffect(() => {
-    if (!isAdminOrDG) return;
-    async function loadCommercials() {
-      let q = supabase
-        .from("profiles")
-        .select("id, first_name, last_name")
-        .eq("role", "COMMERCIAL")
-        .eq("is_active", true)
-        .order("last_name");
-      if (branchFilterForUsers) q = q.eq("organization_id", branchFilterForUsers);
-      const { data } = await q;
-      setCommercials(data ?? []);
-    }
-    loadCommercials();
-  }, [isAdminOrDG, branchFilterForUsers, supabase]);
-
   const isReferent = role === "PROSPECTEUR" || role === "CHEF_EQUIPE";
 
   const fetchRdvs = useCallback(async () => {
@@ -139,10 +122,27 @@ export default function CalendrierPage() {
     const branchFilter = isDG && selectedBranchId !== "all" ? selectedBranchId : null;
     if (branchFilter) query = query.eq("organization_id", branchFilter);
 
+    // Commerciaux pour le filtre admin — chargés en parallèle avec les RDV
+    let commercialsQuery = null;
+    if (isAdminOrDG) {
+      let cq = supabase
+        .from("profiles")
+        .select("id, first_name, last_name")
+        .eq("role", "COMMERCIAL")
+        .eq("is_active", true)
+        .order("last_name");
+      if (branchFilterForUsers) cq = cq.eq("organization_id", branchFilterForUsers);
+      commercialsQuery = cq;
+    }
+
     try {
-      const { data, error } = await query;
-      if (error) throw error;
-      setFiches((data as unknown as RdvFiche[]) ?? []);
+      const [fichesResult, commercialsResult] = await Promise.all([
+        query,
+        commercialsQuery,
+      ]);
+      if (fichesResult.error) throw fichesResult.error;
+      setFiches((fichesResult.data as unknown as RdvFiche[]) ?? []);
+      if (commercialsResult?.data) setCommercials(commercialsResult.data);
       setFetchError(null);
     } catch (err) {
       console.error("fetchRdvs error", err);
@@ -150,7 +150,7 @@ export default function CalendrierPage() {
     } finally {
       setLoading(false);
     }
-  }, [profile, role, isAdminOrDG, isReferent, commercialFilter, isDG, selectedBranchId, rangeStartKey, rangeEndKey, supabase]);
+  }, [profile, role, isAdminOrDG, isReferent, commercialFilter, isDG, selectedBranchId, branchFilterForUsers, rangeStartKey, rangeEndKey, supabase]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

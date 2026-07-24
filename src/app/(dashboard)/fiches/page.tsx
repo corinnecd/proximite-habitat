@@ -97,6 +97,20 @@ export default function FichesPage() {
   const [statusFilter, setStatusFilter] = useState<FicheStatus | "ALL">(initialStatus || "ALL");
   const [exporting, setExporting] = useState(false);
 
+  // Synchroniser statusFilter quand les searchParams changent (navigation sidebar)
+  useEffect(() => {
+    const newStatus = initialStatus || "ALL";
+    setStatusFilter((prev) => {
+      if (prev !== newStatus) {
+        setFiches([]);
+        setLoading(true);
+        setValidationStats([]);
+        return newStatus;
+      }
+      return prev;
+    });
+  }, [initialStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Filtres direction uniquement
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("ALL");
   const [referentFilter, setReferentFilter] = useState("ALL");

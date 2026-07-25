@@ -112,6 +112,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [referentSignatureDataUrl, setReferentSignatureDataUrl] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [pendingNavUrl, setPendingNavUrl] = useState<string | null>(null);
 
   const router = useRouter();
   const { profile } = useProfile();
@@ -358,6 +359,21 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [hasUnsavedChanges, submitting]);
+
+  useEffect(() => {
+    if (submitting) return;
+    const handler = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest("a[href]");
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("http") || href.startsWith("#") || href === "/fiches/nouvelle") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setPendingNavUrl(href);
+    };
+    document.addEventListener("click", handler, true);
+    return () => document.removeEventListener("click", handler, true);
+  }, [submitting]);
 
   // ── Navigation étapes ──────────────────────────────────────────────────────
 
@@ -706,7 +722,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             <Button
               type="button"
               variant="outline"
-              onClick={() => saveDraft()}
+              onClick={() => saveDraft({ silent: true })}
               disabled={saving}
               className="rounded-xl gap-2"
             >
@@ -764,6 +780,38 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             >
               <X className="w-4 h-4" />
               {mode === "create" ? "Quitter (garder le brouillon)" : "Annuler les modifications"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Dialog : confirmation de navigation ──────────────────────── */}
+      <Dialog open={!!pendingNavUrl} onOpenChange={(open) => { if (!open) setPendingNavUrl(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <Save className="w-5 h-5" />Quitter le formulaire ?
+            </DialogTitle>
+            <DialogDescription>
+              Votre fiche sera sauvegardée en brouillon. Vous pourrez la reprendre depuis la liste des fiches.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setPendingNavUrl(null)}>
+              Continuer la saisie
+            </Button>
+            <Button
+              type="button"
+              onClick={async () => {
+                await saveDraft({ silent: true });
+                const url = pendingNavUrl!;
+                setPendingNavUrl(null);
+                router.push(url);
+              }}
+              className="bg-amber-500 hover:bg-amber-600 text-white rounded-full px-5 gap-2"
+            >
+              <Save className="w-4 h-4" />
+              Sauvegarder et quitter
             </Button>
           </DialogFooter>
         </DialogContent>

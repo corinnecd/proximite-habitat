@@ -31,6 +31,10 @@ export function SignatureCanvas({ onSignatureChange }: SignatureCanvasProps) {
 
   useEffect(() => {
     setupCanvas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     const handleResize = () => {
       if (!hasSignature) setupCanvas();
     };

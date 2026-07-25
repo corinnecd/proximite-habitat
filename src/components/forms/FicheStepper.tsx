@@ -94,7 +94,11 @@ const DEFAULT_FORM_VALUES = {
 // ── Composant ─────────────────────────────────────────────────────────────────
 
 export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos, existingSignatureUrl, existingReferentSignatureUrl, mode = "create" }: FicheStepperProps) {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (typeof window === "undefined" || !ficheIdProp) return 0;
+    const saved = sessionStorage.getItem(`fiche_step_${ficheIdProp}`);
+    return saved ? Math.min(Number(saved), 6) : 0;
+  });
   const [stepDirection, setStepDirection] = useState<"next" | "prev">("next");
   const [hasNavigated, setHasNavigated] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -118,6 +122,11 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
   const router = useRouter();
   const { profile } = useProfile();
   const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    const id = ficheIdRef.current;
+    if (id) sessionStorage.setItem(`fiche_step_${id}`, String(currentStep));
+  }, [currentStep]);
 
   const methods = useForm({
     defaultValues: { ...DEFAULT_FORM_VALUES, ...(initialData ?? {}) },
@@ -457,6 +466,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
           });
         }
         toast.success("Modifications enregistrées !");
+        if (ficheIdRef.current) sessionStorage.removeItem(`fiche_step_${ficheIdRef.current}`);
         router.push(ficheIdRef.current ? `/fiches/${ficheIdRef.current}` : "/fiches");
       } catch {
         toast.error("Erreur lors de l'enregistrement");
@@ -547,6 +557,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
       // Email aux admins de l'organisation — résolu côté serveur (non bloquant)
       await sendEmailFicheSoumise(id);
 
+      sessionStorage.removeItem(`fiche_step_${id}`);
       router.push("/");
     } catch {
       toast.error("Erreur lors de la soumission");

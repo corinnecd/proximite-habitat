@@ -77,7 +77,7 @@ export function Step7Signature({
           <Checkbox
             checked={consentement === true}
             onCheckedChange={(c) => setValue("consentement_rgpd", c === true ? true : (false as unknown as true), { shouldDirty: true, shouldValidate: true })}
-            className="mt-0.5"
+            className="mt-0.5 border-2 border-blue-600 data-[checked]:border-blue-600 data-[checked]:bg-blue-600"
           />
           <span className="text-sm text-blue-800">J&apos;accepte que mes données personnelles soient collectées et traitées. *</span>
         </label>

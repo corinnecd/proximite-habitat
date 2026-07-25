@@ -113,6 +113,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
   const [referentSignatureDataUrl, setReferentSignatureDataUrl] = useState<string | null>(null);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [pendingNavUrl, setPendingNavUrl] = useState<string | null>(null);
+  const isLeaving = useRef(false);
 
   const router = useRouter();
   const { profile } = useProfile();
@@ -363,7 +364,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
   useEffect(() => {
     if (submitting) return;
     const handler = (e: MouseEvent) => {
-      if (!hasUnsavedChanges) return;
+      if (!hasUnsavedChanges || isLeaving.current) return;
       const anchor = (e.target as HTMLElement).closest("a[href]");
       if (!anchor) return;
       const href = anchor.getAttribute("href");
@@ -771,6 +772,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             <Button
               type="button"
               onClick={() => {
+                isLeaving.current = true;
                 setShowCancelConfirm(false);
                 const id = ficheIdRef.current;
                 if (id) router.push(`/fiches/${id}`);
@@ -801,6 +803,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             <Button
               type="button"
               onClick={async () => {
+                isLeaving.current = true;
                 await saveDraft({ silent: true });
                 const url = pendingNavUrl!;
                 setPendingNavUrl(null);

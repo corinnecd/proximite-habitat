@@ -96,6 +96,7 @@ const DEFAULT_FORM_VALUES = {
 export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos, existingSignatureUrl, existingReferentSignatureUrl, mode = "create" }: FicheStepperProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [stepDirection, setStepDirection] = useState<"next" | "prev">("next");
+  const [hasNavigated, setHasNavigated] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -121,8 +122,6 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     mode: "onChange",
   });
 
-  // Réinitialise le formulaire avec les données de la fiche en mode édition.
-  // Nécessaire car useForm n'utilise defaultValues qu'au premier rendu.
   useEffect(() => {
     if (initialData && Object.keys(initialData).length > 0) {
       methods.reset({ ...DEFAULT_FORM_VALUES, ...initialData });
@@ -378,7 +377,8 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
         return;
       }
     }
-    await saveDraft();
+    await saveDraft({ silent: true });
+    setHasNavigated(true);
     setStepDirection("next");
     setCurrentStep((s) => Math.min(STEPS.length - 1, s + 1));
   }
@@ -423,7 +423,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             }
           }
         }
-        await saveDraft();
+        await saveDraft({ silent: true });
         if (ficheIdRef.current) {
           const detail = changedFields.length > 0
             ? changedFields.slice(0, 5).join(", ") + (changedFields.length > 5 ? ` (+${changedFields.length - 5})` : "")
@@ -478,7 +478,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     }
 
     // Sauvegarder si pas encore fait — ficheIdRef.current mis à jour de façon synchrone
-    if (!ficheIdRef.current) await saveDraft();
+    if (!ficheIdRef.current) await saveDraft({ silent: true });
     if (!ficheIdRef.current) { toast.error("Erreur : impossible de sauvegarder la fiche"); return; }
 
     setSubmitting(true);
@@ -620,6 +620,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
                             return;
                           }
                         }
+                        setHasNavigated(true);
                         setStepDirection(i > currentStep ? "next" : "prev");
                         setCurrentStep(i);
                       }}
@@ -651,7 +652,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
           key={currentStep}
           className="min-h-[400px]"
           style={{
-            animation: `${stepDirection === "next" ? "slideInFromRight" : "slideInFromLeft"} 0.25s ease both`,
+            animation: hasNavigated ? `${stepDirection === "next" ? "slideInFromRight" : "slideInFromLeft"} 0.25s ease both` : "none",
           }}
         >
           <StepComponent
@@ -686,7 +687,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
             <Button
               type="button"
               variant="outline"
-              onClick={() => { setStepDirection("prev"); setCurrentStep((s) => Math.max(0, s - 1)); }}
+              onClick={() => { setHasNavigated(true); setStepDirection("prev"); setCurrentStep((s) => Math.max(0, s - 1)); }}
               disabled={currentStep === 0}
               className="rounded-xl gap-2"
             >

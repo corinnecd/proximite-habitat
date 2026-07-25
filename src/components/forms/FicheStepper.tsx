@@ -335,6 +335,28 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
           }
         }
       }
+      // Upload des signatures si présentes
+      const fId = ficheIdRef.current;
+      if (fId && profile) {
+        const orgId = profile.organization_id;
+        if (signatureDataUrl) {
+          try {
+            const blob = await fetch(signatureDataUrl).then((r) => r.blob());
+            await supabase.storage
+              .from("signatures")
+              .upload(`${orgId}/${fId}/signature.png`, blob, { contentType: "image/png", upsert: true });
+          } catch { /* erreur silencieuse */ }
+        }
+        if (referentSignatureDataUrl) {
+          try {
+            const blob = await fetch(referentSignatureDataUrl).then((r) => r.blob());
+            await supabase.storage
+              .from("signatures")
+              .upload(`${orgId}/${fId}/signature_referent.png`, blob, { contentType: "image/png", upsert: true });
+          } catch { /* erreur silencieuse */ }
+        }
+      }
+
       if (!silent) {
         toast.success(mode === "edit-submitted" ? "Modifications enregistrées" : "Brouillon sauvegardé");
       }
@@ -345,7 +367,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     }
     setSaving(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, methods, photos, supabase]);
+  }, [profile, methods, photos, supabase, signatureDataUrl, referentSignatureDataUrl]);
 
   // Auto-save toutes les 30 s si le formulaire a été modifié
   useEffect(() => {

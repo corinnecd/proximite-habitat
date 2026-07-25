@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Eraser } from "lucide-react";
 
@@ -8,8 +8,35 @@ interface SignatureCanvasProps { onSignatureChange: (dataUrl: string | null) => 
 
 export function SignatureCanvas({ onSignatureChange }: SignatureCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+
+  const setupCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+    const rect = container.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }, []);
+
+  useEffect(() => {
+    setupCanvas();
+    const handleResize = () => {
+      if (!hasSignature) setupCanvas();
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [setupCanvas, hasSignature]);
 
   const getCoords = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     const canvas = canvasRef.current;
@@ -53,12 +80,13 @@ export function SignatureCanvas({ onSignatureChange }: SignatureCanvasProps) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setHasSignature(false);
     onSignatureChange(null);
+    setupCanvas();
   }
 
   return (
     <div className="space-y-3">
-      <div className="relative">
-        <canvas ref={canvasRef} width={600} height={200} role="img"
+      <div ref={containerRef} className="relative">
+        <canvas ref={canvasRef} role="img"
           aria-label={hasSignature ? "Zone de signature manuscrite (signée)" : "Zone de signature manuscrite — dessinez votre signature avec la souris ou le doigt"}
           className="w-full h-48 border-2 border-dashed border-border rounded-xl bg-white cursor-crosshair touch-none"
           onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing}

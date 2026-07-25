@@ -17,8 +17,10 @@ interface Step7Props {
 }
 
 export function Step7Signature({
+  signatureDataUrl,
   setSignatureDataUrl,
   existingSignatureUrl,
+  referentSignatureDataUrl,
   setReferentSignatureDataUrl,
   existingReferentSignatureUrl,
 }: Step7Props) {
@@ -40,12 +42,17 @@ export function Step7Signature({
       {/* Signature prospect */}
       <div className="space-y-3">
         <Label>Signature du prospect <span className="text-destructive">*</span></Label>
-        {existingSignatureUrl && (
+        {signatureDataUrl ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-2">
+            <p className="text-xs text-emerald-700 font-medium">Nouvelle signature (sera enregistrée)</p>
+            <img src={signatureDataUrl} alt="Nouvelle signature prospect" className="max-h-24 w-auto object-contain rounded-lg border border-border bg-white" />
+          </div>
+        ) : existingSignatureUrl ? (
           <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
             <p className="text-xs text-muted-foreground font-medium">Signature existante (conservée si vous ne re-signez pas)</p>
             <Image src={existingSignatureUrl} alt="Signature prospect existante" width={400} height={120} className="max-h-24 w-auto object-contain rounded-lg border border-border bg-white" unoptimized />
           </div>
-        )}
+        ) : null}
         <SignatureCanvas onSignatureChange={setSignatureDataUrl} />
       </div>
 
@@ -55,12 +62,17 @@ export function Step7Signature({
           <Users className="w-4 h-4" />
           Signature du référent habitant
         </Label>
-        {existingReferentSignatureUrl && (
+        {referentSignatureDataUrl ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-2">
+            <p className="text-xs text-emerald-700 font-medium">Nouvelle signature (sera enregistrée)</p>
+            <img src={referentSignatureDataUrl} alt="Nouvelle signature référent" className="max-h-24 w-auto object-contain rounded-lg border border-border bg-white" />
+          </div>
+        ) : existingReferentSignatureUrl ? (
           <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
             <p className="text-xs text-muted-foreground font-medium">Signature existante (conservée si vous ne re-signez pas)</p>
             <Image src={existingReferentSignatureUrl} alt="Signature référent existante" width={400} height={120} className="max-h-24 w-auto object-contain rounded-lg border border-border bg-white" unoptimized />
           </div>
-        )}
+        ) : null}
         <SignatureCanvas onSignatureChange={setReferentSignatureDataUrl ?? (() => {})} />
       </div>
 

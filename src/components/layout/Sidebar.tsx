@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  LayoutDashboard, FileText, FilePlus, Users, Bell,
+  LayoutDashboard, FileText, FilePlus, FileEdit, Users, Bell,
   Building2, Building, LogOut, Menu, X, UserCircle, BarChart3, ClipboardCheck, CalendarDays, CalendarRange,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +19,7 @@ const mainNav = [
   { name: "Tableau de bord", href: "/",               icon: LayoutDashboard },
   { name: "Statut des Fiches", href: "/fiches",        icon: FileText },
   { name: "Nouvelle fiche",  href: "/fiches/nouvelle", icon: FilePlus },
+  { name: "Brouillons",     href: "/fiches?status=BROUILLON", icon: FileEdit },
 ];
 
 const suivisNav = [
@@ -229,6 +230,12 @@ export function Sidebar() {
                   onClick={close}
                 />
               )}
+              {/* Brouillons */}
+              <NavItem
+                item={mainNav[3]}
+                isActive={pathname === "/fiches" && searchParams.get("status") === "BROUILLON"}
+                onClick={close}
+              />
             </div>
 
             <SectionLabel label="Suivi" />

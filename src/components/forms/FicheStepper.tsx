@@ -818,9 +818,8 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
                   await supabase.from("fiche_photos").delete().eq("fiche_id", ficheIdRef.current);
                   await supabase.from("fiches").delete().eq("id", ficheIdRef.current);
                 }
-                const url = pendingNavUrl!;
                 setPendingNavUrl(null);
-                router.push(url);
+                window.location.href = "/fiches/nouvelle";
               }}
               className="w-full rounded-xl gap-2"
             >

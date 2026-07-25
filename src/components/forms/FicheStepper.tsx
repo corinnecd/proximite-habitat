@@ -363,6 +363,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
   useEffect(() => {
     if (submitting) return;
     const handler = (e: MouseEvent) => {
+      if (!hasUnsavedChanges) return;
       const anchor = (e.target as HTMLElement).closest("a[href]");
       if (!anchor) return;
       const href = anchor.getAttribute("href");
@@ -373,7 +374,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     };
     document.addEventListener("click", handler, true);
     return () => document.removeEventListener("click", handler, true);
-  }, [submitting]);
+  }, [submitting, hasUnsavedChanges]);
 
   // ── Navigation étapes ──────────────────────────────────────────────────────
 

@@ -47,7 +47,7 @@ const commercialNav = [
   { name: "Mon reporting", href: "/reporting", icon: BarChart3 },
 ];
 
-type BadgeKey = "fiches" | "notifs" | "soumises";
+type BadgeKey = "fiches" | "notifs" | "soumises" | "brouillons";
 
 function NavItem({
   item, isActive, badge, badgeRed, onClick,
@@ -104,7 +104,7 @@ export function Sidebar() {
   const { profile, loading: profileLoading, organizationName } = useProfile();
   const { isDG } = useBranch();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [badges, setBadges] = useState<Record<BadgeKey, number>>({ fiches: 0, notifs: 0, soumises: 0 });
+  const [badges, setBadges] = useState<Record<BadgeKey, number>>({ fiches: 0, notifs: 0, soumises: 0, brouillons: 0 });
   const supabase = useMemo(() => createClient(), []);
 
   const fetchBadgesRef = useRef<(() => Promise<void>) | null>(null);
@@ -119,14 +119,20 @@ export function Sidebar() {
         ficheQuery = ficheQuery.neq("status", "BROUILLON");
       }
 
-      const [{ count: ficheCount }, { count: notifCount }, { count: soumisesCount }] = await Promise.all([
+      let brouillonQuery = supabase.from("fiches").select("id", { count: "exact", head: true }).eq("status", "BROUILLON");
+      if (profile?.role === "PROSPECTEUR") {
+        brouillonQuery = brouillonQuery.eq("created_by", profile.id);
+      }
+
+      const [{ count: ficheCount }, { count: notifCount }, { count: soumisesCount }, { count: brouillonsCount }] = await Promise.all([
         ficheQuery,
         supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", profile!.id).eq("read", false),
         profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN"
           ? supabase.from("fiches").select("id", { count: "exact", head: true }).eq("status", "SOUMISE")
           : Promise.resolve({ count: 0 }),
+        brouillonQuery,
       ]);
-      setBadges({ fiches: ficheCount ?? 0, notifs: notifCount ?? 0, soumises: soumisesCount ?? 0 });
+      setBadges({ fiches: ficheCount ?? 0, notifs: notifCount ?? 0, soumises: soumisesCount ?? 0, brouillons: brouillonsCount ?? 0 });
     }
     fetchBadgesRef.current = fetchBadges;
     fetchBadges();
@@ -234,6 +240,7 @@ export function Sidebar() {
               <NavItem
                 item={mainNav[3]}
                 isActive={pathname === "/fiches" && searchParams.get("status") === "BROUILLON"}
+                badge={badges.brouillons}
                 onClick={close}
               />
             </div>

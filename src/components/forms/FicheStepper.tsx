@@ -335,25 +335,31 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
           }
         }
       }
-      // Upload des signatures si présentes
+      // Upload des signatures si présentes (delete + insert car pas de policy UPDATE sur le bucket)
       const fId = ficheIdRef.current;
       if (fId && profile) {
         const orgId = profile.organization_id;
         if (signatureDataUrl) {
           try {
-            const blob = await fetch(signatureDataUrl).then((r) => r.blob());
-            await supabase.storage
+            const path = `${orgId}/${fId}/signature.png`;
+            await supabase.storage.from("signatures").remove([path]);
+            const blob = await (await fetch(signatureDataUrl)).blob();
+            const { error: sigErr } = await supabase.storage
               .from("signatures")
-              .upload(`${orgId}/${fId}/signature.png`, blob, { contentType: "image/png", upsert: true });
-          } catch { /* erreur silencieuse */ }
+              .upload(path, blob, { contentType: "image/png" });
+            if (sigErr) console.error("[saveDraft] signature upload error:", sigErr);
+          } catch (e) { console.error("[saveDraft] signature upload exception:", e); }
         }
         if (referentSignatureDataUrl) {
           try {
-            const blob = await fetch(referentSignatureDataUrl).then((r) => r.blob());
-            await supabase.storage
+            const path = `${orgId}/${fId}/signature_referent.png`;
+            await supabase.storage.from("signatures").remove([path]);
+            const blob = await (await fetch(referentSignatureDataUrl)).blob();
+            const { error: refSigErr } = await supabase.storage
               .from("signatures")
-              .upload(`${orgId}/${fId}/signature_referent.png`, blob, { contentType: "image/png", upsert: true });
-          } catch { /* erreur silencieuse */ }
+              .upload(path, blob, { contentType: "image/png" });
+            if (refSigErr) console.error("[saveDraft] referent signature upload error:", refSigErr);
+          } catch (e) { console.error("[saveDraft] referent signature upload exception:", e); }
         }
       }
 
@@ -535,23 +541,29 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
     try {
       const id = ficheIdRef.current;
 
-      // Signatures : upload si nouvelles, sinon on conserve les existantes (pas d'écrasement)
+      // Signatures : delete + insert (pas de policy UPDATE sur le bucket)
       if (signatureDataUrl) {
         try {
-          const blob = await fetch(signatureDataUrl).then((r) => r.blob());
-          await supabase.storage
+          const path = `${profile.organization_id}/${id}/signature.png`;
+          await supabase.storage.from("signatures").remove([path]);
+          const blob = await (await fetch(signatureDataUrl)).blob();
+          const { error: sigErr } = await supabase.storage
             .from("signatures")
-            .upload(`${profile.organization_id}/${id}/signature.png`, blob, { contentType: "image/png", upsert: true });
+            .upload(path, blob, { contentType: "image/png" });
+          if (sigErr) console.error("[submit] signature upload error:", sigErr);
         } catch {
           toast.error("La signature du prospect n'a pas pu être enregistrée");
         }
       }
       if (referentSignatureDataUrl) {
         try {
-          const blob = await fetch(referentSignatureDataUrl).then((r) => r.blob());
-          await supabase.storage
+          const path = `${profile.organization_id}/${id}/signature_referent.png`;
+          await supabase.storage.from("signatures").remove([path]);
+          const blob = await (await fetch(referentSignatureDataUrl)).blob();
+          const { error: refSigErr } = await supabase.storage
             .from("signatures")
-            .upload(`${profile.organization_id}/${id}/signature_referent.png`, blob, { contentType: "image/png", upsert: true });
+            .upload(path, blob, { contentType: "image/png" });
+          if (refSigErr) console.error("[submit] referent signature upload error:", refSigErr);
         } catch {
           toast.error("La signature du référent n'a pas pu être enregistrée");
         }

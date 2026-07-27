@@ -317,30 +317,50 @@ export function Sidebar() {
 
       {/* Footer utilisateur */}
       <div className="px-3 py-3 border-t border-white/8 space-y-0.5">
-        {hydrated && profile ? (
-          <>
-            <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl">
-              <div className="w-8 h-8 rounded-full bg-[#F97316] flex items-center justify-center text-xs font-bold text-white shrink-0">
-                {profile.first_name[0]}{profile.last_name[0]}
+        {hydrated && (() => {
+          const p = profile;
+          let initials = "";
+          let fullName = "";
+          let roleLabel = "";
+          if (p) {
+            initials = `${p.first_name[0]}${p.last_name[0]}`;
+            fullName = `${p.first_name} ${p.last_name}`;
+            roleLabel = ROLE_LABELS[p.role];
+          } else {
+            try {
+              const raw = localStorage.getItem("ph_profile_v1");
+              if (raw) {
+                const c = JSON.parse(raw);
+                initials = `${(c.first_name || " ")[0]}${(c.last_name || " ")[0]}`;
+                fullName = `${c.first_name || ""} ${c.last_name || ""}`.trim();
+                roleLabel = c.role ? ROLE_LABELS[c.role as keyof typeof ROLE_LABELS] || "" : "";
+              }
+            } catch {}
+          }
+          if (!fullName) return null;
+          return (
+            <>
+              <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl">
+                <div className="w-8 h-8 rounded-full bg-[#F97316] flex items-center justify-center text-xs font-bold text-white shrink-0">
+                  {initials}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold tracking-tight text-white truncate leading-tight">
+                    {fullName}
+                  </p>
+                  <p className="text-xs text-white/55">{roleLabel}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold tracking-tight text-white truncate leading-tight">
-                  {profile.first_name} {profile.last_name}
-                </p>
-                <p className="text-xs text-white/55">{ROLE_LABELS[profile.role]}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-white/70 hover:text-white hover:bg-white/8 transition-all duration-200 w-full"
-            >
-              <LogOut className="w-4.5 h-4.5" />
-              Déconnexion
-            </button>
-          </>
-        ) : (
-          null
-        )}
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-white/70 hover:text-white hover:bg-white/8 transition-all duration-200 w-full"
+              >
+                <LogOut className="w-4.5 h-4.5" />
+                Déconnexion
+              </button>
+            </>
+          );
+        })()}
       </div>
     </div>
   );

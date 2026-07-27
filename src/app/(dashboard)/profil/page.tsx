@@ -58,11 +58,14 @@ export default function ProfilPage() {
 
   const supabase = useMemo(() => createClient(), []);
 
+  const [cachedProfile, setCachedProfile] = useState<{ first_name?: string; last_name?: string; role?: string; email?: string; phone?: string } | null>(null);
+
   useLayoutEffect(() => {
     try {
       const raw = localStorage.getItem("ph_profile_v1");
       if (!raw) return;
       const cached = JSON.parse(raw);
+      setCachedProfile(cached);
       if (cached.first_name) setFirstName(cached.first_name);
       if (cached.last_name) setLastName(cached.last_name);
       if (cached.phone) setPhone(cached.phone);
@@ -124,8 +127,9 @@ export default function ProfilPage() {
 
   // ── Loading ────────────────────────────────────────────────────────────────
 
-  const isProspecteur = profile?.role === "PROSPECTEUR";
-  const initials = profile ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase() : "";
+  const displayProfile = profile ?? cachedProfile;
+  const isProspecteur = displayProfile?.role === "PROSPECTEUR";
+  const initials = displayProfile ? `${(displayProfile.first_name || " ")[0]}${(displayProfile.last_name || " ")[0]}`.toUpperCase() : "";
   const pwdStrength = passwordStrength(newPassword);
   const passwordsMatch = confirmPassword.length > 0 && newPassword === confirmPassword;
   const passwordsMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
@@ -154,22 +158,22 @@ export default function ProfilPage() {
             </div>
             <div className="min-w-0 flex-1">
               <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
-                {profile ? ROLE_LABELS[profile.role] : "Mon compte"}
+                {displayProfile?.role ? ROLE_LABELS[displayProfile.role as keyof typeof ROLE_LABELS] || "Mon compte" : "Mon compte"}
               </span>
               <h1 className="font-heading text-3xl sm:text-4xl text-white leading-none tracking-tight mt-1.5 mb-3">
-                {profile ? `${profile.first_name} ${profile.last_name}` : "Mon profil"}
+                {displayProfile ? `${displayProfile.first_name} ${displayProfile.last_name}` : "Mon profil"}
               </h1>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
-                {profile?.email && (
+                {(displayProfile?.email || profile?.email) && (
                 <div className="flex items-center gap-1.5 text-white/70">
                   <Mail className="w-3.5 h-3.5 shrink-0 text-[#F97316]" />
-                  <span className="truncate">{profile.email}</span>
+                  <span className="truncate">{profile?.email || displayProfile?.email}</span>
                 </div>
                 )}
-                {profile?.phone && (
+                {(displayProfile?.phone || profile?.phone) && (
                   <div className="flex items-center gap-1.5 text-white/70">
                     <Phone className="w-3.5 h-3.5 shrink-0 text-[#F97316]" />
-                    <span>{profile.phone}</span>
+                    <span>{profile?.phone || displayProfile?.phone}</span>
                   </div>
                 )}
               </div>

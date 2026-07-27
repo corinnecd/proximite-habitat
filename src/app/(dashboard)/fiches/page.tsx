@@ -99,11 +99,12 @@ export default function FichesPage() {
   const [statusFilter, setStatusFilter] = useState<FicheStatus | "ALL">(initialStatus || "ALL");
   const [exporting, setExporting] = useState(false);
 
-  // Synchroniser statusFilter quand les searchParams changent (navigation sidebar)
-  useEffect(() => {
-    const newStatus = initialStatus || "ALL";
-    setStatusFilter(newStatus);
-  }, [initialStatus]);
+  // Synchroniser statusFilter immédiatement quand les searchParams changent (navigation sidebar)
+  const [prevInitialStatus, setPrevInitialStatus] = useState(initialStatus);
+  if (initialStatus !== prevInitialStatus) {
+    setPrevInitialStatus(initialStatus);
+    setStatusFilter(initialStatus || "ALL");
+  }
 
   // Filtres direction uniquement
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("ALL");
@@ -494,7 +495,7 @@ export default function FichesPage() {
                 </h1>
                 <p className="text-sm text-white/60 mt-2">
                   {isValidationMode
-                    ? `${fiches.length} fiche${fiches.length > 1 ? "s" : ""} en attente de votre validation`
+                    ? <><span className="font-bold text-white">{fiches.length} fiche{fiches.length > 1 ? "s" : ""}</span> en attente de votre validation</>
                     : (
                       <>
                         {statusCounts["ALL"] ?? 0} fiche{(statusCounts["ALL"] ?? 0) > 1 ? "s" : ""} au total

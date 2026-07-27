@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import {
   Search, FilePlus, Filter, Loader2, Download, Send,
   UserCheck, CheckCircle2, XCircle, Archive, Clock, CalendarRange, CalendarDays, X, AlertCircle,
-  ChevronDown, ChevronUp, UserX,
+  ChevronDown, ChevronUp, UserX, ArrowLeft,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -78,6 +78,7 @@ interface FicheRow {
 interface ProfileOption { id: string; first_name: string; last_name: string; }
 
 export default function FichesPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialStatus = searchParams.get("status") as FicheStatus | null;
   const isValidationMode = initialStatus === "SOUMISE";
@@ -474,6 +475,15 @@ export default function FichesPage() {
           <div className="relative z-10">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
               <div>
+                {isValidationMode && (
+                  <button
+                    onClick={() => router.back()}
+                    className="inline-flex items-center gap-1.5 text-white/60 hover:text-white text-sm font-medium mb-3 transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Retour
+                  </button>
+                )}
                 <span className="text-[10px] tracking-[1.2px] uppercase text-white/50 font-medium">
                   {isValidationMode ? "File d'attente" : "Gestion des fiches"}
                 </span>

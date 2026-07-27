@@ -6,7 +6,9 @@ import {
   LayoutDashboard, FileText, FilePlus, FileEdit, Users, Bell,
   Building2, Building, LogOut, Menu, X, UserCircle, BarChart3, ClipboardCheck, CalendarDays, CalendarRange,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { ROLE_LABELS } from "@/lib/permissions";
@@ -104,8 +106,11 @@ export function Sidebar() {
   const { profile, loading: profileLoading, organizationName } = useProfile();
   const { isDG } = useBranch();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const [badges, setBadges] = useState<Record<BadgeKey, number>>({ fiches: 0, notifs: 0, soumises: 0, brouillons: 0 });
   const supabase = useMemo(() => createClient(), []);
+
+  useIsomorphicLayoutEffect(() => { setHydrated(true); }, []);
 
   const fetchBadgesRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -212,7 +217,7 @@ export function Sidebar() {
                 onClick={close}
               />
               {/* Fiches à valider (admin + DG) — au-dessus de Statut des Fiches */}
-              {(profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN" || profile?.role === "DIRECTION_GENERALE") && (
+              {hydrated && (profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN" || profile?.role === "DIRECTION_GENERALE") && (
                 <NavItem
                   item={{ name: "Fiches à valider", href: "/fiches?status=SOUMISE", icon: ClipboardCheck }}
                   isActive={pathname === "/fiches" && searchParams.get("status") === "SOUMISE"}
@@ -227,7 +232,7 @@ export function Sidebar() {
                 onClick={close}
               />
               {/* Nouvelle fiche — Référent et Chef d'équipe (pas DG) */}
-              {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && (
+              {hydrated && (profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && (
                 <NavItem
                   item={mainNav[2]}
                   isActive={isActive(mainNav[2].href)}
@@ -235,7 +240,7 @@ export function Sidebar() {
                 />
               )}
               {/* Brouillons — Référent et Chef d'équipe uniquement */}
-              {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && (
+              {hydrated && (profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && (
                 <NavItem
                   item={mainNav[3]}
                   isActive={pathname === "/fiches" && searchParams.get("status") === "BROUILLON"}
@@ -248,7 +253,7 @@ export function Sidebar() {
             <SectionLabel label="Suivi" />
             <div className="space-y-0.5">
               {suivisNav
-                .filter((item) => !(profile?.role === "DIRECTION_GENERALE" && item.href === "/notifications"))
+                .filter((item) => !(hydrated && profile?.role === "DIRECTION_GENERALE" && item.href === "/notifications"))
                 .map((item) => (
                 <NavItem
                   key={item.href}
@@ -267,7 +272,7 @@ export function Sidebar() {
               ))}
             </div>
 
-            {(profile?.role === "SUPER_ADMIN" || profile?.role === "DIRECTION" || profile?.role === "DIRECTION_GENERALE") && (
+            {hydrated && (profile?.role === "SUPER_ADMIN" || profile?.role === "DIRECTION" || profile?.role === "DIRECTION_GENERALE") && (
               <>
                 <SectionLabel label="Administration" />
                 <div className="space-y-0.5">
@@ -277,7 +282,7 @@ export function Sidebar() {
                 </div>
               </>
             )}
-            {profile?.role === "DIRECTION_GENERALE" && (
+            {hydrated && profile?.role === "DIRECTION_GENERALE" && (
               <>
                 <SectionLabel label="Direction Générale" />
                 <div className="space-y-0.5">
@@ -287,7 +292,7 @@ export function Sidebar() {
                 </div>
               </>
             )}
-            {profile?.role === "COMMERCIAL" && (
+            {hydrated && profile?.role === "COMMERCIAL" && (
               <>
                 <SectionLabel label="Statistiques" />
                 <div className="space-y-0.5">
@@ -302,7 +307,7 @@ export function Sidebar() {
 
       {/* Footer utilisateur */}
       <div className="px-3 py-3 border-t border-white/8 space-y-0.5">
-        {profile ? (
+        {hydrated && profile ? (
           <>
             <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl">
               <div className="w-8 h-8 rounded-full bg-[#F97316] flex items-center justify-center text-xs font-bold text-white shrink-0">

@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Eraser } from "lucide-react";
 
 interface SignatureCanvasProps { onSignatureChange: (dataUrl: string | null) => void; }
@@ -11,6 +12,7 @@ export function SignatureCanvas({ onSignatureChange }: SignatureCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const setupCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -77,7 +79,7 @@ export function SignatureCanvas({ onSignatureChange }: SignatureCanvasProps) {
     if (canvasRef.current) onSignatureChange(canvasRef.current.toDataURL("image/png"));
   }, [isDrawing, onSignatureChange]);
 
-  function clearSignature() {
+  function confirmClear() {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
@@ -85,6 +87,7 @@ export function SignatureCanvas({ onSignatureChange }: SignatureCanvasProps) {
     setHasSignature(false);
     onSignatureChange(null);
     setupCanvas();
+    setShowClearConfirm(false);
   }
 
   return (
@@ -97,7 +100,26 @@ export function SignatureCanvas({ onSignatureChange }: SignatureCanvasProps) {
           onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} />
         {!hasSignature && <p className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground/40 pointer-events-none">Signez ici</p>}
       </div>
-      {hasSignature && <Button type="button" variant="outline" size="sm" onClick={clearSignature} className="gap-2"><Eraser className="w-4 h-4" />Effacer</Button>}
+      {hasSignature && (
+        <Button type="button" variant="outline" size="sm" onClick={() => setShowClearConfirm(true)} className="gap-2">
+          <Eraser className="w-4 h-4" />Effacer
+        </Button>
+      )}
+
+      <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Effacer la signature ?</DialogTitle>
+            <DialogDescription>
+              La signature sera supprimée. Vous devrez re-signer si nécessaire.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowClearConfirm(false)}>Annuler</Button>
+            <Button variant="destructive" onClick={confirmClear}>Effacer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

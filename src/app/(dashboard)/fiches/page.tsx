@@ -91,6 +91,7 @@ export default function FichesPage() {
   const isAdminOrDG   = isAdmin || profile?.role === "DIRECTION_GENERALE";
   const isCommercial  = profile?.role === "COMMERCIAL";
 
+  const [hydrated, setHydrated] = useState(false);
   const [fiches, setFiches] = useState<FicheRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(VISIBLE_INIT);
@@ -155,6 +156,7 @@ export default function FichesPage() {
   const effectiveStatus = isValidationMode ? "SOUMISE" : statusFilter;
   const fichesCacheKey = profile ? `fiches_cache_${profile.id}_${effectiveStatus}` : null;
   useLayoutEffect(() => {
+    setHydrated(true);
     const pid = getCachedProfileId();
     if (!pid) return;
     try {
@@ -805,7 +807,7 @@ export default function FichesPage() {
 
         <div className="space-y-4">
         {/* Filtres par statut */}
-        {!isValidationMode && (profile || getCachedProfileId()) && (<div className="flex gap-2 flex-wrap">
+        {!isValidationMode && (profile || hydrated) && (<div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setStatusFilter("ALL")}
             aria-pressed={statusFilter === "ALL"}

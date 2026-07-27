@@ -58,14 +58,14 @@ export default function ProfilPage() {
 
   const supabase = useMemo(() => createClient(), []);
 
-  const [cachedProfile, setCachedProfile] = useState<{ first_name?: string; last_name?: string; role?: string; email?: string; phone?: string } | null>(null);
+  const [localProfile, setLocalProfile] = useState<{ first_name?: string; last_name?: string; role?: string; email?: string; phone?: string } | null>(null);
 
   useLayoutEffect(() => {
     try {
       const raw = localStorage.getItem("ph_profile_v1");
       if (!raw) return;
       const cached = JSON.parse(raw);
-      setCachedProfile(cached);
+      setLocalProfile(cached);
       if (cached.first_name) setFirstName(cached.first_name);
       if (cached.last_name) setLastName(cached.last_name);
       if (cached.phone) setPhone(cached.phone);
@@ -127,7 +127,7 @@ export default function ProfilPage() {
 
   // ── Loading ────────────────────────────────────────────────────────────────
 
-  const displayProfile = profile ?? cachedProfile;
+  const displayProfile = profile ?? localProfile;
   const isProspecteur = displayProfile?.role === "PROSPECTEUR";
   const initials = displayProfile ? `${(displayProfile.first_name || " ")[0]}${(displayProfile.last_name || " ")[0]}`.toUpperCase() : "";
   const pwdStrength = passwordStrength(newPassword);
@@ -153,7 +153,7 @@ export default function ProfilPage() {
         {/* ── Hero navy signature ─────────────────────────────────────────── */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-8">
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-5">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#F97316] flex items-center justify-center text-3xl sm:text-4xl font-heading text-white shrink-0 select-none tracking-tight">
+            <div suppressHydrationWarning className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#F97316] flex items-center justify-center text-3xl sm:text-4xl font-heading text-white shrink-0 select-none tracking-tight">
               {initials || <User className="w-10 h-10 text-white/60" />}
             </div>
             <div className="min-w-0 flex-1">

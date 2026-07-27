@@ -236,13 +236,15 @@ export function Sidebar() {
                   onClick={close}
                 />
               )}
-              {/* Brouillons */}
-              <NavItem
-                item={mainNav[3]}
-                isActive={pathname === "/fiches" && searchParams.get("status") === "BROUILLON"}
-                badge={badges.brouillons}
-                onClick={close}
-              />
+              {/* Brouillons — Référent et Chef d'équipe uniquement */}
+              {(profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE") && (
+                <NavItem
+                  item={mainNav[3]}
+                  isActive={pathname === "/fiches" && searchParams.get("status") === "BROUILLON"}
+                  badge={badges.brouillons}
+                  onClick={close}
+                />
+              )}
             </div>
 
             <SectionLabel label="Suivi" />

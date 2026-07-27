@@ -99,11 +99,29 @@ export default function FichesPage() {
   const [statusFilter, setStatusFilter] = useState<FicheStatus | "ALL">(initialStatus || "ALL");
   const [exporting, setExporting] = useState(false);
 
-  // Synchroniser statusFilter immédiatement quand les searchParams changent (navigation sidebar)
+  // Synchroniser statusFilter + restaurer le cache immédiatement quand on navigue
   const [prevInitialStatus, setPrevInitialStatus] = useState(initialStatus);
   if (initialStatus !== prevInitialStatus) {
     setPrevInitialStatus(initialStatus);
-    setStatusFilter(initialStatus || "ALL");
+    const newStatus = initialStatus || "ALL";
+    setStatusFilter(newStatus);
+    const newEffective = initialStatus === "SOUMISE" ? "SOUMISE" : newStatus;
+    const pid = getCachedProfileId();
+    if (pid) {
+      try {
+        const raw = localStorage.getItem(`fiches_cache_${pid}_${newEffective}`);
+        if (raw) {
+          const c = JSON.parse(raw);
+          if (c.fiches?.length) { setFiches(c.fiches); setLoading(false); }
+          else { setFiches([]); setLoading(true); }
+          if (c.statusCounts) setStatusCounts(c.statusCounts);
+          if (c.firstFicheDate !== undefined) setFirstFicheDate(c.firstFicheDate);
+        } else {
+          setFiches([]);
+          setLoading(true);
+        }
+      } catch { setFiches([]); setLoading(true); }
+    }
   }
 
   // Filtres direction uniquement
@@ -144,6 +162,7 @@ export default function FichesPage() {
       const c = JSON.parse(raw);
       if (c.fiches?.length) { setFiches(c.fiches); setLoading(false); }
       if (c.statusCounts) setStatusCounts(c.statusCounts);
+      if (c.firstFicheDate !== undefined) setFirstFicheDate(c.firstFicheDate);
     } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveStatus]);
@@ -319,6 +338,7 @@ export default function FichesPage() {
 
       // ── Compteurs par statut ──
       let freshCounts: Record<string, number> | null = null;
+      let freshFirstDate: string | null = null;
       if (!append && countResults.length > 0) {
         const counts: Record<string, number> = {};
         let total = 0;
@@ -334,7 +354,8 @@ export default function FichesPage() {
         setStatusCounts(counts);
         if (hasFirstQ) {
           const firstData = (countResults[countResults.length - 1] as { data: { created_at: string }[] | null })?.data;
-          setFirstFicheDate(firstData?.[0]?.created_at ?? null);
+          freshFirstDate = firstData?.[0]?.created_at ?? null;
+          setFirstFicheDate(freshFirstDate);
         }
       }
 
@@ -344,7 +365,7 @@ export default function FichesPage() {
       if (!append) setVisibleCount(VISIBLE_INIT);
       setFetchError(null);
       if (!append && fichesCacheKey) {
-        try { localStorage.setItem(fichesCacheKey, JSON.stringify({ fiches: newFiches.slice(0, 30), statusCounts: freshCounts })); } catch { /* ignore */ }
+        try { localStorage.setItem(fichesCacheKey, JSON.stringify({ fiches: newFiches.slice(0, 30), statusCounts: freshCounts, firstFicheDate: freshFirstDate })); } catch { /* ignore */ }
       }
 
     } catch (err) {
@@ -794,7 +815,7 @@ export default function FichesPage() {
 
         <div className="space-y-4">
         {/* Filtres par statut */}
-        {!isValidationMode && profile && (<div className="flex gap-2 flex-wrap">
+        {!isValidationMode && (profile || getCachedProfileId()) && (<div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setStatusFilter("ALL")}
             aria-pressed={statusFilter === "ALL"}

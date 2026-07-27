@@ -852,9 +852,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   {fiche.assigned_to && (() => {
                     const c = commercials.find((x) => x.id === fiche.assigned_to);
                     return c ? (
-                      <span className="inline-flex items-center gap-1 font-medium text-orange-600 dark:text-orange-400">
-                        <UserCheck className="w-3 h-3" />
-                        {c.first_name} {c.last_name}
+                      <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        Affecté à
+                        <span className="inline-flex items-center gap-1 font-medium text-orange-600 dark:text-orange-400">
+                          <UserCheck className="w-3 h-3" />
+                          {c.first_name} {c.last_name}
+                        </span>
                       </span>
                     ) : null;
                   })()}

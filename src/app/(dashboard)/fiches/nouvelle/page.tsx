@@ -18,16 +18,7 @@ export default function NouvelleFichePage() {
     if (!loading && profile && !allowed) router.replace("/");
   }, [loading, profile, allowed, router]);
 
-  if (!profile) {
-    return (
-      <>
-        <Topbar title="Nouvelle fiche de pré-visite" />
-        <div className="p-4 sm:p-6 lg:p-8" />
-      </>
-    );
-  }
-
-  if (!allowed) return null;
+  if (!loading && profile && !allowed) return null;
 
   return (
     <>
@@ -35,7 +26,7 @@ export default function NouvelleFichePage() {
       <div className="p-4 sm:p-6 lg:p-8">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6 lg:p-10">
-            <FicheStepper />
+            {profile && allowed && <FicheStepper />}
           </CardContent>
         </Card>
       </div>

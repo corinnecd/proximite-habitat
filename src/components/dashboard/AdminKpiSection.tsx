@@ -32,9 +32,9 @@ export function AdminKpiSection({
               <Euro className="w-5 h-5 text-amber-600" />
             </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold tabular-nums">{caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
+          {loading ? <span className="inline-block h-7 w-20 bg-muted rounded animate-pulse" /> : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>}
           <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA global HT consolidé" : <>CA HT consolidé<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{totalVentes} contrat{totalVentes > 1 ? "s" : ""} signé{totalVentes > 1 ? "s" : ""}</p>
+          {!loading && <p className="text-xs text-muted-foreground mt-0.5">{totalVentes} contrat{totalVentes > 1 ? "s" : ""} signé{totalVentes > 1 ? "s" : ""}</p>}
         </div>
         <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
           <div className="flex items-center justify-between mb-3">
@@ -51,7 +51,7 @@ export function AdminKpiSection({
               <BarChart3 className="w-5 h-5 text-blue-600" />
             </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold tabular-nums">{totalVentes > 0 ? Math.round(caTotal / totalVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "0 €"}</p>
+          {loading ? <span className="inline-block h-7 w-20 bg-muted rounded animate-pulse" /> : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{totalVentes > 0 ? Math.round(caTotal / totalVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "0 €"}</p>}
           <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Chiffre d'affaires moyen global" : <>Chiffre d&apos;affaires moyen<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
         </div>
       </div>
@@ -72,9 +72,9 @@ export function AdminKpiSection({
                   <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${acceptanceRate}%`}</p>
+              {loading ? <span className="inline-block h-7 w-14 bg-muted rounded animate-pulse" /> : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${acceptanceRate}%`}</p>}
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global d'acceptation" : <>Taux d&apos;acceptation<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{counts.ACCEPTEE} acceptée{counts.ACCEPTEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>
+              {!loading && <p className="text-xs text-muted-foreground mt-0.5">{counts.ACCEPTEE} acceptée{counts.ACCEPTEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>}
             </div>
             <div className="bg-card border border-border border-l-4 border-l-red-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
               <div className="flex items-center justify-between mb-3">
@@ -82,9 +82,9 @@ export function AdminKpiSection({
                   <XCircle className="w-5 h-5 text-red-500" />
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${refusalRate}%`}</p>
+              {loading ? <span className="inline-block h-7 w-14 bg-muted rounded animate-pulse" /> : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${refusalRate}%`}</p>}
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global de refus" : <>Taux de refus<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{counts.REFUSEE} refusée{counts.REFUSEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>
+              {!loading && <p className="text-xs text-muted-foreground mt-0.5">{counts.REFUSEE} refusée{counts.REFUSEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>}
             </div>
             <div className="bg-card border border-border border-l-4 border-l-orange-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
               <div className="flex items-center justify-between mb-3">
@@ -92,9 +92,9 @@ export function AdminKpiSection({
                   <Clock className="w-5 h-5 text-orange-600" />
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${inProgressRate}%`}</p>
+              {loading ? <span className="inline-block h-7 w-14 bg-muted rounded animate-pulse" /> : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${inProgressRate}%`}</p>}
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global en cours" : <>Taux en cours<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{inProgress} fiche{inProgress > 1 ? "s" : ""} · à valider, affectées, attente client</p>
+              {!loading && <p className="text-xs text-muted-foreground mt-0.5">{inProgress} fiche{inProgress > 1 ? "s" : ""} · à valider, affectées, attente client</p>}
             </div>
           </div>
         );

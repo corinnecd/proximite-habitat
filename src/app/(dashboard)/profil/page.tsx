@@ -176,7 +176,6 @@ export default function ProfilPage() {
 
         {/* Statistiques — masquées pour les référents (info connexion déjà dans le hero) */}
 
-        {profile && (<>
         {/* ── Informations personnelles ──────────────────────────────────── */}
         <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-5">
           <div className="flex items-center gap-3">
@@ -210,7 +209,7 @@ export default function ProfilPage() {
               <Label>Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input value={profile.email} disabled className="bg-muted/50 h-11 rounded-xl pl-10 text-muted-foreground cursor-not-allowed" />
+                <Input value={profile?.email ?? ""} disabled className="bg-muted/50 h-11 rounded-xl pl-10 text-muted-foreground cursor-not-allowed" />
               </div>
               <p className="text-xs text-muted-foreground">L&apos;adresse email ne peut pas être modifiée.</p>
             </div>
@@ -385,7 +384,6 @@ export default function ProfilPage() {
             )}
           </div>
         </div>
-        </>)}
       </div>
     </>
   );

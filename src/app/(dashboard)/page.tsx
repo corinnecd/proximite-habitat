@@ -918,7 +918,7 @@ export default function DashboardPage() {
                   <Euro className="w-5 h-5 text-amber-600" />
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
+              {loading ? <span className="inline-block h-7 w-20 bg-muted rounded animate-pulse" /> : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>}
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA HT total" : <>CA HT<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
             </div>
             <div className="bg-card border border-border border-l-4 border-l-blue-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
@@ -927,7 +927,7 @@ export default function DashboardPage() {
                   <BarChart3 className="w-5 h-5 text-blue-600" />
                 </div>
               </div>
-              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{mesVentes > 0 ? Math.round(caTotal / mesVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "0 €"}</p>
+              {loading ? <span className="inline-block h-7 w-20 bg-muted rounded animate-pulse" /> : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{mesVentes > 0 ? Math.round(caTotal / mesVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "0 €"}</p>}
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA moyen par fiche" : <>CA moyen<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
             </div>
             {(() => {
@@ -940,9 +940,9 @@ export default function DashboardPage() {
                       <BarChart3 className="w-5 h-5 text-orange-600" />
                     </div>
                   </div>
-                  <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${convRate}%`}</p>
+                  {loading ? <span className="inline-block h-7 w-14 bg-muted rounded animate-pulse" /> : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${convRate}%`}</p>}
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">Taux de conversion</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{mesVentes} acceptée{mesVentes > 1 ? "s" : ""} / {totalTraitees} traitée{totalTraitees > 1 ? "s" : ""}</p>
+                  {!loading && <p className="text-xs text-muted-foreground mt-0.5">{mesVentes} acceptée{mesVentes > 1 ? "s" : ""} / {totalTraitees} traitée{totalTraitees > 1 ? "s" : ""}</p>}
                 </div>
               );
             })()}

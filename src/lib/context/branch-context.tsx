@@ -1,9 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useState, useMemo, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import type { Organization } from "@/types/database";
+
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 // Cache localStorage des succursales — même logique que profile-context.tsx :
 // évite le flash "0 succursale" le temps que profil + rôle DG soient résolus.
@@ -41,15 +43,19 @@ const BranchContext = createContext<BranchContextValue>({
 
 export function BranchProvider({ children }: { children: React.ReactNode }) {
   const { profile, loading: profileLoading } = useProfile();
-  // Pré-remplit depuis le cache pour éviter d'afficher "0 succursale" avant la 1ère requête.
-  const [branches, setBranches] = useState<Organization[]>(() => {
-    if (typeof window === "undefined") return [];
-    return readBranchesCache() ?? [];
-  });
-  const [selectedBranchId, setSelectedBranchIdRaw] = useState<string | "all">(() => {
-    if (typeof window === "undefined") return "all";
-    return (localStorage.getItem("selectedBranchId") as string) || "all";
-  });
+  // SSR-safe : démarre toujours avec des valeurs neutres pour éviter les erreurs d'hydratation.
+  // Le cache est restauré dans useIsomorphicLayoutEffect (avant le paint).
+  const [branches, setBranches] = useState<Organization[]>([]);
+  const [selectedBranchId, setSelectedBranchIdRaw] = useState<string | "all">("all");
+
+  useIsomorphicLayoutEffect(() => {
+    const cached = readBranchesCache();
+    if (cached?.length) setBranches(cached);
+    try {
+      const saved = localStorage.getItem("selectedBranchId");
+      if (saved) setSelectedBranchIdRaw(saved);
+    } catch {}
+  }, []);
   const setSelectedBranchId = useCallback((id: string | "all") => {
     setSelectedBranchIdRaw(id);
     if (typeof window !== "undefined") localStorage.setItem("selectedBranchId", id);

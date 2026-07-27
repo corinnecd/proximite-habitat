@@ -330,6 +330,7 @@ export default function NotificationsPage() {
       const c = JSON.parse(raw);
       if (c.notifications?.length) {
         setNotifications(c.notifications);
+        if (c.ficheStatuses) setFicheStatuses(c.ficheStatuses);
         setInitialLoaded(true);
         setLoading(false);
       }
@@ -372,20 +373,19 @@ export default function NotificationsPage() {
       setNotifications(allRows);
       setHasMore(rows.length === PAGE_SIZE);
       setPage(pageToLoad);
-      if (!append && pageToLoad === 0 && !opts.search && !opts.types?.length && (opts.period ?? "all") === "all" && notifCacheKey) {
-        try { localStorage.setItem(notifCacheKey, JSON.stringify({ notifications: allRows.slice(0, 30) })); } catch { /* ignore */ }
+      // Fetch statuts actuels des fiches (bloquant pour afficher le bon badge)
+      const ficheIds = [...new Set(allRows.filter((n) => n.fiche_id).map((n) => n.fiche_id!))];
+      let statusMap: Record<string, FicheStatus> = {};
+      if (ficheIds.length > 0) {
+        const { data: fiches } = await supabase.from("fiches").select("id, status").in("id", ficheIds);
+        if (fiches) {
+          for (const f of fiches as { id: string; status: FicheStatus }[]) statusMap[f.id] = f.status;
+          setFicheStatuses((prev) => ({ ...prev, ...statusMap }));
+        }
       }
 
-      // Fetch statuts des fiches en arrière-plan (badge décoratif — non bloquant)
-      const ficheIds = [...new Set(allRows.filter((n) => n.fiche_id).map((n) => n.fiche_id!))];
-      if (ficheIds.length > 0) {
-        void supabase.from("fiches").select("id, status").in("id", ficheIds).then(({ data: fiches }) => {
-          if (fiches) {
-            const map: Record<string, FicheStatus> = {};
-            for (const f of fiches as { id: string; status: FicheStatus }[]) map[f.id] = f.status;
-            setFicheStatuses((prev) => ({ ...prev, ...map }));
-          }
-        });
+      if (!append && pageToLoad === 0 && !opts.search && !opts.types?.length && (opts.period ?? "all") === "all" && notifCacheKey) {
+        try { localStorage.setItem(notifCacheKey, JSON.stringify({ notifications: allRows.slice(0, 30), ficheStatuses: statusMap })); } catch { /* ignore */ }
       }
     } catch (e) {
       console.error("[fetchNotifications]", e);
@@ -675,7 +675,7 @@ export default function NotificationsPage() {
 
         {/* ── Contenu ───────────────────────────────────────────────────── */}
         <div>
-        {!initialLoaded ? null : displayed.length === 0 ? (
+        {!initialLoaded ? <div /> : displayed.length === 0 ? (
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
               <EmptyState

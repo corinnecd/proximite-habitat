@@ -31,6 +31,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { getCachedProfileId } from "@/lib/utils";
 import { sendEmailFicheAffectee, sendEmailFicheDecision } from "@/lib/email";
 import { toast } from "sonner";
 import { StatusBlock } from "@/components/dashboard/StatusBlock";
@@ -165,9 +166,10 @@ export default function DashboardPage() {
   const cacheKey = profile ? `dash_cache_${profile.id}` : null;
 
   useLayoutEffect(() => {
-    if (!cacheKey) return;
+    const pid = getCachedProfileId();
+    if (!pid) return;
     try {
-      const raw = localStorage.getItem(cacheKey);
+      const raw = localStorage.getItem(`dash_cache_${pid}`);
       if (!raw) return;
       const c = JSON.parse(raw);
       if (c.counts) setCounts(c.counts);
@@ -193,8 +195,7 @@ export default function DashboardPage() {
       if (c.prospArchivees) setProspArchivees(c.prospArchivees);
       setLoading(false);
     } catch { /* ignore */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cacheKey]);
+  }, []);
 
   const saveCache = useCallback((data: Record<string, unknown>) => {
     if (!cacheKey) return;
@@ -794,7 +795,7 @@ export default function DashboardPage() {
                   {profile?.first_name}
                 </h1>
                 <p className="text-sm text-white/60 max-w-md leading-relaxed">
-                  {loading ? <span className="inline-block h-4 w-56 bg-white/10 rounded animate-pulse align-middle" /> : isReferent
+                  {isReferent
                     ? `${counts.BROUILLON} brouillon${counts.BROUILLON > 1 ? "s" : ""} en cours · ${counts.SOUMISE} soumise${counts.SOUMISE > 1 ? "s" : ""} en attente de validation`
                     : isCommercial
                     ? `${counts.AFFECTEE} fiche${counts.AFFECTEE > 1 ? "s" : ""} à traiter · ${counts.ACCEPTEE} contrat${counts.ACCEPTEE > 1 ? "s" : ""} signé${counts.ACCEPTEE > 1 ? "s" : ""}`
@@ -918,7 +919,7 @@ export default function DashboardPage() {
                   <Euro className="w-5 h-5 text-amber-600" />
                 </div>
               </div>
-              {loading ? <span className="inline-block h-7 w-20 bg-muted rounded animate-pulse" /> : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>}
+              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{caTotal.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}</p>
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA HT total" : <>CA HT<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
             </div>
             <div className="bg-card border border-border border-l-4 border-l-blue-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
@@ -927,7 +928,7 @@ export default function DashboardPage() {
                   <BarChart3 className="w-5 h-5 text-blue-600" />
                 </div>
               </div>
-              {loading ? <span className="inline-block h-7 w-20 bg-muted rounded animate-pulse" /> : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{mesVentes > 0 ? Math.round(caTotal / mesVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "0 €"}</p>}
+              <p className="text-2xl sm:text-3xl font-bold tabular-nums">{mesVentes > 0 ? Math.round(caTotal / mesVentes).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "0 €"}</p>
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA moyen par fiche" : <>CA moyen<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
             </div>
             {(() => {
@@ -940,9 +941,9 @@ export default function DashboardPage() {
                       <BarChart3 className="w-5 h-5 text-orange-600" />
                     </div>
                   </div>
-                  {loading ? <span className="inline-block h-7 w-14 bg-muted rounded animate-pulse" /> : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${convRate}%`}</p>}
+                  <p className="text-2xl sm:text-3xl font-bold tabular-nums">{`${convRate}%`}</p>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">Taux de conversion</p>
-                  {!loading && <p className="text-xs text-muted-foreground mt-0.5">{mesVentes} acceptée{mesVentes > 1 ? "s" : ""} / {totalTraitees} traitée{totalTraitees > 1 ? "s" : ""}</p>}
+                  <p className="text-xs text-muted-foreground mt-0.5">{mesVentes} acceptée{mesVentes > 1 ? "s" : ""} / {totalTraitees} traitée{totalTraitees > 1 ? "s" : ""}</p>
                 </div>
               );
             })()}

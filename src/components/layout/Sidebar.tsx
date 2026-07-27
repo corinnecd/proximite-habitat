@@ -12,7 +12,7 @@ const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffec
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { ROLE_LABELS } from "@/lib/permissions";
-import { cn } from "@/lib/utils";
+import { cn, getCachedProfileId } from "@/lib/utils";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { BranchSelector } from "@/components/layout/BranchSelector";
 import { useBranch } from "@/lib/context/branch-context";
@@ -110,7 +110,15 @@ export function Sidebar() {
   const [badges, setBadges] = useState<Record<BadgeKey, number>>({ fiches: 0, notifs: 0, soumises: 0, brouillons: 0 });
   const supabase = useMemo(() => createClient(), []);
 
-  useIsomorphicLayoutEffect(() => { setHydrated(true); }, []);
+  useIsomorphicLayoutEffect(() => {
+    setHydrated(true);
+    const pid = getCachedProfileId();
+    if (!pid) return;
+    try {
+      const raw = localStorage.getItem(`sidebar_badges_${pid}`);
+      if (raw) setBadges(JSON.parse(raw));
+    } catch {}
+  }, []);
 
   const fetchBadgesRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -137,7 +145,9 @@ export function Sidebar() {
           : Promise.resolve({ count: 0 }),
         brouillonQuery,
       ]);
-      setBadges({ fiches: ficheCount ?? 0, notifs: notifCount ?? 0, soumises: soumisesCount ?? 0, brouillons: brouillonsCount ?? 0 });
+      const newBadges = { fiches: ficheCount ?? 0, notifs: notifCount ?? 0, soumises: soumisesCount ?? 0, brouillons: brouillonsCount ?? 0 };
+      setBadges(newBadges);
+      try { localStorage.setItem(`sidebar_badges_${profile!.id}`, JSON.stringify(newBadges)); } catch {}
     }
     fetchBadgesRef.current = fetchBadges;
     fetchBadges();

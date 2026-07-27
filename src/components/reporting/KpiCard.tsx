@@ -27,11 +27,9 @@ export function KpiCard({
           </span>
         )}
       </div>
-      {loading
-        ? <span className="inline-block h-7 w-16 bg-muted rounded animate-pulse" />
-        : <p className="text-2xl sm:text-3xl font-bold tabular-nums">{value}</p>}
+      <p className="text-2xl sm:text-3xl font-bold tabular-nums">{value}</p>
       <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{label}</p>
-      {sub && !loading && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }

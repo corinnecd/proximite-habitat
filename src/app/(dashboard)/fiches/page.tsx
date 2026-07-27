@@ -17,6 +17,7 @@ import { getFichesForExport } from "@/lib/data/fiches";
 import { toCsv, downloadCsv, type CsvColumn } from "@/lib/csv";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { useBranch } from "@/lib/context/branch-context";
+import { getCachedProfileId } from "@/lib/utils";
 import { STATUS_LABELS } from "@/lib/permissions";
 import type { FicheStatus } from "@/types/database";
 import { toast } from "sonner";
@@ -134,16 +135,17 @@ export default function FichesPage() {
   const effectiveStatus = isValidationMode ? "SOUMISE" : statusFilter;
   const fichesCacheKey = profile ? `fiches_cache_${profile.id}_${effectiveStatus}` : null;
   useLayoutEffect(() => {
-    if (!fichesCacheKey) return;
+    const pid = getCachedProfileId();
+    if (!pid) return;
     try {
-      const raw = localStorage.getItem(fichesCacheKey);
+      const raw = localStorage.getItem(`fiches_cache_${pid}_${effectiveStatus}`);
       if (!raw) return;
       const c = JSON.parse(raw);
       if (c.fiches?.length) { setFiches(c.fiches); setLoading(false); }
       if (c.statusCounts) setStatusCounts(c.statusCounts);
     } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fichesCacheKey]);
+  }, [effectiveStatus]);
 
   const visibleStatuses: FicheStatus[] = isReferent
     ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
@@ -491,9 +493,7 @@ export default function FichesPage() {
                   {isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"}
                 </h1>
                 <p className="text-sm text-white/60 mt-2">
-                  {loading && fiches.length === 0
-                    ? <span className="inline-block h-4 w-56 bg-white/10 rounded animate-pulse align-middle" />
-                    : isValidationMode
+                  {isValidationMode
                     ? `${fiches.length} fiche${fiches.length > 1 ? "s" : ""} en attente de votre validation`
                     : (
                       <>

@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { deleteFicheCascade } from "@/lib/data/fiches";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { getCachedProfileId } from "@/lib/utils";
 import type { Notification, FicheStatus } from "@/types/database";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { toast } from "sonner";
@@ -323,9 +324,10 @@ export default function NotificationsPage() {
   // ── Cache localStorage : affichage instantané ───────────────────────────
   const notifCacheKey = profile ? `notif_cache_${profile.id}` : null;
   useLayoutEffect(() => {
-    if (!notifCacheKey) return;
+    const pid = getCachedProfileId();
+    if (!pid) return;
     try {
-      const raw = localStorage.getItem(notifCacheKey);
+      const raw = localStorage.getItem(`notif_cache_${pid}`);
       if (!raw) return;
       const c = JSON.parse(raw);
       if (c.notifications?.length) {
@@ -335,8 +337,7 @@ export default function NotificationsPage() {
         setLoading(false);
       }
     } catch { /* ignore */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notifCacheKey]);
+  }, []);
 
   const role = profile?.role ?? null;
   const statusOptions = useMemo(() =>
@@ -557,9 +558,7 @@ export default function NotificationsPage() {
                   Notifications
                 </h1>
                 <p className="text-sm text-white/60 mt-1.5">
-                  {loading
-                    ? <span className="inline-block h-4 w-48 bg-white/10 rounded animate-pulse align-middle" />
-                    : unreadCount > 0
+                  {unreadCount > 0
                     ? <><span className="text-[#F97316] font-medium">{unreadCount} non lue{unreadCount > 1 ? "s" : ""}</span> · {totalDisplayed} au total</>
                     : "Toutes les notifications sont lues"}
                 </p>

@@ -9,6 +9,7 @@ import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { useBranch } from "@/lib/context/branch-context";
+import { getCachedProfileId } from "@/lib/utils";
 import type { FicheStatus, MotifRefus } from "@/types/database";
 import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel as getReportPeriodLabel } from "@/lib/periods";
@@ -93,9 +94,10 @@ export default function ReportingPage() {
 
   const rpCacheKey = profile ? `rpt_cache_${profile.id}` : null;
   useLayoutEffect(() => {
-    if (!rpCacheKey) return;
+    const pid = getCachedProfileId();
+    if (!pid) return;
     try {
-      const raw = localStorage.getItem(rpCacheKey);
+      const raw = localStorage.getItem(`rpt_cache_${pid}`);
       if (!raw) return;
       const c = JSON.parse(raw);
       if (c.statusCounts) setStatusCounts(c.statusCounts);
@@ -109,8 +111,7 @@ export default function ReportingPage() {
       if (c.branchStats) setBranchStats(c.branchStats);
       setLoading(false);
     } catch { /* ignore */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rpCacheKey]);
+  }, []);
 
   const saveRptCache = useCallback((data: Record<string, unknown>) => {
     if (!rpCacheKey) return;
@@ -455,7 +456,7 @@ export default function ReportingPage() {
                     {isCommercial ? "Mon reporting" : "Reporting"}
                   </h1>
                   <p className="text-sm text-white/60 mt-2">
-                    {loading ? <span className="inline-block h-4 w-56 bg-white/10 rounded animate-pulse align-middle" /> : isCommercial
+                    {isCommercial
                       ? "Statistiques personnelles — vos fiches affectées"
                       : "Vue globale — tous commerciaux et référents réunis"}
                   </p>

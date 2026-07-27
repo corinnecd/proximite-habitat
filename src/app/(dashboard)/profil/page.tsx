@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +57,17 @@ export default function ProfilPage() {
   const { status: pushStatus, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushSubscription(profile?.id ?? null);
 
   const supabase = useMemo(() => createClient(), []);
+
+  useLayoutEffect(() => {
+    try {
+      const raw = localStorage.getItem("ph_profile_v1");
+      if (!raw) return;
+      const cached = JSON.parse(raw);
+      if (cached.first_name) setFirstName(cached.first_name);
+      if (cached.last_name) setLastName(cached.last_name);
+      if (cached.phone) setPhone(cached.phone);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {

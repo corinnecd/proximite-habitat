@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
@@ -149,6 +149,7 @@ export default function FichesPage() {
 
   // Stable — ne change pas entre les renders
   const supabase = useMemo(() => createClient(), []);
+  const fetchVersionRef = useRef(0);
 
   // ── Cache localStorage : affichage instantané ───────────────────────────
   const effectiveStatus = isValidationMode ? "SOUMISE" : statusFilter;
@@ -223,20 +224,7 @@ export default function FichesPage() {
 
   const fetchFiches = useCallback(async (pageToLoad = 0, append = false) => {
     if (!profile) return;
-    if (!append) {
-      let cacheHit = false;
-      if (fichesCacheKey) {
-        try {
-          const raw = localStorage.getItem(fichesCacheKey);
-          if (raw) {
-            const c = JSON.parse(raw);
-            if (c.fiches?.length) { setFiches(c.fiches); setLoading(false); cacheHit = true; }
-            if (c.statusCounts) setStatusCounts(c.statusCounts);
-          }
-        } catch { /* ignore */ }
-      }
-      if (!cacheHit) setLoading(true);
-    }
+    const version = ++fetchVersionRef.current;
 
     // Calculé ici pour éviter les closures périmées
     const role = profile.role;
@@ -334,6 +322,7 @@ export default function FichesPage() {
       ]);
 
       if (fichesResult.error) throw fichesResult.error;
+      if (version !== fetchVersionRef.current) return;
       const rows = (fichesResult.data as unknown as FicheRow[]) || [];
 
       // ── Compteurs par statut ──
@@ -369,11 +358,12 @@ export default function FichesPage() {
       }
 
     } catch (err) {
+      if (version !== fetchVersionRef.current) return;
       console.error("fetchFiches error", err);
       setFetchError("Erreur lors du chargement des fiches.");
       toast.error("Erreur lors du chargement des fiches");
     } finally {
-      if (!append) setLoading(false);
+      if (version === fetchVersionRef.current && !append) setLoading(false);
     }
   // supabase est stable (useMemo), pas besoin dans les deps
   }, [statusFilter, search, profile, periodFilter, referentFilter, commercialFilter, selectedBranchId, isDG, customFrom, customTo, villeFilter, departementFilter]); // eslint-disable-line react-hooks/exhaustive-deps

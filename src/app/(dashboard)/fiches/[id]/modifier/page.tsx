@@ -25,7 +25,6 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
   const [existingSignatureUrl, setExistingSignatureUrl] = useState<string | null>(null);
   const [existingReferentSignatureUrl, setExistingReferentSignatureUrl] = useState<string | null>(null);
   const [ficheStatus, setFicheStatus] = useState<FicheStatus>("BROUILLON");
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,21 +38,21 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
 
       if (!fiche) {
         setError("Fiche introuvable");
-        setLoading(false);
+
         return;
       }
 
       // Vérification des droits
       if (!profile || !canEditFiche(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status as FicheStatus)) {
         setError("Vous n'avez pas l'autorisation de modifier cette fiche.");
-        setLoading(false);
+
         return;
       }
 
       // Les référents ne peuvent modifier que leurs propres brouillons
       if (profile.role === "PROSPECTEUR" && fiche.status !== "BROUILLON") {
         setError("Seules les fiches en brouillon peuvent être modifiées par un référent.");
-        setLoading(false);
+
         return;
       }
 
@@ -100,16 +99,16 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
       setInitialPhotos(photos.map((p) => ({ ...p, original_name: p.original_name ?? "" })));
 
       // Charger les signatures existantes via signed URL (bucket privé)
+      // Le cache-buster t= force le CDN à retourner la version la plus récente
+      const cacheBuster = `t=${Date.now()}`;
       try {
         const [{ data: signData }, { data: refSignData }] = await Promise.all([
           supabase.storage.from("signatures").createSignedUrl(`${fiche.organization_id}/${id}/signature.png`, 7200),
           supabase.storage.from("signatures").createSignedUrl(`${fiche.organization_id}/${id}/signature_referent.png`, 7200),
         ]);
-        if (signData?.signedUrl) setExistingSignatureUrl(signData.signedUrl);
-        if (refSignData?.signedUrl) setExistingReferentSignatureUrl(refSignData.signedUrl);
+        if (signData?.signedUrl) setExistingSignatureUrl(`${signData.signedUrl}&${cacheBuster}`);
+        if (refSignData?.signedUrl) setExistingReferentSignatureUrl(`${refSignData.signedUrl}&${cacheBuster}`);
       } catch { /* pas de signature */ }
-
-      setLoading(false);
     }
 
     load();
@@ -142,13 +141,11 @@ export default function ModifierFichePage({ params }: { params: Promise<{ id: st
       <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6 lg:p-10">
-            {loading ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Chargement…</p>
-            ) : (
+            {initialData && (
               <FicheStepper
                 key={id}
                 ficheId={id}
-                initialData={initialData ?? undefined}
+                initialData={initialData}
                 initialPhotos={initialPhotos}
                 existingSignatureUrl={existingSignatureUrl}
                 existingReferentSignatureUrl={existingReferentSignatureUrl}

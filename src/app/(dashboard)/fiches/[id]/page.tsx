@@ -144,9 +144,10 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       if (creatorName) setCreatorName(creatorName);
       setVilleData(villeResult.data ?? null);
       if (sigsResult) {
+        const cb = `t=${Date.now()}`;
         const [{ data: sig }, { data: sigRef }] = sigsResult;
-        setSignatureUrl(sig?.signedUrl ?? null);
-        setReferentSignatureUrl(sigRef?.signedUrl ?? null);
+        setSignatureUrl(sig?.signedUrl ? `${sig.signedUrl}&${cb}` : null);
+        setReferentSignatureUrl(sigRef?.signedUrl ? `${sigRef.signedUrl}&${cb}` : null);
       }
     } catch (err) {
       console.error("fetchData error", err);

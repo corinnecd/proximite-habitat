@@ -86,7 +86,6 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [showReassignPanel, setShowReassignPanel] = useState(false);
   const [reassignCommercialId, setReassignCommercialId] = useState("");
   const [showReassignConfirmModal, setShowReassignConfirmModal] = useState(false);
-  const [showValidateSansAffectModal, setShowValidateSansAffectModal] = useState(false);
   const [assignCommercialId, setAssignCommercialId] = useState("");
   const [showHistory, setShowHistory] = useState(true);
   const [deleteMotif, setDeleteMotif] = useState("");
@@ -994,14 +993,6 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               ))}
             </div>
 
-              {/* Bouton vert "Valider la fiche" — ADMIN + SOUMISE uniquement */}
-              {profile?.role === "DIRECTION" && fiche.status === "SOUMISE" && (
-                <Button size="sm" disabled={transitioning}
-                  onClick={() => setShowValidateSansAffectModal(true)}
-                  className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-2 w-full sm:w-auto">
-                  {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : (<><CheckCircle2 className="w-4 h-4" />Valider la fiche</>)}
-                </Button>
-              )}
 
               {/* Section RDV à reprendre — référent uniquement */}
               {fiche.status === "RDV_A_REPRENDRE" && (profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE" || profile?.role === "DIRECTION") && (
@@ -1227,37 +1218,6 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           />
         </div>
 
-        {/* ── Barre de validation bas de page — direction uniquement ───────── */}
-        {fiche.status === "SOUMISE" && profile?.role === "DIRECTION" && (
-          <div data-no-print className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] px-6 py-4">
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <span className={`flex items-center gap-1.5 font-medium ${isValidated ? "text-emerald-600" : "text-muted-foreground"}`}>
-                <CheckCircle2 className="w-4 h-4" />
-                {isValidated ? "Fiche validée" : "Non validée"}
-              </span>
-              <span className="text-border">|</span>
-              <span className={`flex items-center gap-1.5 font-medium ${selectedCommercial ? "text-orange-600" : "text-muted-foreground"}`}>
-                <UserCheck className="w-4 h-4" />
-                {selectedCommercial
-                  ? (() => {
-                      const c = commercials.find((x) => x.id === selectedCommercial);
-                      return c ? `${c.first_name} ${c.last_name}` : "Commercial sélectionné";
-                    })()
-                  : "Aucun commercial"}
-              </span>
-            </div>
-            <Button
-              onClick={handleFinaliserAffectation}
-              disabled={transitioning}
-              className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-semibold"
-            >
-              {transitioning
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <CheckCircle2 className="w-4 h-4" />}
-              Valider la fiche
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* ── Dialog : suppression ──────────────────────────────────────────── */}
@@ -1445,47 +1405,6 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           </Dialog>
         );
       })()}
-
-      {/* ── Modal : avertissement validation sans affectation ───────────── */}
-      <Dialog open={showValidateSansAffectModal} onOpenChange={(open) => { if (!open) setShowValidateSansAffectModal(false); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="w-5 h-5" />Valider sans affecter ?
-            </DialogTitle>
-            <DialogDescription>
-              Vous allez valider cette fiche sans l&apos;affecter à un commercial.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-2">
-            <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2">
-              <p className="text-sm text-amber-900 dark:text-amber-100 font-medium">
-                La fiche sera marquée comme <span className="font-semibold">Validée</span> mais aucun commercial ne lui sera encore assigné.
-              </p>
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                Une fois validée, pensez à revenir sur la fiche pour l&apos;affecter à un commercial afin qu&apos;elle puisse être traitée.
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setShowValidateSansAffectModal(false)}>
-              Annuler
-            </Button>
-            <Button
-              disabled={transitioning}
-              onClick={() => {
-                setShowValidateSansAffectModal(false);
-                setPendingStatus("VALIDEE" as FicheStatus);
-                setStatusComment("");
-              }}
-              className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl gap-2 font-semibold"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              Valider quand même
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ── Modal : confirmation de ré-affectation ───────────────────────── */}
       {(() => {

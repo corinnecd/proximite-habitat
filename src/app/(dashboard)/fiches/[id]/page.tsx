@@ -623,7 +623,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   // Pour ADMIN sur fiche AFFECTEE : SOUMISE (re-soumission) est géré via l'Assign card — masqué ici
   const availableTransitions = (() => {
     if (profile?.role === "DIRECTION" && fiche.status === "SOUMISE")
-      return rawTransitions.filter((s) => s !== "AFFECTEE" && s !== "BROUILLON");
+      return rawTransitions.filter((s) => s !== "BROUILLON");
     if (profile?.role === "DIRECTION" && fiche.status === "AFFECTEE")
       return rawTransitions.filter((s) => s !== "SOUMISE");
     return rawTransitions;
@@ -714,7 +714,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${selectedCommercial ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"}`}>
                     Étape 2 / 2
                   </p>
-                  <Select value={selectedCommercial} onValueChange={(v) => setSelectedCommercial(v ?? "")}>
+                  <Select value={selectedCommercial || "__none__"} onValueChange={(v) => setSelectedCommercial(v === "__none__" ? "" : v ?? "")}>
                     <SelectTrigger className="h-7 rounded-lg text-xs border-0 bg-transparent p-0 shadow-none focus:ring-0">
                       <SelectValue placeholder="Choisir un commercial…">
                         {selectedCommercial
@@ -726,6 +726,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__">Aucun</SelectItem>
                       {commercials.filter((c) => c.role === "COMMERCIAL").map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {`${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "Commercial"}
@@ -924,13 +925,21 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   </Button>
                   {showStatusDropdown && (
                     <div className="absolute right-0 top-full mt-1 w-64 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] shadow-xl z-50 overflow-hidden">
-                      {availableTransitions.map((status) => {
+                      {availableTransitions
+                        .filter((status) => {
+                          if (fiche.status !== "SOUMISE" || profile?.role !== "DIRECTION") return true;
+                          if (status === "VALIDEE" as FicheStatus) return isValidated && !selectedCommercial;
+                          if (status === "AFFECTEE" as FicheStatus) return isValidated && !!selectedCommercial;
+                          return true;
+                        })
+                        .map((status) => {
                         const dropdownLabels: Partial<Record<FicheStatus, string>> = {
                           RETRACTATION: "Attente Acceptation Client",
                           ACCEPTEE: "Acceptation Client",
                           REFUSEE: "Refus Client",
                           ARCHIVEE: "Archivé",
                           RDV_A_REPRENDRE: "Client absent — RDV à reprendre",
+                          AFFECTEE: "Validée et Affectée",
                         };
                         const dropdownColors: Partial<Record<FicheStatus, string>> = {
                           RETRACTATION: "text-purple-600",
@@ -939,6 +948,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                           ARCHIVEE: "text-slate-500",
                           SOUMISE: "text-blue-600",
                           RDV_A_REPRENDRE: "text-amber-600",
+                          VALIDEE: "text-emerald-600",
+                          AFFECTEE: "text-emerald-600",
                         };
                         return (
                           <button key={status} type="button"

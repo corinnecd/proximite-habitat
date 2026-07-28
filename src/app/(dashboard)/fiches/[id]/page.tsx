@@ -1218,6 +1218,37 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           />
         </div>
 
+        {/* ── Barre de validation bas de page — direction uniquement ───────── */}
+        {fiche.status === "SOUMISE" && profile?.role === "DIRECTION" && (
+          <div data-no-print className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] px-6 py-4">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <span className={`flex items-center gap-1.5 font-medium ${isValidated ? "text-emerald-600" : "text-muted-foreground"}`}>
+                <CheckCircle2 className="w-4 h-4" />
+                {isValidated ? "Fiche validée" : "Non validée"}
+              </span>
+              <span className="text-border">|</span>
+              <span className={`flex items-center gap-1.5 font-medium ${selectedCommercial ? "text-orange-600" : "text-muted-foreground"}`}>
+                <UserCheck className="w-4 h-4" />
+                {selectedCommercial
+                  ? (() => {
+                      const c = commercials.find((x) => x.id === selectedCommercial);
+                      return c ? `${c.first_name} ${c.last_name}` : "Commercial sélectionné";
+                    })()
+                  : "Aucun commercial"}
+              </span>
+            </div>
+            <Button
+              onClick={handleFinaliserAffectation}
+              disabled={transitioning}
+              className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 font-semibold"
+            >
+              {transitioning
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <CheckCircle2 className="w-4 h-4" />}
+              Valider la fiche
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ── Dialog : suppression ──────────────────────────────────────────── */}

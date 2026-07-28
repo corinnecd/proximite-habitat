@@ -881,19 +881,6 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           <div className="mt-5 pt-5 border-t border-border space-y-3">
 
             <div className="flex items-center gap-2 flex-wrap">
-              <DownloadFicheButton
-                fiche={fiche}
-                referentNom={creatorName || "Référent"}
-                commercialNom={
-                  fiche.assigned_to
-                    ? commercials.find((c) => c.id === fiche.assigned_to)
-                        ? `${commercials.find((c) => c.id === fiche.assigned_to)!.first_name} ${commercials.find((c) => c.id === fiche.assigned_to)!.last_name}`
-                        : undefined
-                    : undefined
-                }
-                photoUrls={photos.map((p) => p.signedUrl).filter(Boolean)}
-              />
-
               {profile?.role === "DIRECTION" && (
                 <Button variant="outline" size="sm"
                   onClick={() => { setDeleteMotif(""); setShowDeleteConfirm(true); }}

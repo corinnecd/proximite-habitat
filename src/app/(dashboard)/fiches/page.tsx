@@ -100,6 +100,9 @@ export default function FichesPage() {
   const [statusFilter, setStatusFilter] = useState<FicheStatus | "ALL">(initialStatus || "ALL");
   const [exporting, setExporting] = useState(false);
 
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [firstFicheDate, setFirstFicheDate] = useState<string | null>(null);
+
   // Synchroniser statusFilter + restaurer le cache immédiatement quand on navigue
   const [prevInitialStatus, setPrevInitialStatus] = useState(initialStatus);
   if (initialStatus !== prevInitialStatus) {
@@ -132,8 +135,6 @@ export default function FichesPage() {
   const [referents, setReferents] = useState<ProfileOption[]>([]);
   const [commercials, setCommercials] = useState<ProfileOption[]>([]);
   const [anterieures, setAnterieures] = useState<{ id: string }[]>([]);
-  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [firstFicheDate, setFirstFicheDate] = useState<string | null>(null);
 
   // Plage de dates personnalisée (prioritaire sur les préréglages de période)
   const [customFrom, setCustomFrom] = useState("");

@@ -283,7 +283,13 @@ export default function UtilisateursPage() {
                       onValueChange={(v) => v && setTargetOrgId(v)}
                     >
                       <SelectTrigger className="bg-card rounded-xl">
-                        <SelectValue />
+                        <SelectValue>
+                          {(() => {
+                            const id = targetOrgId || profile?.organization_id;
+                            const b = branches.find((x) => x.id === id);
+                            return b ? `${b.name}${b.is_hq ? " (Siège)" : ""}` : "Choisir une succursale…";
+                          })()}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {branches.map((b) => (

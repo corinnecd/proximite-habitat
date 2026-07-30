@@ -90,6 +90,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [showReassignConfirmModal, setShowReassignConfirmModal] = useState(false);
   const [assignCommercialId, setAssignCommercialId] = useState("");
   const [rdvTechnicienDate, setRdvTechnicienDate] = useState("");
+  const [rdvTechnicienHeure, setRdvTechnicienHeure] = useState("");
   const [rdvTechnicienNotes, setRdvTechnicienNotes] = useState("");
   const [showHistory, setShowHistory] = useState(true);
   const [deleteMotif, setDeleteMotif] = useState("");
@@ -571,27 +572,20 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     })();
   }
 
-  async function handleConfirmerRdvTechnicien() {
+  // Enregistre date+heure du RDV tech sans changer de statut
+  async function handleEnregistrerRdvTechnicien() {
     if (!fiche || !profile) return;
     if (!rdvTechnicienDate) { toast.error("Veuillez saisir la date du RDV technicien"); return; }
     setTransitioning(true);
     try {
-      const { error } = await supabase.rpc("transition_fiche", {
-        p_fiche_id: fiche.id,
-        p_new_status: "INSTALLEE" as FicheStatus,
-        p_comment: rdvTechnicienNotes || null,
-      });
-      if (error) throw error;
-
-      await supabase.from("fiches").update({
+      const { error } = await supabase.from("fiches").update({
         rdv_technicien_date: rdvTechnicienDate,
+        rdv_technicien_heure: rdvTechnicienHeure || null,
         rdv_technicien_notes: rdvTechnicienNotes || null,
         updated_at: new Date().toISOString(),
       }).eq("id", fiche.id);
-
-      toast.success("RDV technicien confirmé — fiche installée !");
-      setRdvTechnicienDate("");
-      setRdvTechnicienNotes("");
+      if (error) throw error;
+      toast.success("RDV technicien enregistré");
       fetchData();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erreur");
@@ -600,6 +594,26 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  // Confirme que l'installation a eu lieu → passe en INSTALLEE
+  async function handleConfirmerInstallation() {
+    if (!fiche || !profile) return;
+    setTransitioning(true);
+    try {
+      const { error } = await supabase.rpc("transition_fiche", {
+        p_fiche_id: fiche.id,
+        p_new_status: "INSTALLEE" as FicheStatus,
+      });
+      if (error) throw error;
+      toast.success("Installation confirmée !");
+      fetchData();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setTransitioning(false);
+    }
+  }
+
+  // Archive le dossier depuis INSTALLEE
   async function handleConfirmerInstallee() {
     if (!fiche || !profile) return;
     setTransitioning(true);
@@ -1109,32 +1123,54 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         {fiche.status === "RDV_TECHNICIEN" && (profile?.role === "COMMERCIAL" || profile?.role === "DIRECTION") && (
           <div data-no-print className="bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 rounded-2xl px-4 py-4 space-y-3">
             <p className="text-xs uppercase tracking-wide text-violet-700 dark:text-violet-400 font-semibold flex items-center gap-2">
-              <Calendar className="w-4 h-4" /> RDV Technicien à planifier
+              <Calendar className="w-4 h-4" /> RDV Technicien
             </p>
-            <p className="text-sm text-violet-800 dark:text-violet-300">
-              Le client a accepté. Planifiez le rendez-vous d&apos;installation avec le partenaire technique.
+            {fiche.rdv_technicien_date && (
+              <p className="text-sm text-violet-800 dark:text-violet-300 font-medium">
+                RDV planifié le <strong>{new Date(fiche.rdv_technicien_date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</strong>
+                {fiche.rdv_technicien_heure ? <> à <strong>{fiche.rdv_technicien_heure.replace(":", "h")}</strong></> : ""}
+              </p>
+            )}
+            <p className="text-sm text-violet-700 dark:text-violet-400">
+              {fiche.rdv_technicien_date ? "Modifiez la date si nécessaire, puis confirmez l'installation une fois réalisée." : "Saisissez la date et l'heure du RDV avec le partenaire technique."}
             </p>
             <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="date"
-                value={rdvTechnicienDate}
+                value={rdvTechnicienDate || fiche.rdv_technicien_date || ""}
                 onChange={(e) => setRdvTechnicienDate(e.target.value)}
-                className="flex-1 rounded-xl border border-violet-300 dark:border-violet-700 bg-white dark:bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                className="rounded-xl border border-violet-300 dark:border-violet-700 bg-white dark:bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+              />
+              <input
+                type="time"
+                value={rdvTechnicienHeure || fiche.rdv_technicien_heure || ""}
+                onChange={(e) => setRdvTechnicienHeure(e.target.value)}
+                className="rounded-xl border border-violet-300 dark:border-violet-700 bg-white dark:bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 w-32"
               />
               <Textarea
-                value={rdvTechnicienNotes}
+                value={rdvTechnicienNotes || fiche.rdv_technicien_notes || ""}
                 onChange={(e) => setRdvTechnicienNotes(e.target.value)}
                 placeholder="Notes partenaire technique (optionnel)…"
                 className="flex-1 rounded-xl border-violet-300 dark:border-violet-700 text-sm min-h-[40px] max-h-[80px]"
               />
             </div>
-            <Button
-              disabled={!rdvTechnicienDate || transitioning}
-              onClick={handleConfirmerRdvTechnicien}
-              className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl gap-2 font-semibold"
-            >
-              {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" />Confirmer le RDV Technicien</>}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                disabled={!(rdvTechnicienDate || fiche.rdv_technicien_date) || transitioning}
+                onClick={handleEnregistrerRdvTechnicien}
+                className="rounded-xl border-violet-400 text-violet-700 hover:bg-violet-100 gap-2"
+              >
+                {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Calendar className="w-4 h-4" />Enregistrer le RDV</>}
+              </Button>
+              <Button
+                disabled={!fiche.rdv_technicien_date || transitioning}
+                onClick={handleConfirmerInstallation}
+                className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl gap-2 font-semibold"
+              >
+                {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" />L&apos;installation a eu lieu</>}
+              </Button>
+            </div>
           </div>
         )}
 
@@ -1142,12 +1178,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         {fiche.status === "INSTALLEE" && (profile?.role === "COMMERCIAL" || profile?.role === "DIRECTION") && (
           <div data-no-print className="bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-2xl px-4 py-4 space-y-3">
             <p className="text-xs uppercase tracking-wide text-teal-700 dark:text-teal-400 font-semibold flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" /> Installation planifiée
+              <CheckCircle2 className="w-4 h-4" /> Installation réalisée
             </p>
             <p className="text-sm text-teal-800 dark:text-teal-300">
               {fiche.rdv_technicien_date
-                ? <>RDV technicien prévu le <strong>{new Date(fiche.rdv_technicien_date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</strong>. Une fois l&apos;installation réalisée, archivez le dossier.</>
-                : <>Le RDV technicien a été planifié. Une fois l&apos;installation réalisée, archivez le dossier.</>
+                ? <>RDV technicien du <strong>{new Date(fiche.rdv_technicien_date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}{fiche.rdv_technicien_heure ? ` à ${fiche.rdv_technicien_heure.replace(":", "h")}` : ""}</strong>. Archivez le dossier pour clôturer.</>
+                : <>L&apos;installation a été confirmée. Archivez le dossier pour clôturer.</>
               }
             </p>
             <Button

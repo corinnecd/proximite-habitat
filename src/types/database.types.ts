@@ -131,6 +131,7 @@ export interface Database {
           signature_url: string | null;
           consentement_rgpd: boolean;
           rdv_technicien_date: string | null;
+          rdv_technicien_heure: string | null;
           rdv_technicien_notes: string | null;
           created_at: string;
           updated_at: string;
@@ -180,6 +181,7 @@ export interface Database {
           signature_url?: string | null;
           consentement_rgpd?: boolean;
           rdv_technicien_date?: string | null;
+          rdv_technicien_heure?: string | null;
           rdv_technicien_notes?: string | null;
           created_at?: string;
           updated_at?: string;

@@ -10,6 +10,7 @@ alter type public.fiche_status add value if not exists 'INSTALLEE';
 -- 2. Ajout des colonnes pour le RDV technicien
 alter table public.fiches
   add column if not exists rdv_technicien_date date,
+  add column if not exists rdv_technicien_heure text,
   add column if not exists rdv_technicien_notes text;
 
 -- 3. Mise à jour de la fonction transition_fiche avec les nouvelles transitions

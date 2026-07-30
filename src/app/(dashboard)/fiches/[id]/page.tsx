@@ -714,19 +714,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   <p className={`text-xs font-bold uppercase tracking-wide mb-1 ${selectedCommercial ? "text-orange-600 dark:text-orange-400" : "text-muted-foreground"}`}>
                     Étape 2 / 2
                   </p>
-                  <Select value={selectedCommercial || "__none__"} onValueChange={(v) => setSelectedCommercial(v === "__none__" ? "" : v ?? "")}>
+                  <Select value={selectedCommercial || "aucun"} onValueChange={(v) => setSelectedCommercial(v === "aucun" ? "" : v ?? "")}>
                     <SelectTrigger className="h-7 rounded-lg text-xs border-0 bg-transparent p-0 shadow-none focus:ring-0">
-                      <SelectValue placeholder="Choisir un commercial…">
-                        {selectedCommercial
-                          ? (() => {
-                              const c = commercials.find((x) => x.id === selectedCommercial);
-                              return c ? `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "Commercial" : "Choisir un commercial…";
-                            })()
-                          : undefined}
-                      </SelectValue>
+                      <SelectValue placeholder="Choisir un commercial…" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__none__">Aucun</SelectItem>
+                      <SelectItem value="aucun">Aucun</SelectItem>
                       {commercials.filter((c) => c.role === "COMMERCIAL").map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {`${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "Commercial"}
@@ -920,7 +913,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   <Button size="sm" disabled={transitioning}
                     onClick={() => setShowStatusDropdown((v) => !v)}
                     className="rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white gap-2">
-                    {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : "Changer le statut"}
+                    {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : (fiche.status === "SOUMISE" && profile?.role === "DIRECTION" && isValidated && selectedCommercial ? "Validée et Affectée" : fiche.status === "SOUMISE" && profile?.role === "DIRECTION" && isValidated ? "Validée" : "Changer le statut")}
                     <ChevronDown className="w-4 h-4" />
                   </Button>
                   {showStatusDropdown && (

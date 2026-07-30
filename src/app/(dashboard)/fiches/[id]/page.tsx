@@ -716,7 +716,14 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   </p>
                   <Select value={selectedCommercial || "aucun"} onValueChange={(v) => setSelectedCommercial(v === "aucun" ? "" : v ?? "")}>
                     <SelectTrigger className="h-7 rounded-lg text-xs border-0 bg-transparent p-0 shadow-none focus:ring-0">
-                      <SelectValue placeholder="Choisir un commercial…" />
+                      <SelectValue placeholder="Choisir un commercial…">
+                        {selectedCommercial
+                          ? (() => {
+                              const c = commercials.find((x) => x.id === selectedCommercial);
+                              return c ? `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim() || "Commercial" : "Commercial";
+                            })()
+                          : "Aucun"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="aucun">Aucun</SelectItem>

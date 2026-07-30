@@ -23,7 +23,7 @@ import type { FicheStatus } from "@/types/database";
 import { toast } from "sonner";
 import {
   Search, FilePlus, Filter, Loader2, Download, Send,
-  UserCheck, CheckCircle2, XCircle, Archive, Clock, CalendarRange, CalendarDays, X, AlertCircle,
+  UserCheck, CheckCircle2, XCircle, Archive, Clock, Calendar, CalendarRange, CalendarDays, X, AlertCircle,
   ChevronDown, ChevronUp, UserX, ArrowLeft,
 } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -53,7 +53,8 @@ const VISIBLE_INIT = 5;
 const STATUS_LABELS_PLURAL: Record<FicheStatus, string> = {
   BROUILLON: "brouillons", SOUMISE: "à valider", VALIDEE: "validées",
   AFFECTEE: "validées et affectées", RDV_A_REPRENDRE: "avec RDV à reprendre", ACCEPTEE: "acceptées",
-  RETRACTATION: "en attente acceptation client", REFUSEE: "refusées", ARCHIVEE: "archivées",
+  RETRACTATION: "en attente acceptation client", RDV_TECHNICIEN: "en RDV technicien", INSTALLEE: "installées",
+  REFUSEE: "refusées", ARCHIVEE: "archivées",
 };
 
 const STATUS_CARD_STYLES: Record<FicheStatus, { border: string; icon: string; iconBg: string; Icon: React.ElementType }> = {
@@ -63,9 +64,11 @@ const STATUS_CARD_STYLES: Record<FicheStatus, { border: string; icon: string; ic
   AFFECTEE:         { border: "border-l-orange-500",  icon: "text-orange-500",  iconBg: "bg-orange-50 dark:bg-orange-950/40",     Icon: UserCheck },
   RDV_A_REPRENDRE:  { border: "border-l-amber-500",  icon: "text-amber-600",   iconBg: "bg-amber-50 dark:bg-amber-950/40",        Icon: UserX },
   ACCEPTEE:     { border: "border-l-emerald-500", icon: "text-emerald-600", iconBg: "bg-emerald-50 dark:bg-emerald-950/40",   Icon: CheckCircle2 },
-  RETRACTATION: { border: "border-l-purple-500",  icon: "text-purple-600",  iconBg: "bg-purple-50 dark:bg-purple-950/40",     Icon: AlertCircle },
-  REFUSEE:      { border: "border-l-red-500",     icon: "text-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",           Icon: XCircle },
-  ARCHIVEE:     { border: "border-l-slate-400",   icon: "text-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800",         Icon: Archive },
+  RETRACTATION:    { border: "border-l-purple-500",  icon: "text-purple-600",  iconBg: "bg-purple-50 dark:bg-purple-950/40",     Icon: AlertCircle },
+  RDV_TECHNICIEN:  { border: "border-l-violet-500",  icon: "text-violet-600",  iconBg: "bg-violet-50 dark:bg-violet-950/40",     Icon: Calendar },
+  INSTALLEE:       { border: "border-l-teal-500",    icon: "text-teal-600",    iconBg: "bg-teal-50 dark:bg-teal-950/40",         Icon: CheckCircle2 },
+  REFUSEE:         { border: "border-l-red-500",     icon: "text-red-500",     iconBg: "bg-red-50 dark:bg-red-950/40",           Icon: XCircle },
+  ARCHIVEE:        { border: "border-l-slate-400",   icon: "text-slate-400",   iconBg: "bg-slate-100 dark:bg-slate-800",         Icon: Archive },
 };
 
 interface FicheRow {
@@ -172,10 +175,10 @@ export default function FichesPage() {
   }, [effectiveStatus]);
 
   const visibleStatuses: FicheStatus[] = isReferent
-    ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+    ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "RDV_TECHNICIEN", "INSTALLEE", "REFUSEE", "ARCHIVEE"]
     : isCommercial
-    ? ["AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
-    : ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+    ? ["AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "RDV_TECHNICIEN", "INSTALLEE", "REFUSEE", "ARCHIVEE"]
+    : ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "RDV_TECHNICIEN", "INSTALLEE", "REFUSEE", "ARCHIVEE"];
 
   // Labels adaptés selon le rôle
   const statusLabel = (s: FicheStatus): string => {
@@ -299,10 +302,10 @@ export default function FichesPage() {
       // En mode validation + admin : charger fiches ET stats en parallèle
       // ── Compteurs par statut (intégrés au même batch) ──
       const countStatuses: FicheStatus[] = _isReferent
-        ? ["BROUILLON", "SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
+        ? ["BROUILLON", "SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "RDV_TECHNICIEN", "INSTALLEE", "REFUSEE", "ARCHIVEE"]
         : isCommercial
-        ? ["AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"]
-        : ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+        ? ["AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "RDV_TECHNICIEN", "INSTALLEE", "REFUSEE", "ARCHIVEE"]
+        : ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "RDV_TECHNICIEN", "INSTALLEE", "REFUSEE", "ARCHIVEE"];
       const countPromises = !append ? countStatuses.map((s) => {
         let cq = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
         if (_isReferent && profile.id) cq = cq.eq("created_by", profile.id);

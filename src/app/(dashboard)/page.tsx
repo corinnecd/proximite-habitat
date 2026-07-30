@@ -21,7 +21,7 @@ import type { FicheStatus } from "@/types/database";
 import {
   FilePlus, Clock, CheckCircle2, XCircle, Send,
   UserCheck, Archive, Trash2, AlertCircle, ArrowRight,
-  CalendarDays, User,
+  CalendarDays, Calendar, User,
   ChevronDown, ChevronUp, Loader2, Euro, BarChart3, Building2, UserX,
 } from "lucide-react";
 import {
@@ -53,9 +53,11 @@ const STATUS_ICONS: Record<FicheStatus, React.ReactNode> = {
   AFFECTEE:         <UserCheck className="w-5 h-5" />,
   RDV_A_REPRENDRE:  <UserX className="w-5 h-5" />,
   ACCEPTEE:         <CheckCircle2 className="w-5 h-5" />,
-  RETRACTATION: <AlertCircle className="w-5 h-5" />,
-  REFUSEE:      <XCircle className="w-5 h-5" />,
-  ARCHIVEE:     <Archive className="w-5 h-5" />,
+  RETRACTATION:   <AlertCircle className="w-5 h-5" />,
+  RDV_TECHNICIEN: <Calendar className="w-5 h-5" />,
+  INSTALLEE:      <CheckCircle2 className="w-5 h-5" />,
+  REFUSEE:        <XCircle className="w-5 h-5" />,
+  ARCHIVEE:       <Archive className="w-5 h-5" />,
 };
 
 const COUNTER_STYLES: Record<FicheStatus, string> = {
@@ -65,9 +67,11 @@ const COUNTER_STYLES: Record<FicheStatus, string> = {
   AFFECTEE:         "border-l-orange-500  text-orange-600 dark:text-orange-400",
   RDV_A_REPRENDRE:  "border-l-[#F97316]  text-[#F97316]  dark:text-[#F97316]",
   ACCEPTEE:         "border-l-emerald-500 text-emerald-600 dark:text-emerald-400",
-  RETRACTATION: "border-l-purple-500  text-purple-600 dark:text-purple-400",
-  REFUSEE:      "border-l-red-500     text-red-600    dark:text-red-400",
-  ARCHIVEE:     "border-l-slate-300   text-muted-foreground",
+  RETRACTATION:   "border-l-purple-500  text-purple-600 dark:text-purple-400",
+  RDV_TECHNICIEN: "border-l-violet-500  text-violet-600 dark:text-violet-400",
+  INSTALLEE:      "border-l-teal-500    text-teal-600   dark:text-teal-400",
+  REFUSEE:        "border-l-red-500     text-red-600    dark:text-red-400",
+  ARCHIVEE:       "border-l-slate-300   text-muted-foreground",
 };
 
 // ── Types locaux ──────────────────────────────────────────────────────────────
@@ -123,7 +127,7 @@ export default function DashboardPage() {
   const { profile } = useProfile();
   const { selectedBranchId, isDG, selectedBranchName, setSelectedBranchId, branches } = useBranch();
   const [counts, setCounts] = useState<Record<FicheStatus, number>>({
-    BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, RDV_A_REPRENDRE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
+    BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, RDV_A_REPRENDRE: 0, ACCEPTEE: 0, RETRACTATION: 0, RDV_TECHNICIEN: 0, INSTALLEE: 0, REFUSEE: 0, ARCHIVEE: 0,
   });
   const [anterieures, setAnterieures] = useState<{ id: string; reference: string; prospect_nom: string; prospect_prenom: string; status: FicheStatus; updated_at: string }[]>([]);
   const [fichesPending,         setFichesPending]         = useState<FicheEnAttente[]>([]);
@@ -222,8 +226,8 @@ export default function DashboardPage() {
 
     // Compteurs par statut — une seule requête au lieu de 6-7
     const statusesToCount: FicheStatus[] = isReferent
-      ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
-      : ["SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+      ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "RDV_TECHNICIEN", "INSTALLEE", "REFUSEE", "ARCHIVEE"]
+      : ["SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "RDV_TECHNICIEN", "INSTALLEE", "REFUSEE", "ARCHIVEE"];
     {
       let q = supabase.from("fiches").select("status").in("status", statusesToCount);
       if (isReferent) q = q.eq("created_by", profile.id);
@@ -338,7 +342,7 @@ export default function DashboardPage() {
 
     // Référent : fiches par statut
     if (isReferent) {
-      const statuses: FicheStatus[] = ["BROUILLON", "SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE"];
+      const statuses: FicheStatus[] = ["BROUILLON", "SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "RETRACTATION", "ACCEPTEE", "RDV_TECHNICIEN", "INSTALLEE", "REFUSEE", "ARCHIVEE"];
       for (const s of statuses) {
         keys.push(`prosp_${s}`);
         let rq = supabase.from("fiches").select(FICHE_LIST_COLUMNS).eq("created_by", profile.id).eq("status", s);
@@ -356,7 +360,7 @@ export default function DashboardPage() {
 
     // ── Dispatch des résultats ────────────────────────────────────────────
     const allCounts: Record<FicheStatus, number> = {
-      BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, RDV_A_REPRENDRE: 0, ACCEPTEE: 0, RETRACTATION: 0, REFUSEE: 0, ARCHIVEE: 0,
+      BROUILLON: 0, SOUMISE: 0, VALIDEE: 0, AFFECTEE: 0, RDV_A_REPRENDRE: 0, ACCEPTEE: 0, RETRACTATION: 0, RDV_TECHNICIEN: 0, INSTALLEE: 0, REFUSEE: 0, ARCHIVEE: 0,
     };
     const statusRows = (r.get("statusCounts")?.data ?? []) as { status: FicheStatus }[];
     for (const row of statusRows) {

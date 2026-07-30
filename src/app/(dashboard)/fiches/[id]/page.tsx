@@ -52,10 +52,12 @@ const STATUS_HERO: Record<FicheStatus, { border: string; iconBg: string; icon: s
   VALIDEE:      { border: "border-l-emerald-500", iconBg: "bg-emerald-100 dark:bg-emerald-950/50",icon: "text-emerald-600 dark:text-emerald-400",Icon: CheckCircle2 },
   AFFECTEE:         { border: "border-l-orange-500",  iconBg: "bg-orange-100 dark:bg-orange-950/50",  icon: "text-orange-600 dark:text-orange-400",  Icon: UserCheck },
   RDV_A_REPRENDRE:  { border: "border-l-amber-500",  iconBg: "bg-amber-100 dark:bg-amber-950/50",    icon: "text-amber-600 dark:text-amber-400",    Icon: UserX },
-  ACCEPTEE:     { border: "border-l-emerald-500", iconBg: "bg-emerald-100 dark:bg-emerald-950/50",icon: "text-emerald-700 dark:text-emerald-300",Icon: CheckCircle2 },
-  RETRACTATION: { border: "border-l-purple-500",  iconBg: "bg-purple-100 dark:bg-purple-950/50",  icon: "text-purple-600 dark:text-purple-400",  Icon: AlertTriangle },
-  REFUSEE:      { border: "border-l-red-500",     iconBg: "bg-red-100 dark:bg-red-950/50",        icon: "text-red-600 dark:text-red-400",        Icon: Ban },
-  ARCHIVEE:     { border: "border-l-slate-300",   iconBg: "bg-slate-100 dark:bg-slate-800",       icon: "text-slate-500",                        Icon: Archive },
+  ACCEPTEE:      { border: "border-l-emerald-500", iconBg: "bg-emerald-100 dark:bg-emerald-950/50",icon: "text-emerald-700 dark:text-emerald-300",Icon: CheckCircle2 },
+  RETRACTATION:  { border: "border-l-purple-500",  iconBg: "bg-purple-100 dark:bg-purple-950/50",  icon: "text-purple-600 dark:text-purple-400",  Icon: AlertTriangle },
+  RDV_TECHNICIEN:{ border: "border-l-violet-500",  iconBg: "bg-violet-100 dark:bg-violet-950/50",  icon: "text-violet-600 dark:text-violet-400",  Icon: Calendar },
+  INSTALLEE:     { border: "border-l-teal-500",    iconBg: "bg-teal-100 dark:bg-teal-950/50",      icon: "text-teal-600 dark:text-teal-400",      Icon: CheckCircle2 },
+  REFUSEE:       { border: "border-l-red-500",     iconBg: "bg-red-100 dark:bg-red-950/50",        icon: "text-red-600 dark:text-red-400",        Icon: Ban },
+  ARCHIVEE:      { border: "border-l-slate-300",   iconBg: "bg-slate-100 dark:bg-slate-800",       icon: "text-slate-500",                        Icon: Archive },
 };
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -87,6 +89,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [reassignCommercialId, setReassignCommercialId] = useState("");
   const [showReassignConfirmModal, setShowReassignConfirmModal] = useState(false);
   const [assignCommercialId, setAssignCommercialId] = useState("");
+  const [rdvTechnicienDate, setRdvTechnicienDate] = useState("");
+  const [rdvTechnicienNotes, setRdvTechnicienNotes] = useState("");
   const [showHistory, setShowHistory] = useState(true);
   const [deleteMotif, setDeleteMotif] = useState("");
   const [villeData, setVilleData] = useState<ZoneVille | null>(null);
@@ -565,6 +569,53 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         await sendEmailFicheAffectee(fiche.id);
       } catch { /* silencieux */ }
     })();
+  }
+
+  async function handleConfirmerRdvTechnicien() {
+    if (!fiche || !profile) return;
+    if (!rdvTechnicienDate) { toast.error("Veuillez saisir la date du RDV technicien"); return; }
+    setTransitioning(true);
+    try {
+      const { error } = await supabase.rpc("transition_fiche", {
+        p_fiche_id: fiche.id,
+        p_new_status: "INSTALLEE" as FicheStatus,
+        p_comment: rdvTechnicienNotes || null,
+      });
+      if (error) throw error;
+
+      await supabase.from("fiches").update({
+        rdv_technicien_date: rdvTechnicienDate,
+        rdv_technicien_notes: rdvTechnicienNotes || null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", fiche.id);
+
+      toast.success("RDV technicien confirmé — fiche installée !");
+      setRdvTechnicienDate("");
+      setRdvTechnicienNotes("");
+      fetchData();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setTransitioning(false);
+    }
+  }
+
+  async function handleConfirmerInstallee() {
+    if (!fiche || !profile) return;
+    setTransitioning(true);
+    try {
+      const { error } = await supabase.rpc("transition_fiche", {
+        p_fiche_id: fiche.id,
+        p_new_status: "ARCHIVEE" as FicheStatus,
+      });
+      if (error) throw error;
+      toast.success("Fiche archivée");
+      fetchData();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Erreur");
+    } finally {
+      setTransitioning(false);
+    }
   }
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -1053,6 +1104,58 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               )}
           </div>
         </div>
+
+        {/* ── Bannière RDV Technicien ────────────────────────────────────────── */}
+        {fiche.status === "RDV_TECHNICIEN" && (profile?.role === "COMMERCIAL" || profile?.role === "DIRECTION") && (
+          <div data-no-print className="bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 rounded-2xl px-4 py-4 space-y-3">
+            <p className="text-xs uppercase tracking-wide text-violet-700 dark:text-violet-400 font-semibold flex items-center gap-2">
+              <Calendar className="w-4 h-4" /> RDV Technicien à planifier
+            </p>
+            <p className="text-sm text-violet-800 dark:text-violet-300">
+              Le client a accepté. Planifiez le rendez-vous d&apos;installation avec le partenaire technique.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="date"
+                value={rdvTechnicienDate}
+                onChange={(e) => setRdvTechnicienDate(e.target.value)}
+                className="flex-1 rounded-xl border border-violet-300 dark:border-violet-700 bg-white dark:bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+              />
+              <Textarea
+                value={rdvTechnicienNotes}
+                onChange={(e) => setRdvTechnicienNotes(e.target.value)}
+                placeholder="Notes partenaire technique (optionnel)…"
+                className="flex-1 rounded-xl border-violet-300 dark:border-violet-700 text-sm min-h-[40px] max-h-[80px]"
+              />
+            </div>
+            <Button
+              disabled={!rdvTechnicienDate || transitioning}
+              onClick={handleConfirmerRdvTechnicien}
+              className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl gap-2 font-semibold"
+            >
+              {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" />Confirmer le RDV Technicien</>}
+            </Button>
+          </div>
+        )}
+
+        {/* ── Bannière Installée ────────────────────────────────────────────── */}
+        {fiche.status === "INSTALLEE" && (profile?.role === "COMMERCIAL" || profile?.role === "DIRECTION") && (
+          <div data-no-print className="bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-2xl px-4 py-4 space-y-3">
+            <p className="text-xs uppercase tracking-wide text-teal-700 dark:text-teal-400 font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" /> Installation planifiée
+            </p>
+            <p className="text-sm text-teal-800 dark:text-teal-300">
+              Le RDV technicien a été planifié. Une fois l&apos;installation réalisée, archivez le dossier.
+            </p>
+            <Button
+              disabled={transitioning}
+              onClick={handleConfirmerInstallee}
+              className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl gap-2 font-semibold"
+            >
+              {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Archive className="w-4 h-4" />Archiver le dossier</>}
+            </Button>
+          </div>
+        )}
 
         {/* ── Modifier l'affectation (AFFECTEE / RDV_A_REPRENDRE · direction uniquement) ──── */}
         {profile && canAssignFiche(profile.role) && (fiche.status === "AFFECTEE" || fiche.status === "RDV_A_REPRENDRE") && (

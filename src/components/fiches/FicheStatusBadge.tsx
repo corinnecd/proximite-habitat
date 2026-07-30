@@ -11,6 +11,8 @@ const STATUS_LABELS_SHORT: Record<FicheStatus, string> = {
   RDV_A_REPRENDRE: "RDV à reprendre",
   RETRACTATION: "Attente client",
   ACCEPTEE: "Acceptée",
+  RDV_TECHNICIEN: "RDV Tech.",
+  INSTALLEE: "Installée",
   REFUSEE: "Refusée",
   ARCHIVEE: "Archivé",
 };

@@ -7,7 +7,9 @@ const STATUS_TRANSITIONS: Record<FicheStatus, { to: FicheStatus[]; roles: UserRo
   AFFECTEE: [{ to: ["RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE", "RDV_A_REPRENDRE"], roles: ["DIRECTION", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["SOUMISE"], roles: ["DIRECTION"] }],
   RDV_A_REPRENDRE: [{ to: ["AFFECTEE"], roles: ["DIRECTION", "PROSPECTEUR", "CHEF_EQUIPE"] }],
   RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["AFFECTEE"], roles: ["DIRECTION"] }],
-  ACCEPTEE: [{ to: ["ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }],
+  ACCEPTEE: [{ to: ["RDV_TECHNICIEN", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }],
+  RDV_TECHNICIEN: [{ to: ["INSTALLEE"], roles: ["DIRECTION", "COMMERCIAL"] }],
+  INSTALLEE: [{ to: ["ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }],
   REFUSEE: [{ to: ["ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["DIRECTION"] }],
   ARCHIVEE: [],
 };
@@ -61,6 +63,7 @@ export const STATUS_LABELS: Record<FicheStatus, string> = {
   BROUILLON: "Brouillon", SOUMISE: "À valider", VALIDEE: "Validée", AFFECTEE: "Validée et affectée",
   RDV_A_REPRENDRE: "RDV à reprendre",
   RETRACTATION: "Attente Acceptation Client", ACCEPTEE: "Acceptation Client",
+  RDV_TECHNICIEN: "RDV Technicien", INSTALLEE: "Installée",
   REFUSEE: "Refus Client", ARCHIVEE: "Archivé",
 };
 
@@ -72,6 +75,8 @@ export const STATUS_COLORS: Record<FicheStatus, string> = {
   RDV_A_REPRENDRE: "bg-[#F97316] text-white font-semibold",
   ACCEPTEE: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60",
   RETRACTATION: "bg-purple-50 text-purple-700 ring-1 ring-purple-200/60",
+  RDV_TECHNICIEN: "bg-violet-50 text-violet-700 ring-1 ring-violet-200/60",
+  INSTALLEE: "bg-teal-50 text-teal-700 ring-1 ring-teal-200/60",
   REFUSEE: "bg-red-50 text-red-700 ring-1 ring-red-200/60",
   ARCHIVEE: "bg-slate-100 text-slate-500 ring-1 ring-slate-200/60",
 };

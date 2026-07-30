@@ -39,14 +39,14 @@ interface BranchRow { orgId: string; total: number; accepted: number; refused: n
 const STATUS_COLORS_HEX: Record<FicheStatus, string> = {
   BROUILLON: "#94a3b8", SOUMISE: "#3b82f6", VALIDEE: "#10b981",
   AFFECTEE: "#f97316", RDV_A_REPRENDRE: "#d97706", ACCEPTEE: "#10b981",
-  RETRACTATION: "#a855f7",
+  RETRACTATION: "#a855f7", RDV_TECHNICIEN: "#7c3aed", INSTALLEE: "#0d9488",
   REFUSEE: "#ef4444", ARCHIVEE: "#cbd5e1",
 };
 
 const STATUS_BAR_COLORS: Record<FicheStatus, string> = {
   BROUILLON: "bg-slate-400", SOUMISE: "bg-blue-500", VALIDEE: "bg-emerald-500",
   AFFECTEE: "bg-orange-500", RDV_A_REPRENDRE: "bg-amber-500", ACCEPTEE: "bg-emerald-500",
-  RETRACTATION: "bg-purple-500",
+  RETRACTATION: "bg-purple-500", RDV_TECHNICIEN: "bg-violet-600", INSTALLEE: "bg-teal-500",
   REFUSEE: "bg-red-500", ARCHIVEE: "bg-slate-300",
 };
 

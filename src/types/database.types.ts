@@ -12,6 +12,8 @@ export type FicheStatus =
   | "ACCEPTEE"
   | "RETRACTATION"
   | "REFUSEE"
+  | "RDV_TECHNICIEN"
+  | "INSTALLEE"
   | "ARCHIVEE";
 
 export interface Database {
@@ -128,6 +130,8 @@ export interface Database {
           observations: string | null;
           signature_url: string | null;
           consentement_rgpd: boolean;
+          rdv_technicien_date: string | null;
+          rdv_technicien_notes: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -175,6 +179,8 @@ export interface Database {
           observations?: string | null;
           signature_url?: string | null;
           consentement_rgpd?: boolean;
+          rdv_technicien_date?: string | null;
+          rdv_technicien_notes?: string | null;
           created_at?: string;
           updated_at?: string;
         };

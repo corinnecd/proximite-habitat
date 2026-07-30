@@ -1145,7 +1145,10 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               <CheckCircle2 className="w-4 h-4" /> Installation planifiée
             </p>
             <p className="text-sm text-teal-800 dark:text-teal-300">
-              Le RDV technicien a été planifié. Une fois l&apos;installation réalisée, archivez le dossier.
+              {fiche.rdv_technicien_date
+                ? <>RDV technicien prévu le <strong>{new Date(fiche.rdv_technicien_date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</strong>. Une fois l&apos;installation réalisée, archivez le dossier.</>
+                : <>Le RDV technicien a été planifié. Une fois l&apos;installation réalisée, archivez le dossier.</>
+              }
             </p>
             <Button
               disabled={transitioning}

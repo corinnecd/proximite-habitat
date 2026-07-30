@@ -51,7 +51,7 @@ export function canEditRdvDate(
   ficheAssignedTo: string | null,
   status: FicheStatus,
 ): boolean {
-  if (status === "ARCHIVEE") return false;
+  if (["ACCEPTEE", "RDV_TECHNICIEN", "INSTALLEE", "ARCHIVEE"].includes(status)) return false;
   if (role === "DIRECTION_GENERALE") return false;
   if (role === "DIRECTION" || role === "SUPER_ADMIN") return true;
   if (role === "COMMERCIAL") return ficheAssignedTo === userId;

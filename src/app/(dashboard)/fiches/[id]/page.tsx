@@ -715,7 +715,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                     Étape 2 / 2
                   </p>
                   <Select value={selectedCommercial || "aucun"} onValueChange={(v) => setSelectedCommercial(v === "aucun" ? "" : v ?? "")}>
-                    <SelectTrigger className="h-7 rounded-lg text-xs border-0 bg-transparent p-0 shadow-none focus:ring-0">
+                    <SelectTrigger className="h-8 rounded-lg text-sm border border-border bg-background px-3 shadow-none focus:ring-0 w-full">
                       <SelectValue placeholder="Choisir un commercial…">
                         {selectedCommercial
                           ? (() => {

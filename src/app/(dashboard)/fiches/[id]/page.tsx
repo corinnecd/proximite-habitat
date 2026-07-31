@@ -1208,9 +1208,9 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                   )}
                   <div className="flex flex-wrap gap-2">
                     <Button disabled={transitioning}
-                      onClick={handleConfirmerInstallation}
+                      onClick={() => { setPendingStatus("INSTALLEE"); setStatusComment(""); }}
                       className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl gap-2 font-semibold">
-                      {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CheckCircle2 className="w-4 h-4" />L&apos;installation a eu lieu</>}
+                      <CheckCircle2 className="w-4 h-4" />L&apos;installation a eu lieu
                     </Button>
                     {!editingRdv ? (
                       <Button variant="outline" size="sm"
@@ -1244,13 +1244,20 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 : <>L&apos;installation a été confirmée. Archivez le dossier pour clôturer.</>
               }
             </p>
-            <Button
-              disabled={transitioning}
-              onClick={handleConfirmerInstallee}
-              className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl gap-2 font-semibold"
-            >
-              {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Archive className="w-4 h-4" />Archiver le dossier</>}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={transitioning}
+                onClick={() => { setPendingStatus("ARCHIVEE"); setStatusComment(""); }}
+                className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl gap-2 font-semibold"
+              >
+                <Archive className="w-4 h-4" />Archiver le dossier
+              </Button>
+              <Button variant="outline" size="sm"
+                onClick={() => { setPendingStatus("RDV_TECHNICIEN"); setStatusComment(""); }}
+                className="rounded-xl border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20 gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" /> L&apos;installation n&apos;a pas eu lieu
+              </Button>
+            </div>
           </div>
         )}
 

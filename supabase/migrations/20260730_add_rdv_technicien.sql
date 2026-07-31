@@ -110,6 +110,10 @@ begin
     when v_fiche.status = 'INSTALLEE'         and p_new_status = 'ARCHIVEE'
       then v_role in ('ADMIN', 'DIRECTION', 'COMMERCIAL')
 
+    -- INSTALLEE → RDV_TECHNICIEN (rollback si installation non réalisée)
+    when v_fiche.status = 'INSTALLEE'         and p_new_status = 'RDV_TECHNICIEN'
+      then v_role in ('ADMIN', 'DIRECTION', 'COMMERCIAL')
+
     -- REFUSEE → suites
     when v_fiche.status = 'REFUSEE'           and p_new_status = 'ARCHIVEE'
       then v_role in ('ADMIN', 'DIRECTION', 'COMMERCIAL')

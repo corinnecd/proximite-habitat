@@ -49,9 +49,11 @@ export function FicheStatusChangeDialog({
                   ? "text-emerald-600 dark:text-emerald-400"
                   : pendingStatus === "ARCHIVEE"
                     ? "text-slate-600 dark:text-slate-400"
-                    : pendingStatus === "RDV_A_REPRENDRE" || (pendingStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE")
+                    : pendingStatus === "RDV_A_REPRENDRE" || (pendingStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE") || (pendingStatus === "RDV_TECHNICIEN" && fiche.status === "INSTALLEE")
                       ? "text-amber-600 dark:text-amber-400"
-                      : "text-foreground"
+                      : pendingStatus === "INSTALLEE"
+                        ? "text-violet-600 dark:text-violet-400"
+                        : "text-foreground"
           }`}>
             {pendingStatus === "REFUSEE"
               ? <><Ban className="w-5 h-5" />Refus Client</>
@@ -67,13 +69,21 @@ export function FicheStatusChangeDialog({
                         ? <><UserX className="w-5 h-5" />Client absent — RDV à reprendre</>
                         : pendingStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE"
                           ? <><Calendar className="w-5 h-5" />Confirmer le nouveau RDV</>
-                          : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
+                          : pendingStatus === "INSTALLEE"
+                            ? <><CheckCircle2 className="w-5 h-5" />Confirmer l&apos;installation</>
+                            : pendingStatus === "RDV_TECHNICIEN" && fiche.status === "INSTALLEE"
+                              ? <><AlertTriangle className="w-5 h-5" />L&apos;installation n&apos;a pas eu lieu</>
+                              : <>Passer en : {pendingStatus ? STATUS_LABELS[pendingStatus] : ""}</>
             }
           </DialogTitle>
           <DialogDescription>
             {pendingStatus === "AFFECTEE" && fiche?.status === "RDV_A_REPRENDRE"
               ? "Indiquez la nouvelle date de rendez-vous et ajoutez un commentaire pour le commercial."
-              : "Le motif est obligatoire et sera conservé dans l'historique de la fiche."}
+              : pendingStatus === "INSTALLEE"
+                ? "Confirmez que le rendez-vous technicien a bien eu lieu et que l'installation a été réalisée."
+                : pendingStatus === "RDV_TECHNICIEN" && fiche?.status === "INSTALLEE"
+                  ? "La fiche reviendra en statut « RDV Technicien ». Expliquez la raison (annulation, report…)."
+                  : "Le motif est obligatoire et sera conservé dans l'historique de la fiche."}
           </DialogDescription>
         </DialogHeader>
 
@@ -208,7 +218,11 @@ export function FicheStatusChangeDialog({
                   ? "bg-purple-600 hover:bg-purple-700"
                   : pendingStatus === "ACCEPTEE"
                     ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-[#F97316] hover:bg-[#EA580C]"
+                    : pendingStatus === "INSTALLEE"
+                      ? "bg-violet-600 hover:bg-violet-700"
+                      : pendingStatus === "RDV_TECHNICIEN" && fiche.status === "INSTALLEE"
+                        ? "bg-amber-600 hover:bg-amber-700"
+                        : "bg-[#F97316] hover:bg-[#EA580C]"
             }`}
           >
             {transitioning

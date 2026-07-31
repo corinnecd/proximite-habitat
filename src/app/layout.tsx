@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, DM_Serif_Display } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 
@@ -30,6 +31,7 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.webmanifest",
+  themeColor: "#1E3A5F",
 };
 
 export default function RootLayout({
@@ -46,6 +48,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThemeProvider defaultTheme="light">
           <NextTopLoader color="#ffffff" height={3} showSpinner={false} shadow="0 0 10px rgba(255,255,255,0.6),0 0 5px rgba(255,255,255,0.4)" />
+          <ServiceWorkerRegistrar />
           {children}
           <Toaster richColors position="top-right" />
         </ThemeProvider>

@@ -1012,6 +1012,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                     <div className="absolute right-0 top-full mt-1 w-64 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] shadow-xl z-50 overflow-hidden">
                       {availableTransitions
                         .filter((status) => {
+                          if (fiche.status === "RDV_TECHNICIEN" && status === "INSTALLEE") return false;
+                          if (fiche.status === "INSTALLEE" && (status === "ARCHIVEE" || status === "RDV_TECHNICIEN")) return false;
                           if (fiche.status !== "SOUMISE" || profile?.role !== "DIRECTION") return true;
                           if (status === "VALIDEE" as FicheStatus) return isValidated && !selectedCommercial;
                           if (status === "AFFECTEE" as FicheStatus) return isValidated && !!selectedCommercial;

@@ -83,7 +83,9 @@ export function FicheStatusChangeDialog({
                 ? "Confirmez que le rendez-vous technicien a bien eu lieu et que l'installation a été réalisée."
                 : pendingStatus === "RDV_TECHNICIEN" && fiche?.status === "INSTALLEE"
                   ? "La fiche reviendra en statut « RDV Technicien ». Expliquez la raison (annulation, report…)."
-                  : "Le motif est obligatoire et sera conservé dans l'historique de la fiche."}
+                  : pendingStatus === "RETRACTATION" && fiche?.status === "RDV_TECHNICIEN"
+                  ? "Le client exerce son droit de rétractation. La fiche reviendra en attente — vous pourrez relancer ou fermer le dossier."
+                  : "Le motif est obligatoire et sera conservé dans l’historique de la fiche."}
           </DialogDescription>
         </DialogHeader>
 

@@ -106,6 +106,14 @@ begin
     when v_fiche.status = 'RDV_TECHNICIEN'    and p_new_status = 'INSTALLEE'
       then v_role in ('ADMIN', 'DIRECTION', 'COMMERCIAL')
 
+    -- RDV_TECHNICIEN → REFUSEE / RETRACTATION / ARCHIVEE (nouveau)
+    when v_fiche.status = 'RDV_TECHNICIEN'    and p_new_status = 'REFUSEE'
+      then v_role in ('ADMIN', 'DIRECTION', 'COMMERCIAL')
+    when v_fiche.status = 'RDV_TECHNICIEN'    and p_new_status = 'RETRACTATION'
+      then v_role in ('ADMIN', 'DIRECTION', 'COMMERCIAL')
+    when v_fiche.status = 'RDV_TECHNICIEN'    and p_new_status = 'ARCHIVEE'
+      then v_role in ('ADMIN', 'DIRECTION', 'COMMERCIAL')
+
     -- INSTALLEE → ARCHIVEE (nouveau)
     when v_fiche.status = 'INSTALLEE'         and p_new_status = 'ARCHIVEE'
       then v_role in ('ADMIN', 'DIRECTION', 'COMMERCIAL')

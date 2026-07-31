@@ -8,7 +8,7 @@ const STATUS_TRANSITIONS: Record<FicheStatus, { to: FicheStatus[]; roles: UserRo
   RDV_A_REPRENDRE: [{ to: ["AFFECTEE"], roles: ["DIRECTION", "PROSPECTEUR", "CHEF_EQUIPE"] }],
   RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["AFFECTEE"], roles: ["DIRECTION"] }],
   ACCEPTEE: [{ to: ["RDV_TECHNICIEN", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }],
-  RDV_TECHNICIEN: [{ to: ["INSTALLEE"], roles: ["DIRECTION", "COMMERCIAL"] }],
+  RDV_TECHNICIEN: [{ to: ["INSTALLEE", "REFUSEE", "RETRACTATION", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }],
   INSTALLEE: [{ to: ["ARCHIVEE", "RDV_TECHNICIEN"], roles: ["DIRECTION", "COMMERCIAL"] }],
   REFUSEE: [{ to: ["ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["DIRECTION"] }],
   ARCHIVEE: [],

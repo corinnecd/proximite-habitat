@@ -1021,7 +1021,9 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                         })
                         .map((status) => {
                         const dropdownLabels: Partial<Record<FicheStatus, string>> = {
-                          RETRACTATION: "Attente Acceptation Client",
+                          RETRACTATION: fiche.status === "RDV_TECHNICIEN"
+                            ? "Rétractation — délai légal 14 jours"
+                            : "Attente Acceptation Client",
                           ACCEPTEE: "Acceptation Client",
                           REFUSEE: "Refus Client",
                           ARCHIVEE: "Archivé",

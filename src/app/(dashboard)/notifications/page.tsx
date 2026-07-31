@@ -75,7 +75,7 @@ function getDateRange(period: PeriodFilter, customFrom: string, customTo: string
 }
 
 // ── Types de notification ─────────────────────────────────────────────────────
-type NotifType = "FICHE_SOUMISE" | "FICHE_AFFECTEE" | "FICHE_ACCEPTEE" | "FICHE_REFUSEE" | "FICHE_REJETEE" | "CLIENT_ABSENT";
+type NotifType = "FICHE_SOUMISE" | "FICHE_AFFECTEE" | "FICHE_ACCEPTEE" | "FICHE_REFUSEE" | "FICHE_REJETEE" | "CLIENT_ABSENT" | "RDV_TECH_J2" | "RDV_TECH_J1" | "RDV_TECH_JJ";
 
 const TYPE_CONFIG: Record<NotifType, {
   label: string;
@@ -140,12 +140,39 @@ const TYPE_CONFIG: Record<NotifType, {
     badgeCls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
     priority: 1,
   },
+  RDV_TECH_J2: {
+    label: "Rappel J-2",
+    icon: Calendar,
+    filterColor: "text-violet-500",
+    iconBg: "bg-violet-100 dark:bg-violet-900/40",
+    iconColor: "text-violet-600 dark:text-violet-400",
+    badgeCls: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+    priority: 1,
+  },
+  RDV_TECH_J1: {
+    label: "Rappel J-1",
+    icon: Calendar,
+    filterColor: "text-violet-500",
+    iconBg: "bg-violet-100 dark:bg-violet-900/40",
+    iconColor: "text-violet-600 dark:text-violet-400",
+    badgeCls: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+    priority: 1,
+  },
+  RDV_TECH_JJ: {
+    label: "RDV aujourd'hui",
+    icon: Calendar,
+    filterColor: "text-orange-500",
+    iconBg: "bg-orange-100 dark:bg-orange-900/40",
+    iconColor: "text-orange-600 dark:text-orange-400",
+    badgeCls: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+    priority: 1,
+  },
 };
 
 // Statuts disponibles par rôle (filtre)
 const STATUS_BY_ROLE: Record<string, NotifType[]> = {
   ADMIN:       ["FICHE_SOUMISE", "FICHE_ACCEPTEE", "FICHE_REFUSEE"],
-  COMMERCIAL:  ["FICHE_AFFECTEE", "FICHE_ACCEPTEE", "FICHE_REFUSEE"],
+  COMMERCIAL:  ["FICHE_AFFECTEE", "FICHE_ACCEPTEE", "FICHE_REFUSEE", "RDV_TECH_J2", "RDV_TECH_J1", "RDV_TECH_JJ"],
   PROSPECTEUR: ["FICHE_SOUMISE", "FICHE_AFFECTEE", "FICHE_REJETEE", "FICHE_ACCEPTEE", "FICHE_REFUSEE", "CLIENT_ABSENT"],
   CHEF_EQUIPE: ["FICHE_SOUMISE", "FICHE_AFFECTEE", "FICHE_REJETEE", "FICHE_ACCEPTEE", "FICHE_REFUSEE", "CLIENT_ABSENT"],
 };

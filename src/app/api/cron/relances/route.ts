@@ -94,6 +94,45 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // 4. Rappels RDV Technicien J-2 / J-1 / JJ
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let rdvTechNotifs = 0;
+
+  for (const offset of [2, 1, 0]) {
+    const target = new Date(today);
+    target.setDate(today.getDate() + offset);
+    const dateStr = target.toISOString().split("T")[0];
+
+    const { data: techFiches } = await supabase
+      .from("fiches")
+      .select("id, reference, prospect_nom, organization_id, assigned_to, rdv_technicien_heure")
+      .eq("status", "RDV_TECHNICIEN")
+      .eq("rdv_technicien_date", dateStr)
+      .not("assigned_to", "is", null);
+
+    for (const f of techFiches ?? []) {
+      const label = offset === 2 ? "dans 2 jours" : offset === 1 ? "demain" : "aujourd'hui";
+      const type  = offset === 2 ? "RDV_TECH_J2"  : offset === 1 ? "RDV_TECH_J1"  : "RDV_TECH_JJ";
+      const [y, m, d] = dateStr.split("-");
+      const dateFr = `${d}/${m}/${y}`;
+      const heurePart = f.rdv_technicien_heure
+        ? ` à ${f.rdv_technicien_heure.replace(":", "h")}`
+        : "";
+      const nom = f.prospect_nom ?? f.reference;
+
+      await insertNotification(
+        f.assigned_to!,
+        f.organization_id,
+        type,
+        `RDV Technicien ${label} — ${nom} (${dateFr}${heurePart})`,
+        f.id
+      );
+      rdvTechNotifs++;
+    }
+  }
+  totalNotifs += rdvTechNotifs;
+
   return NextResponse.json({
     ok: true,
     relances: totalNotifs,
@@ -101,6 +140,7 @@ export async function GET(req: NextRequest) {
       rdv_a_reprendre: rdvFiches?.length ?? 0,
       affectees: affFiches?.length ?? 0,
       soumises: soumFiches?.length ?? 0,
+      rdv_tech_rappels: rdvTechNotifs,
     },
   });
 }

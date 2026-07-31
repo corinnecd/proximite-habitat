@@ -103,7 +103,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { profile, loading: profileLoading, organizationName } = useProfile();
+  const { profile, organizationName } = useProfile();
   const { isDG } = useBranch();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);

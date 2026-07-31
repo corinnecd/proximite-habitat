@@ -106,7 +106,7 @@ export default function CalendrierPage() {
     setLoading(true);
     const dateField = calType === "technicien" ? "rdv_technicien_date" : "rdv_date";
     const heureField = calType === "technicien" ? "rdv_technicien_heure" : "heure_visite";
-    const statuses = calType === "technicien"
+    const statuses: FicheStatus[] = calType === "technicien"
       ? ["RDV_TECHNICIEN", "INSTALLEE"]
       : ["VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "REFUSEE"];
 
@@ -350,7 +350,7 @@ export default function CalendrierPage() {
                             title="Plus de détails"
                             className={`truncate rounded px-1.5 py-0.5 text-[10px] sm:text-[11px] leading-tight ${chip.bg} ${chip.text}`}
                           >
-                            {(calType === "technicien" ? f.rdv_technicien_heure : f.heure_visite)?.slice(0, 5) + " " ?? ""}
+                            {((calType === "technicien" ? f.rdv_technicien_heure : f.heure_visite)?.slice(0, 5) ?? "") + " "}
                             <span className="font-bold">{f.prospect_nom ?? "Sans nom"}</span>
                           </span>
                         );

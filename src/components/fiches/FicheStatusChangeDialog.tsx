@@ -168,7 +168,7 @@ export function FicheStatusChangeDialog({
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Catégorie d&apos;archivage <span className="text-red-500">*</span>
               </label>
-              <Select value={selectedMotifArchivage} onValueChange={setSelectedMotifArchivage}>
+              <Select value={selectedMotifArchivage} onValueChange={(v) => setSelectedMotifArchivage(v ?? "")}>
                 <SelectTrigger className="rounded-xl bg-card">
                   <SelectValue placeholder="Sélectionner la raison d'archivage…" />
                 </SelectTrigger>

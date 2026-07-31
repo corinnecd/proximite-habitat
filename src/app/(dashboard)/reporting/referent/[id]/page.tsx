@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Topbar } from "@/components/layout/Topbar";
 import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
@@ -70,6 +70,17 @@ export default function ReferentDashboardPage() {
 
   const isAdminOrDG = currentProfile?.role === "DIRECTION" || currentProfile?.role === "SUPER_ADMIN" || currentProfile?.role === "DIRECTION_GENERALE";
 
+  useLayoutEffect(() => {
+    if (!id) return;
+    try {
+      const raw = localStorage.getItem(`ref_dash_${id}_${periodFilter}`);
+      if (!raw) return;
+      const c = JSON.parse(raw);
+      if (c.profile) setReferent(c.profile);
+      if (c.fiches?.length) { setFiches(c.fiches); setLoading(false); }
+    } catch {}
+  }, [id, periodFilter]);
+
   useEffect(() => {
     if (!currentProfile) return;
     if (!isAdminOrDG) { router.replace("/"); return; }
@@ -97,8 +108,15 @@ export default function ReferentDashboardPage() {
     }
 
     const { data } = await q;
-    setFiches((data as FicheRow[]) ?? []);
+    const freshFiches = (data as FicheRow[]) ?? [];
+    setFiches(freshFiches);
     setLoading(false);
+    try {
+      localStorage.setItem(`ref_dash_${id}_${period}`, JSON.stringify({
+        profile: profileRes.data,
+        fiches: freshFiches,
+      }));
+    } catch {}
   }, [id, supabase]);
 
   useEffect(() => {

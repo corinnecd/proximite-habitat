@@ -1071,11 +1071,17 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
               {/* Bouton Modifier / Planifier le rendez-vous */}
               {profile && canEditRdvDate(profile.role, profile.id, fiche.created_by, fiche.assigned_to, fiche.status) && (
-                <Button size="sm" variant="outline"
-                  onClick={() => setShowRdvEditDialog(true)}
-                  className={`ml-auto rounded-xl gap-2 border-border ${fiche.rdv_date ? "bg-secondary text-foreground hover:bg-secondary/80" : "bg-[#F97316] hover:bg-[#EA580C] text-white border-transparent"}`}>
-                  <Calendar className="w-4 h-4" />{fiche.rdv_date ? "Modifier le rendez-vous" : "Planifier le RDV"}
-                </Button>
+                fiche.rdv_date && new Date(fiche.rdv_date) < new Date() && fiche.status === "AFFECTEE"
+                  ? <Button size="sm" variant="outline"
+                      onClick={() => { setPendingStatus("RDV_A_REPRENDRE"); setStatusComment(""); }}
+                      className="ml-auto rounded-xl gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20">
+                      <Calendar className="w-4 h-4" /> Reprendre un RDV
+                    </Button>
+                  : <Button size="sm" variant="outline"
+                      onClick={() => setShowRdvEditDialog(true)}
+                      className={`ml-auto rounded-xl gap-2 border-border ${fiche.rdv_date ? "bg-secondary text-foreground hover:bg-secondary/80" : "bg-[#F97316] hover:bg-[#EA580C] text-white border-transparent"}`}>
+                      <Calendar className="w-4 h-4" />{fiche.rdv_date ? "Modifier le rendez-vous" : "Planifier le RDV"}
+                    </Button>
               )}
 
               {/* Boutons classiques pour le référent */}

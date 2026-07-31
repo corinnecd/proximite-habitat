@@ -604,7 +604,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         updated_at: new Date().toISOString(),
       }).eq("id", fiche.id);
       if (error) throw error;
-      toast.success("RDV technicien enregistré");
+      toast.success("RDV technicien enregistré", { id: "rdv-tech-save" });
       setEditingRdv(false);
       setFiche({
         ...fiche,

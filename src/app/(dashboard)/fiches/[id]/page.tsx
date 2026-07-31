@@ -575,13 +575,16 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   // Enregistre date+heure du RDV tech sans changer de statut
   async function handleEnregistrerRdvTechnicien() {
     if (!fiche || !profile) return;
-    if (!rdvTechnicienDate) { toast.error("Veuillez saisir la date du RDV technicien"); return; }
+    const effectiveDate  = rdvTechnicienDate  || fiche.rdv_technicien_date  || "";
+    const effectiveHeure = rdvTechnicienHeure || fiche.rdv_technicien_heure || null;
+    const effectiveNotes = rdvTechnicienNotes || fiche.rdv_technicien_notes || null;
+    if (!effectiveDate) { toast.error("Veuillez saisir la date du RDV technicien"); return; }
     setTransitioning(true);
     try {
       const { error } = await supabase.from("fiches").update({
-        rdv_technicien_date: rdvTechnicienDate,
-        rdv_technicien_heure: rdvTechnicienHeure || null,
-        rdv_technicien_notes: rdvTechnicienNotes || null,
+        rdv_technicien_date: effectiveDate,
+        rdv_technicien_heure: effectiveHeure,
+        rdv_technicien_notes: effectiveNotes,
         updated_at: new Date().toISOString(),
       }).eq("id", fiche.id);
       if (error) throw error;

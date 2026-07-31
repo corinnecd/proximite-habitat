@@ -606,7 +606,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       if (error) throw error;
       toast.success("RDV technicien enregistré");
       setEditingRdv(false);
-      fetchData();
+      setFiche({
+        ...fiche,
+        rdv_technicien_date: rdvTechnicienDate,
+        rdv_technicien_heure: rdvTechnicienHeure || null,
+        rdv_technicien_notes: rdvTechnicienNotes || null,
+      });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Erreur");
     } finally {

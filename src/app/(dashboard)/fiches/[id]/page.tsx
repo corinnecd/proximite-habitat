@@ -38,7 +38,7 @@ import {
   User,
   Clock, ArrowLeft, UserCheck, Loader2, Pencil, Trash2,
   MapPin, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, Copy, ChevronDown, ChevronUp,
-  Send, Archive, UserX,
+  Send, Archive, UserX, XCircle,
 } from "lucide-react";
 import { DownloadFicheButton } from "@/components/pdf/DownloadFicheButton";
 import confetti from "canvas-confetti";
@@ -1193,6 +1193,44 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
             >
               {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Archive className="w-4 h-4" />Archiver le dossier</>}
             </Button>
+          </div>
+        )}
+
+        {/* ── Alerte RDV passé sans mise à jour ─────────────────────────────── */}
+        {fiche.status === "AFFECTEE" &&
+          fiche.rdv_date &&
+          new Date(fiche.rdv_date) < new Date() &&
+          (profile?.role === "COMMERCIAL" || profile?.role === "DIRECTION") && (
+          <div data-no-print className="bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 rounded-2xl px-4 py-4 space-y-3">
+            <p className="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              RDV du {new Date(fiche.rdv_date).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} — que s&apos;est-il passé ?
+            </p>
+            <p className="text-sm text-amber-800 dark:text-amber-300">
+              Ce rendez-vous est passé. Merci de mettre à jour le statut de la fiche.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm"
+                onClick={() => { setPendingStatus("ACCEPTEE"); setStatusComment(""); }}
+                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
+                <CheckCircle2 className="w-4 h-4" /> Acceptation client
+              </Button>
+              <Button size="sm"
+                onClick={() => { setPendingStatus("RETRACTATION"); setStatusComment(""); }}
+                className="rounded-xl bg-purple-600 hover:bg-purple-700 text-white gap-1.5">
+                <AlertTriangle className="w-4 h-4" /> Rétractation
+              </Button>
+              <Button size="sm"
+                onClick={() => { setPendingStatus("RDV_A_REPRENDRE"); setStatusComment(""); }}
+                className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white gap-1.5">
+                <UserX className="w-4 h-4" /> Client absent
+              </Button>
+              <Button size="sm"
+                onClick={() => { setPendingStatus("REFUSEE"); setStatusComment(""); }}
+                className="rounded-xl bg-red-600 hover:bg-red-700 text-white gap-1.5">
+                <XCircle className="w-4 h-4" /> Refus client
+              </Button>
+            </div>
           </div>
         )}
 

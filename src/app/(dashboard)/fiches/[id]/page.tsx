@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use, useCallback, useMemo } from "react";
+import { useEffect, useState, use, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -73,6 +73,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [commercials, setCommercials] = useState<ProfileEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [transitioning, setTransitioning] = useState(false);
+  const savingRdvRef = useRef(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<FicheStatus | null>(null);
@@ -595,6 +596,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   async function handleEnregistrerRdvTechnicien() {
     if (!fiche || !profile) return;
     if (!rdvTechnicienDate) { toast.error("Veuillez saisir la date du RDV technicien"); return; }
+    if (savingRdvRef.current) return;
+    savingRdvRef.current = true;
     setTransitioning(true);
     try {
       const { error } = await supabase.from("fiches").update({
@@ -616,6 +619,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       toast.error(e instanceof Error ? e.message : "Erreur");
     } finally {
       setTransitioning(false);
+      savingRdvRef.current = false;
     }
   }
 

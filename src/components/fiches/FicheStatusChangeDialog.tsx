@@ -11,7 +11,7 @@ import {
 import {
   Clock, Loader2, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, UserX,
 } from "lucide-react";
-import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
+import { STATUS_LABELS, MOTIF_REFUS_LABELS, MOTIF_ARCHIVAGE_LABELS } from "@/lib/permissions";
 import { toast } from "sonner";
 import type { FicheStatus, Fiche, MotifRefus } from "@/types/database";
 
@@ -23,6 +23,8 @@ interface FicheStatusChangeDialogProps {
   setStatusComment: (v: string) => void;
   selectedMotifRefus: MotifRefus | "";
   setSelectedMotifRefus: (v: MotifRefus | "") => void;
+  selectedMotifArchivage: string;
+  setSelectedMotifArchivage: (v: string) => void;
   montantHtInput: string;
   setMontantHtInput: (v: string) => void;
   newRdvDate: string;
@@ -33,11 +35,12 @@ interface FicheStatusChangeDialogProps {
 
 export function FicheStatusChangeDialog({
   fiche, pendingStatus, setPendingStatus, statusComment, setStatusComment,
-  selectedMotifRefus, setSelectedMotifRefus, montantHtInput, setMontantHtInput,
+  selectedMotifRefus, setSelectedMotifRefus, selectedMotifArchivage, setSelectedMotifArchivage,
+  montantHtInput, setMontantHtInput,
   newRdvDate, setNewRdvDate, transitioning, handleStatusChange,
 }: FicheStatusChangeDialogProps) {
   return (
-    <Dialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); setNewRdvDate(""); } }}>
+    <Dialog open={pendingStatus !== null} onOpenChange={(open) => { if (!open) { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); setSelectedMotifArchivage(""); setNewRdvDate(""); } }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className={`flex items-center gap-2 ${
@@ -160,23 +163,45 @@ export function FicheStatusChangeDialog({
               )}
             </div>
           )}
+          {pendingStatus === "ARCHIVEE" && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Catégorie d&apos;archivage <span className="text-red-500">*</span>
+              </label>
+              <Select value={selectedMotifArchivage} onValueChange={setSelectedMotifArchivage}>
+                <SelectTrigger className="rounded-xl bg-card">
+                  <SelectValue placeholder="Sélectionner la raison d'archivage…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(MOTIF_ARCHIVAGE_LABELS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!selectedMotifArchivage && (
+                <p className="text-xs text-red-500 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />Veuillez sélectionner une catégorie.
+                </p>
+              )}
+            </div>
+          )}
           <div className="space-y-1.5">
             <label htmlFor="textarea-motif" className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Motif <span className="text-red-500">*</span>
+              {pendingStatus === "ARCHIVEE" ? "Commentaire (facultatif)" : "Motif"} {pendingStatus !== "ARCHIVEE" && <span className="text-red-500">*</span>}
             </label>
             <Textarea
               id="textarea-motif"
-              placeholder="Indiquez la raison de ce changement de statut…"
+              placeholder={pendingStatus === "ARCHIVEE" ? "Informations complémentaires (optionnel)…" : "Indiquez la raison de ce changement de statut…"}
               value={statusComment}
               onChange={(e) => setStatusComment(e.target.value)}
-              rows={4}
+              rows={pendingStatus === "ARCHIVEE" ? 3 : 4}
               className={`bg-card resize-none transition-colors ${
-                statusComment.trim().length === 0
+                pendingStatus !== "ARCHIVEE" && statusComment.trim().length === 0
                   ? "border-red-300 dark:border-red-700 focus-visible:ring-red-400/30"
-                  : "border-emerald-300 dark:border-emerald-700"
+                  : "border-border"
               }`}
             />
-            {statusComment.trim().length === 0 && (
+            {pendingStatus !== "ARCHIVEE" && statusComment.trim().length === 0 && (
               <p className="text-xs text-red-500 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />Veuillez saisir un motif avant de confirmer.
               </p>
@@ -185,11 +210,16 @@ export function FicheStatusChangeDialog({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); setMontantHtInput(""); setNewRdvDate(""); }}>Annuler</Button>
+          <Button type="button" variant="outline" className="rounded-xl" onClick={() => { setPendingStatus(null); setStatusComment(""); setSelectedMotifRefus(""); setSelectedMotifArchivage(""); setMontantHtInput(""); setNewRdvDate(""); }}>Annuler</Button>
           <Button
             onClick={async () => {
               if (!pendingStatus) return;
-              if (!statusComment.trim()) {
+              if (pendingStatus === "ARCHIVEE") {
+                if (!selectedMotifArchivage) {
+                  toast.error("Veuillez sélectionner une catégorie d'archivage.");
+                  return;
+                }
+              } else if (!statusComment.trim()) {
                 toast.error("Veuillez saisir un motif avant de confirmer.");
                 return;
               }
@@ -205,14 +235,18 @@ export function FicheStatusChangeDialog({
                 toast.error("Veuillez indiquer la nouvelle date de rendez-vous.");
                 return;
               }
-              await handleStatusChange(pendingStatus, statusComment.trim(), selectedMotifRefus as MotifRefus || undefined, newRdvDate || undefined);
+              const finalComment = pendingStatus === "ARCHIVEE"
+                ? `[${MOTIF_ARCHIVAGE_LABELS[selectedMotifArchivage]}]${statusComment.trim() ? " " + statusComment.trim() : ""}`
+                : statusComment.trim();
+              await handleStatusChange(pendingStatus, finalComment, selectedMotifRefus as MotifRefus || undefined, newRdvDate || undefined);
               setPendingStatus(null);
               setStatusComment("");
               setSelectedMotifRefus("");
+              setSelectedMotifArchivage("");
               setMontantHtInput("");
               setNewRdvDate("");
             }}
-            disabled={transitioning || !statusComment.trim() || (pendingStatus === "REFUSEE" && !selectedMotifRefus) || (pendingStatus === "ACCEPTEE" && (!montantHtInput || parseFloat(montantHtInput) <= 0)) || (pendingStatus === "AFFECTEE" && fiche?.status === "RDV_A_REPRENDRE" && !newRdvDate)}
+            disabled={transitioning || (pendingStatus === "ARCHIVEE" ? !selectedMotifArchivage : !statusComment.trim()) || (pendingStatus === "REFUSEE" && !selectedMotifRefus) || (pendingStatus === "ACCEPTEE" && (!montantHtInput || parseFloat(montantHtInput) <= 0)) || (pendingStatus === "AFFECTEE" && fiche?.status === "RDV_A_REPRENDRE" && !newRdvDate)}
             className={`rounded-xl gap-2 text-white ${
               pendingStatus === "REFUSEE"
                 ? "bg-red-600 hover:bg-red-700"

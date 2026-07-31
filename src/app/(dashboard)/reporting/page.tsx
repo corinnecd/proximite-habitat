@@ -16,7 +16,7 @@ import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel as get
 import {
   BarChart3, TrendingUp, Users, FileText, Search, X, ChevronDown, ChevronUp,
   CheckCircle2, XCircle, Clock, Euro,
-  Trophy, RefreshCw, CalendarDays, MapPin,
+  Trophy, RefreshCw, CalendarDays, MapPin, Wrench, CalendarCheck,
 } from "lucide-react";
 import { KpiCard, CustomTooltip } from "@/components/reporting/KpiCard";
 import { ConversionFunnel } from "@/components/reporting/ConversionFunnel";
@@ -121,8 +121,8 @@ export default function ReportingPage() {
   async function loadData(profileId: string, role: string, period: PeriodFilter = "ALL") {
     const isComm = role === "COMMERCIAL";
     const statuses: FicheStatus[] = isComm
-      ? ["AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"]
-      : ["SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "ARCHIVEE"];
+      ? ["AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "RDV_TECHNICIEN", "INSTALLEE", "ARCHIVEE"]
+      : ["SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "RDV_TECHNICIEN", "INSTALLEE", "ARCHIVEE"];
 
     const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
     const dates = getPeriodDates(period);
@@ -389,13 +389,16 @@ export default function ReportingPage() {
   const validees      = statusCounts.find((s) => s.status === "VALIDEE")?.count ?? 0;
   const affectees     = statusCounts.find((s) => s.status === "AFFECTEE")?.count ?? 0;
   const retractation  = statusCounts.find((s) => s.status === "RETRACTATION")?.count ?? 0;
+  const rdvTechnicien = statusCounts.find((s) => s.status === "RDV_TECHNICIEN")?.count ?? 0;
+  const installees    = statusCounts.find((s) => s.status === "INSTALLEE")?.count ?? 0;
   // En cours = tout sauf acceptees, refusées, archivées
   const inProgress    = soumises + validees + affectees + retractation;
   // Dénominateur commun : fiches actives hors archivées → les 3 taux somment à 100%
-  const baseActive    = accepted + refused + inProgress;
+  const baseActive    = accepted + refused + inProgress + rdvTechnicien + installees;
   const acceptanceRate = baseActive > 0 ? Math.round((accepted / baseActive) * 100) : 0;
   const refusalRate    = baseActive > 0 ? Math.round((refused / baseActive) * 100) : 0;
   const inProgressRate = baseActive > 0 ? Math.round((inProgress / baseActive) * 100) : 0;
+  const installationRate = (accepted + rdvTechnicien + installees) > 0 ? Math.round((installees / (accepted + rdvTechnicien + installees)) * 100) : 0;
   const _pl = getReportPeriodLabel(periodFilter);
   const periodSuffix = _pl ? ` (${_pl})` : "";
   const isAllPeriod = periodFilter === "ALL";
@@ -546,6 +549,20 @@ export default function ReportingPage() {
             sub={isCommercial ? "Mes fiches acceptées / affectées" : "Toutes les fiches"}
             Icon={TrendingUp} iconBg="bg-emerald-100 dark:bg-emerald-900/30" iconColor="text-emerald-600"
             border="border-l-emerald-500" loading={loading}
+          />
+          <KpiCard
+            label={"RDV Technicien planifiés" + periodSuffix}
+            value={rdvTechnicien}
+            sub={`+ ${installees} installation${installees > 1 ? "s" : ""} réalisée${installees > 1 ? "s" : ""}`}
+            Icon={CalendarCheck} iconBg="bg-sky-100 dark:bg-sky-900/30" iconColor="text-sky-600"
+            border="border-l-sky-500" loading={loading}
+          />
+          <KpiCard
+            label={"Installations réalisées" + periodSuffix}
+            value={installees}
+            sub={installationRate > 0 ? `${installationRate}% des contrats installés` : "Aucune installation"}
+            Icon={Wrench} iconBg="bg-violet-100 dark:bg-violet-900/30" iconColor="text-violet-600"
+            border="border-l-violet-500" loading={loading}
           />
         </div>
 

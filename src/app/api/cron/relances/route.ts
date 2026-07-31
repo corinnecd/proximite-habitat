@@ -173,4 +173,23 @@ async function insertNotification(
     fiche_id: ficheId,
     read: false,
   });
+
+  // Envoyer le push en arrière-plan
+  try {
+    const base = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000";
+    await fetch(`${base}/api/push/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userIds: [userId],
+        title,
+        body: title,
+        url: `/fiches/${ficheId}`,
+      }),
+    });
+  } catch {
+    // Push facultatif — la notification in-app est déjà créée
+  }
 }

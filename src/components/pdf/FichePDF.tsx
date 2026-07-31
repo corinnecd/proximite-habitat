@@ -89,11 +89,13 @@ const s = StyleSheet.create({
 
 const STATUS_LABELS: Record<string, string> = {
   BROUILLON: "Brouillon", SOUMISE: "À valider", AFFECTEE: "Affectée",
-  RETRACTATION: "Attente Acceptation Client", ACCEPTEE: "Acceptation Client", REFUSEE: "Refus Client", ARCHIVEE: "Archivé",
+  RETRACTATION: "Attente Acceptation Client", ACCEPTEE: "Acceptation Client", REFUSEE: "Refus Client",
+  RDV_TECHNICIEN: "RDV Technicien planifié", INSTALLEE: "Installation réalisée", ARCHIVEE: "Archivé",
 };
 const STATUS_COLORS: Record<string, string> = {
   BROUILLON: "#64748B", SOUMISE: "#3B82F6", AFFECTEE: "#F97316",
-  RETRACTATION: "#8B5CF6", ACCEPTEE: "#10B981", REFUSEE: "#EF4444", ARCHIVEE: "#94A3B8",
+  RETRACTATION: "#8B5CF6", ACCEPTEE: "#10B981", REFUSEE: "#EF4444",
+  RDV_TECHNICIEN: "#0EA5E9", INSTALLEE: "#7C3AED", ARCHIVEE: "#94A3B8",
 };
 
 function Val({ label, value }: { label: string; value?: string | number | null }) {
@@ -360,7 +362,7 @@ export function FichePDF({ fiche, referentNom, commercialNom, photoUrls = [], or
             </View>
           )}
 
-          {/* Date RDV — si AFFECTEE */}
+          {/* Date RDV commercial — si AFFECTEE */}
           {fiche.rdv_date && (fiche.status === "AFFECTEE" || fiche.status === "RDV_A_REPRENDRE") && (
             <View style={{ marginBottom: 20, backgroundColor: "#FFF7ED", border: `1px solid #FED7AA`, borderRadius: 8, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
               <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: ORANGE }} />
@@ -370,6 +372,39 @@ export function FichePDF({ fiche, referentNom, commercialNom, photoUrls = [], or
                   {new Date(fiche.rdv_date).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                 </Text>
                 {commercialNom && <Text style={{ fontSize: 9, color: "#B45309", marginTop: 2 }}>Commercial : {commercialNom}</Text>}
+              </View>
+            </View>
+          )}
+
+          {/* RDV Technicien — si RDV_TECHNICIEN ou INSTALLEE */}
+          {fiche.rdv_technicien_date && (fiche.status === "RDV_TECHNICIEN" || fiche.status === "INSTALLEE") && (
+            <View style={{ marginBottom: 20, backgroundColor: "#F0F9FF", border: `1px solid #BAE6FD`, borderRadius: 8, padding: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: "#0EA5E9" }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 8, color: "#0EA5E9", letterSpacing: 0.5, fontFamily: "Helvetica-Bold" }}>RDV TECHNICIEN</Text>
+                <Text style={{ fontSize: 12, fontFamily: "Helvetica-Bold", color: "#0C4A6E", marginTop: 3 }}>
+                  {(() => {
+                    const [y, m, d] = fiche.rdv_technicien_date!.split("-");
+                    return `${d}/${m}/${y}`;
+                  })()}
+                  {fiche.rdv_technicien_heure ? ` à ${fiche.rdv_technicien_heure.replace(":", "h")}` : ""}
+                </Text>
+                {fiche.rdv_technicien_notes && (
+                  <Text style={{ fontSize: 9, color: "#0369A1", marginTop: 4 }}>{fiche.rdv_technicien_notes}</Text>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Installation réalisée — si INSTALLEE */}
+          {fiche.status === "INSTALLEE" && (
+            <View style={{ marginBottom: 20, backgroundColor: "#F5F3FF", border: `2px solid #C4B5FD`, borderRadius: 8, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <View>
+                <Text style={{ fontSize: 8, color: "#7C3AED", letterSpacing: 0.5, fontFamily: "Helvetica-Bold" }}>INSTALLATION RÉALISÉE</Text>
+                <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", color: "#5B21B6", marginTop: 4 }}>Travaux effectués</Text>
+              </View>
+              <View style={{ backgroundColor: "#7C3AED", borderRadius: 6, paddingHorizontal: 14, paddingVertical: 8 }}>
+                <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: WHITE }}>{"✓ Installée"}</Text>
               </View>
             </View>
           )}

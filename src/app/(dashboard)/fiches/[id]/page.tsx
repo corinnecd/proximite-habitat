@@ -79,6 +79,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   const [pendingStatus, setPendingStatus] = useState<FicheStatus | null>(null);
   const [statusComment, setStatusComment] = useState("");
   const [selectedMotifRefus, setSelectedMotifRefus] = useState<MotifRefus | "">("");
+  const [selectedMotifArchivage, setSelectedMotifArchivage] = useState("");
   const [editingRdvDate, setEditingRdvDate] = useState(false);
   const [rdvDateValue, setRdvDateValue] = useState("");
   const [selectedCommercial, setSelectedCommercial] = useState("");
@@ -1565,6 +1566,8 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         setStatusComment={setStatusComment}
         selectedMotifRefus={selectedMotifRefus}
         setSelectedMotifRefus={setSelectedMotifRefus}
+        selectedMotifArchivage={selectedMotifArchivage}
+        setSelectedMotifArchivage={setSelectedMotifArchivage}
         montantHtInput={montantHtInput}
         setMontantHtInput={setMontantHtInput}
         newRdvDate={newRdvDate}

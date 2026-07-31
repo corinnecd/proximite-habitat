@@ -90,3 +90,12 @@ export const MOTIF_REFUS_LABELS: Record<MotifRefus, string> = {
   ANNULATION: "Annulation client",
   REFUS_CLASSIQUE: "Refus classique",
 };
+
+export const MOTIF_ARCHIVAGE_LABELS: Record<string, string> = {
+  DOSSIER_INCOMPLET: "Dossier incomplet",
+  INJOIGNABLE: "Client injoignable",
+  HORS_ZONE: "Hors zone d'intervention",
+  DOUBLON: "Doublon",
+  SANS_SUITE: "Sans suite",
+  AUTRE: "Autre raison",
+};

@@ -224,7 +224,15 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       p_new_status: newStatus,
       p_comment: comment || null,
     });
-    if (error) { toast.error("Transition refusée : " + error.message); setTransitioning(false); return; }
+    if (error) {
+      if (newStatus === "RDV_TECHNICIEN" && fiche.status === "INSTALLEE") {
+        toast.error("RDV Technicien annulé, l'installation n'a pas eu lieu. Veuillez reprogrammer un autre RDV Technicien.");
+      } else {
+        toast.error("Transition refusée : " + error.message);
+      }
+      setTransitioning(false);
+      return;
+    }
 
     if (newStatus === "REFUSEE" && motifRefus) {
       await supabase.from("fiches").update({ motif_refus: motifRefus }).eq("id", fiche.id);

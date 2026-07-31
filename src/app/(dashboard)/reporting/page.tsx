@@ -704,7 +704,7 @@ export default function ReportingPage() {
               <div className={`space-y-0 overflow-y-auto ${showAllCommerciaux || commSearch ? "max-h-[400px]" : "max-h-[250px]"}`}>
                 {(commSearch ? filteredCommerciaux : (showAllCommerciaux ? commerciaux : commerciaux.slice(0, 5))).map((c) => (
                   <div key={c.name} className="grid grid-cols-[1fr_48px_48px_48px_70px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1.5 sm:gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
-                    <span className="text-sm font-medium truncate">{c.name}</span>
+                    <a href={`/reporting/commercial/${c.id}`} className="text-sm font-medium truncate hover:text-[#F97316] hover:underline transition-colors">{c.name}</a>
                     <span className="text-sm text-right tabular-nums text-muted-foreground">{c.assigned}</span>
                     <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{c.accepted}</span>
                     <span className="text-sm text-right tabular-nums text-red-500 font-medium">{c.refused}</span>

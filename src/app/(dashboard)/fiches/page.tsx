@@ -151,6 +151,8 @@ export default function FichesPage() {
 
   // Panneau filtres avancés (référents, commerciaux, ville, département, dates)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Stable — ne change pas entre les renders
   const supabase = useMemo(() => createClient(), []);
@@ -231,6 +233,7 @@ export default function FichesPage() {
   const fetchFiches = useCallback(async (pageToLoad = 0, append = false) => {
     if (!profile) return;
     const version = ++fetchVersionRef.current;
+    if (!append) setHasMore(false);
 
     // Calculé ici pour éviter les closures périmées
     const role = profile.role;
@@ -357,6 +360,8 @@ export default function FichesPage() {
       // Tout mettre à jour en un seul batch → un seul rendu
       const newFiches = append ? [...fiches, ...rows] : rows;
       setFiches(newFiches);
+      setHasMore(rows.length === PAGE_SIZE);
+      if (append) setLoadingMore(false);
       if (!append) setVisibleCount(VISIBLE_INIT);
       setFetchError(null);
       if (!append && fichesCacheKey) {
@@ -941,7 +946,7 @@ export default function FichesPage() {
         )}
 
         {!loading && fiches.length > VISIBLE_INIT && (
-          <div className="flex justify-center gap-3">
+          <div className="flex justify-center gap-3 flex-wrap">
             {visibleCount < fiches.length ? (
               <Button
                 variant="ghost"
@@ -951,6 +956,23 @@ export default function FichesPage() {
               >
                 <ChevronDown className="w-3.5 h-3.5" />
                 Voir plus ({fiches.length - visibleCount})
+              </Button>
+            ) : null}
+            {visibleCount >= fiches.length && hasMore ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loadingMore}
+                onClick={async () => {
+                  setLoadingMore(true);
+                  const nextPage = Math.floor(fiches.length / PAGE_SIZE);
+                  await fetchFiches(nextPage, true);
+                  setVisibleCount((v) => v + PAGE_SIZE);
+                }}
+                className="rounded-xl gap-1.5 text-xs"
+              >
+                {loadingMore ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                Charger 100 de plus
               </Button>
             ) : null}
             {visibleCount > VISIBLE_INIT ? (

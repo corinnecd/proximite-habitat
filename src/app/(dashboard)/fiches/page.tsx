@@ -153,6 +153,7 @@ export default function FichesPage() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Stable — ne change pas entre les renders
   const supabase = useMemo(() => createClient(), []);
@@ -175,6 +176,16 @@ export default function FichesPage() {
     } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveStatus]);
+
+  const fichesByStatus = useMemo(() => {
+    if (statusFilter !== "ALL") return null;
+    const groups: Partial<Record<string, FicheRow[]>> = {};
+    for (const f of fiches) {
+      if (!groups[f.status]) groups[f.status] = [];
+      groups[f.status]!.push(f);
+    }
+    return groups;
+  }, [fiches, statusFilter]);
 
   const visibleStatuses: FicheStatus[] = isReferent
     ? ["BROUILLON", "SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "RDV_TECHNICIEN", "INSTALLEE", "REFUSEE", "ARCHIVEE"]
@@ -362,7 +373,7 @@ export default function FichesPage() {
       setFiches(newFiches);
       setHasMore(rows.length === PAGE_SIZE);
       if (append) setLoadingMore(false);
-      if (!append) setVisibleCount(VISIBLE_INIT);
+      if (!append) { setVisibleCount(VISIBLE_INIT); setExpandedGroups(new Set()); }
       setFetchError(null);
       if (!append && fichesCacheKey) {
         try { localStorage.setItem(fichesCacheKey, JSON.stringify({ fiches: newFiches.slice(0, 30), statusCounts: freshCounts, firstFicheDate: freshFirstDate })); } catch { /* ignore */ }
@@ -890,62 +901,125 @@ export default function FichesPage() {
             />
           </div>
         ) : (
-          <div className="space-y-5">
-            {fiches.slice(0, visibleCount).map((fiche) => {
-              const s = STATUS_CARD_STYLES[fiche.status];
-              const StatusIcon = s.Icon;
-              const isHighlighted = highlightIds.has(fiche.id);
-              return (
-                <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
-                  <div
-                    className={`flex items-center gap-4 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_8px_rgba(0,0,0,0.03)] border-l-4 ${s.border} rounded-2xl px-5 py-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer ${isHighlighted ? "ring-2 ring-[#F97316] bg-[#F97316]/5 animate-[highlightPulse_1.5s_ease-in-out]" : ""}`}
-                    style={{
-                      animation: isHighlighted ? "highlightPulse 1.5s ease-in-out" : undefined,
-                    }}
-                  >
-                    <div className={`w-10 h-10 rounded-xl ${s.iconBg} flex items-center justify-center shrink-0`}>
-                      <StatusIcon className={`w-5 h-5 ${s.icon}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-foreground truncate">
-                        {fiche.prospect_prenom} {fiche.prospect_nom}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                        {fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville} ${fiche.prospect_cp ?? ""}` : ""}
-                      </p>
-                      {isAdminOrDG && fiche.created_by_profile && (
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                          Saisi par{" "}
-                          <span className="font-medium text-foreground/70">
-                            {fiche.created_by_profile.first_name} {fiche.created_by_profile.last_name}
-                          </span>
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                      {fiche.assigned_to_profile && (
-                        <span className="text-xs text-muted-foreground hidden md:block">
-                          → {fiche.assigned_to_profile.first_name} {fiche.assigned_to_profile.last_name}
-                        </span>
-                      )}
-                      <FicheStatusBadge status={fiche.status} />
-                      {isHighlighted && (
-                        <span className="text-[10px] font-semibold text-[#F97316] bg-[#F97316]/10 px-2 py-0.5 rounded-full whitespace-nowrap">
-                          Antérieure
-                        </span>
-                      )}
-                      <span className="text-xs text-muted-foreground hidden sm:block">
-                        {new Date(fiche.created_at).toLocaleDateString("fr-FR")}
+          <div className={statusFilter === "ALL" ? "space-y-6" : "space-y-5"}>
+            {statusFilter === "ALL" && fichesByStatus ? (
+              visibleStatuses.filter(s => fichesByStatus[s]?.length).map(s => {
+                const group = fichesByStatus[s]!;
+                const isExpanded = expandedGroups.has(s);
+                const shown = isExpanded ? group : group.slice(0, 5);
+                const remaining = group.length - 5;
+                return (
+                  <div key={s}>
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {statusLabel(s)}
+                      </span>
+                      <span className="text-xs bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-medium">
+                        {group.length}
                       </span>
                     </div>
+                    <div className="space-y-3">
+                      {shown.map((fiche) => {
+                        const st = STATUS_CARD_STYLES[fiche.status];
+                        const StatusIcon = st.Icon;
+                        const isHighlighted = highlightIds.has(fiche.id);
+                        return (
+                          <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
+                            <div
+                              className={`flex items-center gap-4 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_8px_rgba(0,0,0,0.03)] border-l-4 ${st.border} rounded-2xl px-5 py-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer ${isHighlighted ? "ring-2 ring-[#F97316] bg-[#F97316]/5 animate-[highlightPulse_1.5s_ease-in-out]" : ""}`}
+                              style={{ animation: isHighlighted ? "highlightPulse 1.5s ease-in-out" : undefined }}
+                            >
+                              <div className={`w-10 h-10 rounded-xl ${st.iconBg} flex items-center justify-center shrink-0`}>
+                                <StatusIcon className={`w-5 h-5 ${st.icon}`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm text-foreground truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5 truncate">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville} ${fiche.prospect_cp ?? ""}` : ""}</p>
+                                {isAdminOrDG && fiche.created_by_profile && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">Saisi par <span className="font-medium text-foreground/70">{fiche.created_by_profile.first_name} {fiche.created_by_profile.last_name}</span></p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 shrink-0">
+                                {fiche.assigned_to_profile && <span className="text-xs text-muted-foreground hidden md:block">→ {fiche.assigned_to_profile.first_name} {fiche.assigned_to_profile.last_name}</span>}
+                                <FicheStatusBadge status={fiche.status} />
+                                {isHighlighted && <span className="text-[10px] font-semibold text-[#F97316] bg-[#F97316]/10 px-2 py-0.5 rounded-full whitespace-nowrap">Antérieure</span>}
+                                <span className="text-xs text-muted-foreground hidden sm:block">{new Date(fiche.created_at).toLocaleDateString("fr-FR")}</span>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                    {group.length > 5 && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedGroups(prev => {
+                          const next = new Set(prev);
+                          if (isExpanded) next.delete(s); else next.add(s);
+                          return next;
+                        })}
+                        className="mt-2 ml-1 text-xs text-primary hover:underline"
+                      >
+                        {isExpanded ? "Voir moins" : `Voir plus (${remaining} restant${remaining > 1 ? "s" : ""})`}
+                      </button>
+                    )}
                   </div>
-                </Link>
-              );
-            })}
+                );
+              })
+            ) : (
+              fiches.slice(0, visibleCount).map((fiche) => {
+                const s = STATUS_CARD_STYLES[fiche.status];
+                const StatusIcon = s.Icon;
+                const isHighlighted = highlightIds.has(fiche.id);
+                return (
+                  <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
+                    <div
+                      className={`flex items-center gap-4 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_8px_rgba(0,0,0,0.03)] border-l-4 ${s.border} rounded-2xl px-5 py-4 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer ${isHighlighted ? "ring-2 ring-[#F97316] bg-[#F97316]/5 animate-[highlightPulse_1.5s_ease-in-out]" : ""}`}
+                      style={{ animation: isHighlighted ? "highlightPulse 1.5s ease-in-out" : undefined }}
+                    >
+                      <div className={`w-10 h-10 rounded-xl ${s.iconBg} flex items-center justify-center shrink-0`}>
+                        <StatusIcon className={`w-5 h-5 ${s.icon}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-foreground truncate">{fiche.prospect_prenom} {fiche.prospect_nom}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{fiche.reference}{fiche.prospect_ville ? ` · ${fiche.prospect_ville} ${fiche.prospect_cp ?? ""}` : ""}</p>
+                        {isAdminOrDG && fiche.created_by_profile && (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">Saisi par <span className="font-medium text-foreground/70">{fiche.created_by_profile.first_name} {fiche.created_by_profile.last_name}</span></p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 shrink-0">
+                        {fiche.assigned_to_profile && <span className="text-xs text-muted-foreground hidden md:block">→ {fiche.assigned_to_profile.first_name} {fiche.assigned_to_profile.last_name}</span>}
+                        <FicheStatusBadge status={fiche.status} />
+                        {isHighlighted && <span className="text-[10px] font-semibold text-[#F97316] bg-[#F97316]/10 px-2 py-0.5 rounded-full whitespace-nowrap">Antérieure</span>}
+                        <span className="text-xs text-muted-foreground hidden sm:block">{new Date(fiche.created_at).toLocaleDateString("fr-FR")}</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })
+            )}
           </div>
         )}
 
-        {!loading && fiches.length > VISIBLE_INIT && (
+        {!loading && statusFilter === "ALL" && hasMore && (
+          <div className="flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loadingMore}
+              onClick={async () => {
+                setLoadingMore(true);
+                const nextPage = Math.floor(fiches.length / PAGE_SIZE);
+                await fetchFiches(nextPage, true);
+              }}
+              className="rounded-xl gap-1.5 text-xs"
+            >
+              {loadingMore ? <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              Charger 100 de plus
+            </Button>
+          </div>
+        )}
+        {!loading && statusFilter !== "ALL" && fiches.length > VISIBLE_INIT && (
           <div className="flex justify-center gap-3 flex-wrap">
             {visibleCount < fiches.length ? (
               <Button

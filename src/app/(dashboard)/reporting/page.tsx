@@ -29,7 +29,7 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface StatusCount { status: FicheStatus; count: number; }
-interface ReferentRow { name: string; total: number; submitted: number; accepted: number; ca: number; }
+interface ReferentRow { id: string; name: string; total: number; submitted: number; accepted: number; ca: number; }
 interface CommercialRow { id: string; name: string; assigned: number; accepted: number; refused: number; rate: number; ca: number; }
 interface VilleRow { ville: string; accepted: number; refused: number; total: number; rate: number; }
 interface WeeklyPoint { label: string; creees: number; acceptees: number; }
@@ -254,7 +254,7 @@ export default function ReportingPage() {
         const key = f.created_by;
         if (!refMap[key]) {
           const name = profileNameMap[key] ?? "Inconnu";
-          refMap[key] = { name, total: 0, submitted: 0, accepted: 0, ca: 0 };
+          refMap[key] = { id: key, name, total: 0, submitted: 0, accepted: 0, ca: 0 };
         }
         refMap[key].total++;
         refMap[key].submitted++;
@@ -931,7 +931,7 @@ export default function ReportingPage() {
                       <div key={p.name} className="grid grid-cols-[1fr_50px_50px_50px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="w-5 text-center text-xs font-bold text-muted-foreground shrink-0">{origIndex + 1}</span>
-                          <span className="text-sm font-medium truncate">{p.name}</span>
+                          <a href={`/reporting/referent/${p.id}`} className="text-sm font-medium truncate hover:text-emerald-600 hover:underline transition-colors">{p.name}</a>
                         </div>
                         <span className="text-sm text-right tabular-nums text-muted-foreground">{p.total}</span>
                         <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{p.accepted}</span>

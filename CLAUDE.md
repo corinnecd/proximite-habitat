@@ -1,5 +1,19 @@
 @AGENTS.md
 
+# Suivi des modifications (MODIFICATIONS.md)
+
+## Règle obligatoire
+
+**En fin de session, ou après toute série de modifications significatives (au moins une fois par jour de travail), ajouter une synthèse datée en tête de `MODIFICATIONS.md`.**
+
+- Format : nouvelle section `## AAAA-MM-JJ — Titre court`, regroupée par thème, avec les fichiers touchés
+- Objectif : permettre un retour arrière précis (savoir à partir de quelle date/commit revenir en arrière) et garder un historique complet et lisible du projet
+- Insérer la nouvelle section juste après le titre principal, avant les sections précédentes (ordre antéchronologique)
+
+## En début de nouvelle conversation sur ce projet
+
+**Lire `MODIFICATIONS.md` en priorité** (les dernières sections en tête) pour se resynchroniser sur l'état du projet et la dernière session de travail, avant de redemander du contexte à l'utilisateur. Cela minimise la consommation de tokens et évite de faire répéter le contexte.
+
 # Règles de chargement des pages (UX zéro-flash)
 
 ## Principe fondamental

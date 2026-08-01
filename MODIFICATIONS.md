@@ -1,5 +1,26 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-01 — Reporting direction & Fiches (ajustements UX)
+
+### Navigation reporting
+- Clic sur un nom de commercial/référent dans `/reporting` (direction) : ouverture d'un dialog de confirmation ("Vous allez accéder au tableau de bord reporting de [Nom]…") avant de naviguer vers le dashboard individuel — `src/app/(dashboard)/reporting/page.tsx`
+- Bouton "Retour" sur les pages `reporting/commercial/[id]` et `reporting/referent/[id]` → renommé "Retour au Tableau de Bord Direction", navigue directement vers `/reporting`
+
+### Page Fiches
+- Pastille numérique du bouton "Antérieures" : recalculée pour ne compter que les fiches ARCHIVÉE (au lieu de toutes les fiches non mises à jour depuis le trimestre), puis supprimée entièrement — `src/app/(dashboard)/fiches/page.tsx`
+
+### Reporting — Taux (Acceptation / Refus / En cours)
+- Cartes réordonnées : Acceptation → Refus → En cours (alignement sur l'ordre du tableau de bord)
+- Dénominateur (`baseActive`) aligné sur le calcul du tableau de bord (exclusion de RDV_TECHNICIEN et INSTALLEE) : les 3 taux somment désormais à 100%
+- Arrondi "plus grand reste" (`roundToHundred`) appliqué aux blocs "Analyse des refus" et "Analyse Globale des Acceptations" pour que la somme des pourcentages affichés fasse toujours exactement 100%
+
+### Reporting — nouveau bloc "Analyse Globale des Acceptations"
+- Donut + 4 cartes détaillant le parcours d'acceptation : Acceptation client (ACCEPTEE), Attente acceptation client (RETRACTATION), RDV Technicien planifié (RDV_TECHNICIEN), Installation réalisée (INSTALLEE) — même pattern visuel que le bloc refus existant
+
+### Reporting — libellés & couleurs
+- Tableau "Ventes globales par référent" renommé "Nombre de fiches (globales) par référent"
+- Palette de couleurs du donut "Répartition globale par statut" revue pour éliminer les doublons visuels : VALIDEE (indigo) désormais distinct d'ACCEPTEE (émeraude), RETRACTATION (rose) distinct de RDV_TECHNICIEN (violet), RDV_A_REPRENDRE (jaune) distinct d'AFFECTEE (orange)
+
 ## 2026-06-23/24 — Multi-société & succursales (Direction Générale)
 
 > Objectif : permettre à une **société mère** de regrouper plusieurs **succursales**

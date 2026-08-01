@@ -37,6 +37,16 @@ interface VilleRow { ville: string; accepted: number; refused: number; total: nu
 interface WeeklyPoint { label: string; creees: number; acceptees: number; }
 interface BranchRow { orgId: string; total: number; accepted: number; refused: number; ca: number; rate: number; }
 
+function roundToHundred(values: number[], total: number): number[] {
+  if (total === 0) return values.map(() => 0);
+  const raw = values.map((v) => (v / total) * 100);
+  const floored = raw.map((r) => Math.floor(r));
+  let diff = 100 - floored.reduce((a, b) => a + b, 0);
+  const remainders = raw.map((r, i) => ({ i, r: r - floored[i] })).sort((a, b) => b.r - a.r);
+  for (let k = 0; k < diff; k++) floored[remainders[k].i]++;
+  return floored;
+}
+
 // ── Palette statuts ───────────────────────────────────────────────────────────
 const STATUS_COLORS_HEX: Record<FicheStatus, string> = {
   BROUILLON: "#94a3b8", SOUMISE: "#3b82f6", VALIDEE: "#10b981",
@@ -977,9 +987,14 @@ export default function ReportingPage() {
             ANNULATION: { bg: "bg-amber-50 dark:bg-amber-950/20", text: "text-amber-700 dark:text-amber-300", bar: "bg-amber-500", icon: "📞" },
             REFUS_CLASSIQUE: { bg: "bg-red-50 dark:bg-red-950/20", text: "text-red-700 dark:text-red-300", bar: "bg-red-500", icon: "✋" },
           };
-          const refusChartData = (Object.keys(MOTIF_REFUS_LABELS) as MotifRefus[])
+          const allMotifs = Object.keys(MOTIF_REFUS_LABELS) as MotifRefus[];
+          const motifPctByKey: Record<string, number> = {};
+          roundToHundred(allMotifs.map((m) => motifRefusCounts[m]), refused).forEach((pct, i) => {
+            motifPctByKey[allMotifs[i]] = pct;
+          });
+          const refusChartData = allMotifs
             .filter((m) => motifRefusCounts[m] > 0)
-            .map((m) => ({ name: MOTIF_REFUS_LABELS[m], value: motifRefusCounts[m], fill: MOTIF_COLORS_HEX[m] }));
+            .map((m) => ({ name: MOTIF_REFUS_LABELS[m], value: motifRefusCounts[m], fill: MOTIF_COLORS_HEX[m], pct: motifPctByKey[m] }));
 
           return (
             <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
@@ -1022,24 +1037,21 @@ export default function ReportingPage() {
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-1">
-                    {refusChartData.map((entry) => {
-                      const pct = refused > 0 ? Math.round((entry.value / refused) * 100) : 0;
-                      return (
-                        <div key={entry.name} className="flex items-center gap-1.5 text-xs">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.fill }} />
-                          <span className="text-muted-foreground">{entry.name}</span>
-                          <span className="font-bold">{pct}%</span>
-                        </div>
-                      );
-                    })}
+                    {refusChartData.map((entry) => (
+                      <div key={entry.name} className="flex items-center gap-1.5 text-xs">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.fill }} />
+                        <span className="text-muted-foreground">{entry.name}</span>
+                        <span className="font-bold">{entry.pct}%</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
                 {/* Détail par type */}
                 <div className="space-y-3">
-                  {(Object.keys(MOTIF_REFUS_LABELS) as MotifRefus[]).map((motif) => {
+                  {allMotifs.map((motif) => {
                     const count = motifRefusCounts[motif];
-                    const pctRefus = refused > 0 ? Math.round((count / refused) * 100) : 0;
+                    const pctRefus = motifPctByKey[motif];
                     const pctTotal = totalFiches > 0 ? Math.round((count / totalFiches) * 100) : 0;
                     const c = MOTIF_CARD_COLORS[motif];
                     return (
@@ -1079,9 +1091,13 @@ export default function ReportingPage() {
             ACCEPTEE: accepted, RETRACTATION: retractation, RDV_TECHNICIEN: rdvTechnicien, INSTALLEE: installees,
           };
           const totalAccept = accepted + retractation + rdvTechnicien + installees;
+          const acceptPctByKey: Record<string, number> = {};
+          roundToHundred(ACCEPT_STATUSES.map((s) => acceptCounts[s.key]), totalAccept).forEach((pct, i) => {
+            acceptPctByKey[ACCEPT_STATUSES[i].key] = pct;
+          });
           const acceptChartData = ACCEPT_STATUSES
             .filter((s) => acceptCounts[s.key] > 0)
-            .map((s) => ({ name: s.label, value: acceptCounts[s.key], fill: s.color }));
+            .map((s) => ({ name: s.label, value: acceptCounts[s.key], fill: s.color, pct: acceptPctByKey[s.key] }));
 
           return (
             <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
@@ -1123,23 +1139,20 @@ export default function ReportingPage() {
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-1">
-                    {acceptChartData.map((entry) => {
-                      const pct = totalAccept > 0 ? Math.round((entry.value / totalAccept) * 100) : 0;
-                      return (
-                        <div key={entry.name} className="flex items-center gap-1.5 text-xs">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.fill }} />
-                          <span className="text-muted-foreground">{entry.name}</span>
-                          <span className="font-bold">{pct}%</span>
-                        </div>
-                      );
-                    })}
+                    {acceptChartData.map((entry) => (
+                      <div key={entry.name} className="flex items-center gap-1.5 text-xs">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.fill }} />
+                        <span className="text-muted-foreground">{entry.name}</span>
+                        <span className="font-bold">{entry.pct}%</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
                 <div className="space-y-3">
                   {ACCEPT_STATUSES.map((s) => {
                     const count = acceptCounts[s.key];
-                    const pctAccept = totalAccept > 0 ? Math.round((count / totalAccept) * 100) : 0;
+                    const pctAccept = acceptPctByKey[s.key];
                     const pctTotal = totalFiches > 0 ? Math.round((count / totalFiches) * 100) : 0;
                     return (
                       <div key={s.key} className={`rounded-xl p-4 ${s.bg} border border-transparent hover:border-border/50 transition-all`}>

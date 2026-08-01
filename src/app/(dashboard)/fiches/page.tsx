@@ -400,9 +400,8 @@ export default function FichesPage() {
       const quarterStart = new Date(now.getFullYear(), q * 3, 1);
       const pad = (n: number) => String(n).padStart(2, "0");
       const qFrom = `${quarterStart.getFullYear()}-${pad(quarterStart.getMonth() + 1)}-${pad(quarterStart.getDate())}`;
-      let aq = supabase.from("fiches").select("id");
+      let aq = supabase.from("fiches").select("id").eq("status", "ARCHIVEE");
       if (isCommercial && profile.id) aq = aq.eq("assigned_to", profile.id);
-      else aq = aq.neq("status", "BROUILLON");
       if (branchFilter) aq = aq.eq("organization_id", branchFilter);
       aq = aq.lt("updated_at", `${qFrom}T00:00:00Z`).limit(50);
       const { data } = await aq;

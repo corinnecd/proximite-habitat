@@ -1067,6 +1067,105 @@ export default function ReportingPage() {
           );
         })()}
 
+        {/* ── Détail du parcours acceptation ──────────────────────────── */}
+        {(accepted + retractation + rdvTechnicien + installees) > 0 && (() => {
+          const ACCEPT_STATUSES = [
+            { key: "ACCEPTEE", label: "Acceptation client", icon: "✅", color: "#10b981", bg: "bg-emerald-50 dark:bg-emerald-950/20", text: "text-emerald-700 dark:text-emerald-300", bar: "bg-emerald-500" },
+            { key: "RETRACTATION", label: "Attente acceptation client", icon: "⏳", color: "#f59e0b", bg: "bg-amber-50 dark:bg-amber-950/20", text: "text-amber-700 dark:text-amber-300", bar: "bg-amber-500" },
+            { key: "RDV_TECHNICIEN", label: "RDV Technicien planifié", icon: "🔧", color: "#3b82f6", bg: "bg-blue-50 dark:bg-blue-950/20", text: "text-blue-700 dark:text-blue-300", bar: "bg-blue-500" },
+            { key: "INSTALLEE", label: "Installation réalisée", icon: "🏠", color: "#8b5cf6", bg: "bg-violet-50 dark:bg-violet-950/20", text: "text-violet-700 dark:text-violet-300", bar: "bg-violet-500" },
+          ] as const;
+          const acceptCounts: Record<string, number> = {
+            ACCEPTEE: accepted, RETRACTATION: retractation, RDV_TECHNICIEN: rdvTechnicien, INSTALLEE: installees,
+          };
+          const totalAccept = accepted + retractation + rdvTechnicien + installees;
+          const acceptChartData = ACCEPT_STATUSES
+            .filter((s) => acceptCounts[s.key] > 0)
+            .map((s) => ({ name: s.label, value: acceptCounts[s.key], fill: s.color }));
+
+          return (
+            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">{isAllPeriod ? "Détail global du parcours acceptation" : "Détail du parcours acceptation"}{periodSuffix}</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    {totalAccept} fiche{totalAccept > 1 ? "s" : ""} dans le parcours d&apos;acceptation — {acceptanceRate}% du total actif
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col items-center">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={acceptChartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={45}
+                        outerRadius={75}
+                        paddingAngle={3}
+                        dataKey="value"
+                        labelLine={false}
+                        label={false}
+                      >
+                        {acceptChartData.map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} stroke="transparent" />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: unknown, name: unknown) => [`${value} fiche${Number(value) > 1 ? "s" : ""}`, String(name)]}
+                        contentStyle={{ borderRadius: 12, fontSize: 13, border: "1px solid #e5e7eb" }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-1">
+                    {acceptChartData.map((entry) => {
+                      const pct = totalAccept > 0 ? Math.round((entry.value / totalAccept) * 100) : 0;
+                      return (
+                        <div key={entry.name} className="flex items-center gap-1.5 text-xs">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.fill }} />
+                          <span className="text-muted-foreground">{entry.name}</span>
+                          <span className="font-bold">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {ACCEPT_STATUSES.map((s) => {
+                    const count = acceptCounts[s.key];
+                    const pctAccept = totalAccept > 0 ? Math.round((count / totalAccept) * 100) : 0;
+                    const pctTotal = totalFiches > 0 ? Math.round((count / totalFiches) * 100) : 0;
+                    return (
+                      <div key={s.key} className={`rounded-xl p-4 ${s.bg} border border-transparent hover:border-border/50 transition-all`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{s.icon}</span>
+                            <span className="text-sm font-semibold">{s.label}</span>
+                          </div>
+                          <span className={`text-xl font-bold ${s.text}`}>{count}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden mb-2">
+                          <div className={`h-full rounded-full ${s.bar} transition-all duration-500`} style={{ width: `${pctAccept}%` }} />
+                        </div>
+                        <div className="flex justify-between text-[11px] text-muted-foreground">
+                          <span><strong className={s.text}>{pctAccept}%</strong> du parcours</span>
+                          <span><strong>{pctTotal}%</strong> du total fiches</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* ── Évolution semaine par semaine (courbe 12 semaines) ──────────── */}
         <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
           <div className="flex items-center gap-3 mb-5">

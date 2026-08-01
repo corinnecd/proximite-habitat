@@ -396,8 +396,8 @@ export default function ReportingPage() {
   const installees    = statusCounts.find((s) => s.status === "INSTALLEE")?.count ?? 0;
   // En cours = tout sauf acceptees, refusées, archivées
   const inProgress    = soumises + validees + affectees + retractation;
-  // Dénominateur commun : fiches actives hors archivées → les 3 taux somment à 100%
-  const baseActive    = accepted + refused + inProgress + rdvTechnicien + installees;
+  // Dénominateur commun hors archivées → les 3 taux somment à 100%
+  const baseActive    = accepted + refused + inProgress;
   const acceptanceRate = baseActive > 0 ? Math.round((accepted / baseActive) * 100) : 0;
   const refusalRate    = baseActive > 0 ? Math.round((refused / baseActive) * 100) : 0;
   const inProgressRate = baseActive > 0 ? Math.round((inProgress / baseActive) * 100) : 0;
@@ -535,8 +535,15 @@ export default function ReportingPage() {
             border="border-l-blue-500" loading={loading}
           />
           <KpiCard
+            label={(isAllPeriod ? (isCommercial ? "Mon taux global d'acceptation" : "Taux global d'acceptation") : (isCommercial ? "Mon taux d'acceptation" : "Taux d'acceptation global")) + periodSuffix}
+            value={`${acceptanceRate}%`}
+            sub={`${accepted} acceptée${accepted > 1 ? "s" : ""} / ${baseActive} active${baseActive > 1 ? "s" : ""}`}
+            Icon={TrendingUp} iconBg="bg-emerald-100 dark:bg-emerald-900/30" iconColor="text-emerald-600"
+            border="border-l-emerald-500" loading={loading}
+          />
+          <KpiCard
             label={(isAllPeriod ? "Taux global de refus" : "Taux de refus") + periodSuffix} value={`${refusalRate}%`}
-            sub={`${refused} refusée${refused > 1 ? "s" : ""} / ${baseActive} affectée${baseActive > 1 ? "s" : ""}`}
+            sub={`${refused} refusée${refused > 1 ? "s" : ""} / ${baseActive} active${baseActive > 1 ? "s" : ""}`}
             Icon={XCircle} iconBg="bg-red-100 dark:bg-red-900/30" iconColor="text-red-500"
             border="border-l-red-500" loading={loading}
           />
@@ -545,13 +552,6 @@ export default function ReportingPage() {
             sub={`${inProgress} fiche${inProgress > 1 ? "s" : ""} · à valider, validées, affectées, attente client`}
             Icon={Clock} iconBg="bg-orange-100 dark:bg-orange-900/30" iconColor="text-orange-600"
             border="border-l-orange-500" loading={loading}
-          />
-          <KpiCard
-            label={(isAllPeriod ? (isCommercial ? "Mon taux global d'acceptation" : "Taux global d'acceptation") : (isCommercial ? "Mon taux d'acceptation" : "Taux d'acceptation global")) + periodSuffix}
-            value={`${acceptanceRate}%`}
-            sub={isCommercial ? "Mes fiches acceptées / affectées" : "Toutes les fiches"}
-            Icon={TrendingUp} iconBg="bg-emerald-100 dark:bg-emerald-900/30" iconColor="text-emerald-600"
-            border="border-l-emerald-500" loading={loading}
           />
           <KpiCard
             label={"RDV Technicien planifiés" + periodSuffix}

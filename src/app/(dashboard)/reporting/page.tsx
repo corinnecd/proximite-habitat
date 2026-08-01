@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { KpiCard, CustomTooltip } from "@/components/reporting/KpiCard";
 import { ConversionFunnel } from "@/components/reporting/ConversionFunnel";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -89,6 +91,7 @@ export default function ReportingPage() {
   const [motifRefusCounts, setMotifRefusCounts] = useState<Record<MotifRefus, number>>({ RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 });
   const [caTotal, setCaTotal] = useState(0);
   const [branchStats, setBranchStats] = useState<BranchRow[]>([]);
+  const [confirmNav, setConfirmNav] = useState<{ type: "commercial" | "referent"; id: string; name: string } | null>(null);
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
@@ -704,7 +707,7 @@ export default function ReportingPage() {
               <div className={`space-y-0 overflow-y-auto ${showAllCommerciaux || commSearch ? "max-h-[400px]" : "max-h-[250px]"}`}>
                 {(commSearch ? filteredCommerciaux : (showAllCommerciaux ? commerciaux : commerciaux.slice(0, 5))).map((c) => (
                   <div key={c.name} className="grid grid-cols-[1fr_48px_48px_48px_70px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1.5 sm:gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
-                    <a href={`/reporting/commercial/${c.id}`} className="text-sm font-medium truncate hover:text-[#F97316] hover:underline transition-colors">{c.name}</a>
+                    <button type="button" onClick={() => setConfirmNav({ type: "commercial", id: c.id, name: c.name })} className="text-sm font-medium truncate hover:text-[#F97316] hover:underline transition-colors text-left">{c.name}</button>
                     <span className="text-sm text-right tabular-nums text-muted-foreground">{c.assigned}</span>
                     <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{c.accepted}</span>
                     <span className="text-sm text-right tabular-nums text-red-500 font-medium">{c.refused}</span>
@@ -931,7 +934,7 @@ export default function ReportingPage() {
                       <div key={p.name} className="grid grid-cols-[1fr_50px_50px_50px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="w-5 text-center text-xs font-bold text-muted-foreground shrink-0">{origIndex + 1}</span>
-                          <a href={`/reporting/referent/${p.id}`} className="text-sm font-medium truncate hover:text-emerald-600 hover:underline transition-colors">{p.name}</a>
+                          <button type="button" onClick={() => setConfirmNav({ type: "referent", id: p.id, name: p.name })} className="text-sm font-medium truncate hover:text-emerald-600 hover:underline transition-colors text-left">{p.name}</button>
                         </div>
                         <span className="text-sm text-right tabular-nums text-muted-foreground">{p.total}</span>
                         <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{p.accepted}</span>
@@ -1158,6 +1161,37 @@ export default function ReportingPage() {
         )}
         </div>
       </div>
+
+      <Dialog open={!!confirmNav} onOpenChange={(open) => { if (!open) setConfirmNav(null); }}>
+        <DialogContent showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>
+              Accéder au tableau de bord {confirmNav?.type === "commercial" ? "commercial" : "référent"}
+            </DialogTitle>
+            <DialogDescription>
+              Vous allez accéder au tableau de bord reporting de{" "}
+              <span className="font-semibold text-foreground">{confirmNav?.name}</span>{" "}
+              ({confirmNav?.type === "commercial" ? "commercial" : "référent"}).
+              Confirmez-vous cet accès ?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>Annuler</DialogClose>
+            <Button
+              onClick={() => {
+                if (!confirmNav) return;
+                const url = confirmNav.type === "commercial"
+                  ? `/reporting/commercial/${confirmNav.id}`
+                  : `/reporting/referent/${confirmNav.id}`;
+                setConfirmNav(null);
+                router.push(url);
+              }}
+            >
+              Accéder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

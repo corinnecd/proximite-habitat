@@ -8,10 +8,11 @@ import { KpiCard } from "@/components/reporting/KpiCard";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel } from "@/lib/periods";
-import { STATUS_LABELS } from "@/lib/permissions";
+import { MOTIF_REFUS_LABELS, STATUS_LABELS } from "@/lib/permissions";
 import {
   TrendingUp, XCircle, Euro, FileText, ArrowLeft, CalendarDays, RefreshCw,
 } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import type { FicheStatus } from "@/types/database";
@@ -40,6 +41,7 @@ interface FicheRow {
   prospect_prenom: string | null;
   prospect_ville: string | null;
   montant_ht: number | null;
+  motif_refus: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -63,6 +65,7 @@ export default function CommercialDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("ALL");
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const isAdminOrDG = currentProfile?.role === "DIRECTION" || currentProfile?.role === "SUPER_ADMIN" || currentProfile?.role === "DIRECTION_GENERALE";
 
@@ -93,7 +96,7 @@ export default function CommercialDashboardPage() {
     const dates = getPeriodDates(period);
     let q = supabase
       .from("fiches")
-      .select("id, reference, status, prospect_nom, prospect_prenom, prospect_ville, montant_ht, created_at, updated_at")
+      .select("id, reference, status, prospect_nom, prospect_prenom, prospect_ville, montant_ht, motif_refus, created_at, updated_at")
       .eq("assigned_to", id)
       .neq("status", "BROUILLON")
       .order("updated_at", { ascending: false });
@@ -106,6 +109,7 @@ export default function CommercialDashboardPage() {
     const freshFiches = (data as FicheRow[]) ?? [];
     setFiches(freshFiches);
     setLoading(false);
+    setExpandedGroups(new Set());
     try {
       localStorage.setItem(`comm_dash_${id}_${period}`, JSON.stringify({
         profile: profileRes.data,
@@ -134,7 +138,24 @@ export default function CommercialDashboardPage() {
   const caTotal = fiches.filter(f => f.status === "ACCEPTEE").reduce((s, f) => s + Number(f.montant_ht ?? 0), 0);
   const periodSuffix = getPeriodLabel(periodFilter) ? ` (${getPeriodLabel(periodFilter)})` : "";
 
-  const recentFiches = fiches.slice(0, 20);
+  const fichesByStatus = useMemo(() => {
+    const groups: Partial<Record<string, FicheRow[]>> = {};
+    for (const f of fiches) {
+      if (!groups[f.status]) groups[f.status] = [];
+      groups[f.status]!.push(f);
+    }
+    return groups;
+  }, [fiches]);
+
+  const motifCounts = useMemo(() => {
+    const c = { RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 };
+    for (const f of fiches) {
+      if (f.status === "REFUSEE" && f.motif_refus && f.motif_refus in c) {
+        c[f.motif_refus as keyof typeof c]++;
+      }
+    }
+    return c;
+  }, [fiches]);
 
   if (!currentProfile || !isAdminOrDG) return null;
 
@@ -263,48 +284,152 @@ export default function CommercialDashboardPage() {
           </div>
         )}
 
-        {/* Liste des fiches récentes */}
+        {/* Fiches par statut */}
         <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-sm">Fiches récentes{periodSuffix}</h3>
-            {total > 20 && (
+            <h3 className="font-semibold text-sm">Fiches{periodSuffix}</h3>
+            {total > 0 && (
               <Link href={`/fiches?status=ALL&commercial=${id}`} className="text-xs text-[#F97316] hover:underline">
                 Voir toutes ({total})
               </Link>
             )}
           </div>
-          {loading ? (
-            <div className="space-y-3">
-              {[1,2,3].map(i => <div key={i} className="h-14 rounded-xl bg-muted/40 animate-pulse" />)}
-            </div>
-          ) : recentFiches.length === 0 ? (
+          {fiches.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">Aucune fiche sur cette période.</p>
           ) : (
-            <div className="space-y-2">
-              {recentFiches.map(f => (
-                <Link key={f.id} href={`/fiches/${f.id}`}>
-                  <div className="flex items-center gap-3 rounded-xl border px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{f.prospect_prenom} {f.prospect_nom}</p>
-                      <p className="text-xs text-muted-foreground truncate">{f.reference}{f.prospect_ville ? ` · ${f.prospect_ville}` : ""}</p>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {f.status === "ACCEPTEE" && f.montant_ht && (
-                        <span className="text-xs font-semibold text-emerald-600 hidden sm:block">
-                          {Number(f.montant_ht).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
-                        </span>
-                      )}
-                      <FicheStatusBadge status={f.status} short />
-                      <span className="text-xs text-muted-foreground hidden md:block">
-                        {new Date(f.updated_at).toLocaleDateString("fr-FR")}
+            <div className="space-y-5">
+              {STATUSES.filter(s => fichesByStatus[s]?.length).map(s => {
+                const group = fichesByStatus[s]!;
+                const isExpanded = expandedGroups.has(s);
+                const shown = isExpanded ? group : group.slice(0, 5);
+                const remaining = group.length - 5;
+                return (
+                  <div key={s}>
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {STATUS_BAR[s]?.label ?? STATUS_LABELS[s]}
+                      </span>
+                      <span className="text-xs bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-medium">
+                        {group.length}
                       </span>
                     </div>
+                    <div className="space-y-2">
+                      {shown.map(f => (
+                        <Link key={f.id} href={`/fiches/${f.id}`}>
+                          <div className="flex items-center gap-3 rounded-xl border px-4 py-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{f.prospect_prenom} {f.prospect_nom}</p>
+                              <p className="text-xs text-muted-foreground truncate">{f.reference}{f.prospect_ville ? ` · ${f.prospect_ville}` : ""}</p>
+                            </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              {f.status === "ACCEPTEE" && f.montant_ht && (
+                                <span className="text-xs font-semibold text-emerald-600 hidden sm:block">
+                                  {Number(f.montant_ht).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
+                                </span>
+                              )}
+                              <FicheStatusBadge status={f.status} short />
+                              <span className="text-xs text-muted-foreground hidden md:block">
+                                {new Date(f.updated_at).toLocaleDateString("fr-FR")}
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                    {group.length > 5 && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedGroups(prev => {
+                          const next = new Set(prev);
+                          if (isExpanded) next.delete(s); else next.add(s);
+                          return next;
+                        })}
+                        className="mt-1.5 ml-1 text-xs text-primary hover:underline"
+                      >
+                        {isExpanded ? "Voir moins" : `Voir plus (${remaining} restant${remaining > 1 ? "s" : ""})`}
+                      </button>
+                    )}
                   </div>
-                </Link>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
+
+        {/* Analyse des refus */}
+        {refused > 0 && (() => {
+          const MOTIF_COLORS_HEX: Record<string, string> = { RDC: "#f97316", ANNULATION: "#f59e0b", REFUS_CLASSIQUE: "#ef4444" };
+          const MOTIF_CARD_COLORS: Record<string, { bg: string; text: string; bar: string; icon: string }> = {
+            RDC: { bg: "bg-orange-50 dark:bg-orange-950/20", text: "text-orange-700 dark:text-orange-300", bar: "bg-orange-500", icon: "🚪" },
+            ANNULATION: { bg: "bg-amber-50 dark:bg-amber-950/20", text: "text-amber-700 dark:text-amber-300", bar: "bg-amber-500", icon: "📞" },
+            REFUS_CLASSIQUE: { bg: "bg-red-50 dark:bg-red-950/20", text: "text-red-700 dark:text-red-300", bar: "bg-red-500", icon: "✋" },
+          };
+          const refusChartData = (Object.keys(MOTIF_REFUS_LABELS) as string[])
+            .filter(m => motifCounts[m as keyof typeof motifCounts] > 0)
+            .map(m => ({ name: MOTIF_REFUS_LABELS[m as keyof typeof MOTIF_REFUS_LABELS], value: motifCounts[m as keyof typeof motifCounts], fill: MOTIF_COLORS_HEX[m] }));
+          return (
+            <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                  <XCircle className="w-4 h-4 text-red-500" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Analyse des refus{periodSuffix}</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    {refused} refus sur {baseActive} fiche{baseActive > 1 ? "s" : ""} active{baseActive > 1 ? "s" : ""} — taux de {Math.round((refused / baseActive) * 100)}%
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex flex-col items-center">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie data={refusChartData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value" labelLine={false} label={false}>
+                        {refusChartData.map((entry, i) => <Cell key={i} fill={entry.fill} stroke="transparent" />)}
+                      </Pie>
+                      <Tooltip formatter={(value, name) => [`${value} fiche${Number(value) > 1 ? "s" : ""}`, String(name)]} contentStyle={{ borderRadius: 12, fontSize: 13, border: "1px solid #e5e7eb" }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-1">
+                    {refusChartData.map(entry => (
+                      <div key={entry.name} className="flex items-center gap-1.5 text-xs">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.fill }} />
+                        <span className="text-muted-foreground">{entry.name}</span>
+                        <span className="font-bold">{refused > 0 ? Math.round((entry.value / refused) * 100) : 0}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {(Object.keys(MOTIF_REFUS_LABELS) as string[]).map(motif => {
+                    const count = motifCounts[motif as keyof typeof motifCounts];
+                    const pctRefus = refused > 0 ? Math.round((count / refused) * 100) : 0;
+                    const pctTotal = total > 0 ? Math.round((count / total) * 100) : 0;
+                    const c = MOTIF_CARD_COLORS[motif];
+                    return (
+                      <div key={motif} className={`rounded-xl p-4 ${c.bg} border border-transparent hover:border-border/50 transition-all`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{c.icon}</span>
+                            <span className="text-sm font-semibold">{MOTIF_REFUS_LABELS[motif as keyof typeof MOTIF_REFUS_LABELS]}</span>
+                          </div>
+                          <span className={`text-xl font-bold ${c.text}`}>{count}</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-black/5 dark:bg-white/10 overflow-hidden mb-2">
+                          <div className={`h-full rounded-full ${c.bar} transition-all duration-500`} style={{ width: `${pctRefus}%` }} />
+                        </div>
+                        <div className="flex justify-between text-[11px] text-muted-foreground">
+                          <span><strong className={c.text}>{pctRefus}%</strong> des refus</span>
+                          <span><strong>{pctTotal}%</strong> du total fiches</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
       </div>
     </>

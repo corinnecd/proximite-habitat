@@ -49,16 +49,16 @@ function roundToHundred(values: number[], total: number): number[] {
 
 // ── Palette statuts ───────────────────────────────────────────────────────────
 const STATUS_COLORS_HEX: Record<FicheStatus, string> = {
-  BROUILLON: "#94a3b8", SOUMISE: "#3b82f6", VALIDEE: "#10b981",
-  AFFECTEE: "#f97316", RDV_A_REPRENDRE: "#d97706", ACCEPTEE: "#10b981",
-  RETRACTATION: "#a855f7", RDV_TECHNICIEN: "#7c3aed", INSTALLEE: "#0d9488",
+  BROUILLON: "#94a3b8", SOUMISE: "#3b82f6", VALIDEE: "#6366f1",
+  AFFECTEE: "#f97316", RDV_A_REPRENDRE: "#eab308", ACCEPTEE: "#10b981",
+  RETRACTATION: "#ec4899", RDV_TECHNICIEN: "#a855f7", INSTALLEE: "#14b8a6",
   REFUSEE: "#ef4444", ARCHIVEE: "#cbd5e1",
 };
 
 const STATUS_BAR_COLORS: Record<FicheStatus, string> = {
-  BROUILLON: "bg-slate-400", SOUMISE: "bg-blue-500", VALIDEE: "bg-emerald-500",
-  AFFECTEE: "bg-orange-500", RDV_A_REPRENDRE: "bg-amber-500", ACCEPTEE: "bg-emerald-500",
-  RETRACTATION: "bg-purple-500", RDV_TECHNICIEN: "bg-violet-600", INSTALLEE: "bg-teal-500",
+  BROUILLON: "bg-slate-400", SOUMISE: "bg-blue-500", VALIDEE: "bg-indigo-500",
+  AFFECTEE: "bg-orange-500", RDV_A_REPRENDRE: "bg-yellow-500", ACCEPTEE: "bg-emerald-500",
+  RETRACTATION: "bg-pink-500", RDV_TECHNICIEN: "bg-purple-500", INSTALLEE: "bg-teal-500",
   REFUSEE: "bg-red-500", ARCHIVEE: "bg-slate-300",
 };
 
@@ -881,7 +881,7 @@ export default function ReportingPage() {
                   <Trophy className="w-4 h-4 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">{isCommercial ? (isAllPeriod ? "Ma performance globale" : "Ma performance") : `${isAllPeriod ? "Ventes globales" : "Ventes"} par référent (${referents.length} Référent${referents.length > 1 ? "s" : ""})`}{periodSuffix}</h3>
+                  <h3 className="font-semibold text-sm">{isCommercial ? (isAllPeriod ? "Ma performance globale" : "Ma performance") : `${isAllPeriod ? "Nombre de fiches globales" : "Nombre de fiches"} par référent (${referents.length} Référent${referents.length > 1 ? "s" : ""})`}{periodSuffix}</h3>
                 </div>
               </div>
             </div>

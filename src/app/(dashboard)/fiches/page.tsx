@@ -602,9 +602,6 @@ export default function FichesPage() {
                   >
                     <Archive className="w-3 h-3" />
                     Antérieures
-                    {anterieures.length > 0 && (
-                      <span className="bg-[#F97316]/20 text-[#F97316] text-[10px] font-bold px-1.5 py-0.5 rounded-full">{anterieures.length}</span>
-                    )}
                   </button>
                 </div>
               </div>
@@ -672,13 +669,6 @@ export default function FichesPage() {
                       >
                         <Archive className="w-3.5 h-3.5" />
                         Antérieures
-                        {anterieures.length > 0 && (
-                          <span className="bg-primary/10 text-primary text-xs font-bold px-1.5 py-0.5 rounded-full">{anterieures.length}</span>
-                        )}
-                        <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max max-w-xs px-3 py-2 rounded-lg bg-foreground text-background text-xs leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-50">
-                          {anterieures.length} fiche{anterieures.length > 1 ? "s" : ""} archivée{anterieures.length > 1 ? "s" : ""} au cours du trimestre en cours.
-                          <br />Cliquer pour les visualiser.
-                        </span>
                       </button>
                     )}
                   </div>

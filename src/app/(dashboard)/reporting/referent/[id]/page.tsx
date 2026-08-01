@@ -170,7 +170,7 @@ export default function ReferentDashboardPage() {
         title={referent ? `${referent.first_name} ${referent.last_name}` : "Référent"}
         actions={
           <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => router.push("/reporting")}>
-            <ArrowLeft className="w-4 h-4" />Retour au tableau de bord direction
+            <ArrowLeft className="w-4 h-4" />Retour au tableau de bord Direction
           </Button>
         }
       />

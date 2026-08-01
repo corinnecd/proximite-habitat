@@ -1106,7 +1106,7 @@ export default function ReportingPage() {
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">{isAllPeriod ? "Détail global du parcours acceptation" : "Détail du parcours acceptation"}{periodSuffix}</h3>
+                  <h3 className="font-semibold text-sm">{isAllPeriod ? "Analyse Globale des Acceptations" : "Analyse des Acceptations"}{periodSuffix}</h3>
                   <p className="text-[11px] text-muted-foreground">
                     {totalAccept} fiche{totalAccept > 1 ? "s" : ""} dans le parcours d&apos;acceptation — {acceptanceRate}% du total actif
                   </p>

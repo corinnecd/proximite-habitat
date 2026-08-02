@@ -244,7 +244,10 @@ function generatePeriods(granularity: Granularity, fiches: FicheForBucket[]): { 
   if (!earliest) earliest = now;
 
   if (granularity === "week") {
-    const count = 12; // fenêtre glissante : 12 dernières semaines
+    const firstMonday = getWeekMonday(new Date(earliest.getFullYear(), 0, 1)); // semaine ISO contenant le 1er janvier
+    const currentMonday = getWeekMonday(now);
+    const diffWeeks = Math.round((currentMonday.getTime() - firstMonday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    const count = diffWeeks + 1;
     for (let i = count - 1; i >= 0; i--) {
       const monday = getWeekMonday(new Date(now.getFullYear(), now.getMonth(), now.getDate() - i * 7));
       const sunday = new Date(monday);

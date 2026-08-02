@@ -29,21 +29,36 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      const msg = error.message.toLowerCase();
-      if (msg.includes("invalid login credentials") || msg.includes("invalid email or password") || msg.includes("email not confirmed")) {
-        setError("Email ou mot de passe incorrect. Vérifiez vos identifiants.");
-      } else if (msg.includes("too many requests") || msg.includes("rate limit")) {
-        setError("Trop de tentatives. Veuillez patienter quelques minutes avant de réessayer.");
-      } else if (msg.includes("user not found")) {
-        setError("Aucun compte trouvé avec cet email.");
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        const code = (error as unknown as Record<string, unknown>).code as string | undefined;
+        const status = (error as unknown as Record<string, unknown>).status as number | undefined;
+
+        if (code === "invalid_credentials" || code === "email_not_confirmed") {
+          setError("Email ou mot de passe incorrect. Vérifiez vos identifiants.");
+        } else if (code === "over_request_rate_limit" || status === 429) {
+          setError("Trop de tentatives. Veuillez patienter quelques minutes.");
+        } else if (code === "user_not_found") {
+          setError("Aucun compte trouvé avec cet email.");
+        } else if (code === "user_banned") {
+          setError("Votre compte a été désactivé. Contactez votre direction.");
+        } else {
+          setError("Service temporairement indisponible. Réessayez dans quelques instants.");
+        }
+        setLoading(false);
+        return;
+      }
+    } catch {
+      if (!navigator.onLine) {
+        setError("Pas de connexion internet. Vérifiez votre réseau et réessayez.");
       } else {
-        setError("Une erreur est survenue. Veuillez réessayer.");
+        setError("Impossible de joindre le serveur. Vérifiez votre connexion internet.");
       }
       setLoading(false);
       return;
     }
+
     router.push("/");
     router.refresh();
   }

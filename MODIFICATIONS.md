@@ -1,5 +1,81 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-02 — Graphique dédié « Évolution en % des ventes » + granularité Semestre
+
+### Nouveau graphique d'évolution en pourcentage
+- Ajout d'un graphique dédié affichant explicitement l'évolution en % des ventes et du CA d'une période à l'autre (l'évolution % n'existait avant que dans l'info-bulle au survol, donc invisible)
+- **Direction** (`reporting/page.tsx`) : « Évolution en % des ventes par commercial » après le graphique des ventes, filtrable par commercial ; nouveaux états `selectedCommEvolPerson` / `commEvolGranularity` + useMemo `commEvolutionPctData`
+- **Vue commercial** (`CommercialReportingView.tsx`) : « Évolution en % de mes ventes » après la tendance hebdomadaire, sans sélecteur de personne (ses propres données) ; ajout état `rawFiches` (rempli dans `loadData` + caché localStorage) et `evolGranularity`
+- Réutilise `bucketCommercialVentes` (déjà porteur de `ventesEvol`/`caEvol`)
+
+### Granularité « Semestre » (5e période) + props EvolutionChart
+- `EvolutionChart.tsx` : ajout `"semester"` au type `Granularity`, à `GRANULARITY_LABELS` et à `generatePeriods` (buckets 6 mois, labels « S1/S2 AAAA »)
+- Nouvelles props optionnelles : `hidePersonSelector` (masque le menu déroulant) et `showZeroLine` (ligne de référence à 0 pour lisibilité des valeurs négatives via `ReferenceLine`)
+- Fichiers : `src/components/reporting/EvolutionChart.tsx`, `src/app/(dashboard)/reporting/page.tsx`, `src/components/reporting/CommercialReportingView.tsx`
+
+## 2026-08-02 — Messages d'erreur login précis
+
+### Gestion d'erreurs login améliorée
+- Ajout d'un `try/catch` autour de `signInWithPassword` pour intercepter les erreurs réseau (fetch qui échoue quand pas de connexion)
+- Classification par `error.code` / `error.status` (codes stables Supabase) au lieu de `error.message` (texte anglais fragile)
+- Messages selon le cas : mauvais identifiants, trop de tentatives, compte désactivé, pas de connexion internet, serveur injoignable
+- Fichier modifié : `src/app/(auth)/login/page.tsx` (fonction `handleSubmit`)
+
+## 2026-08-01 — Axe X dynamique + Évolution % + Fix hooks commerciaux
+
+### Fix "Rendered fewer hooks than expected" (commercial → /reporting)
+- Cause : le `return` anticipé pour les commerciaux (`if (isCommercial && profile) return <CommercialReportingView />`) était placé entre le `useEffect` et 4 `useMemo`, violant la règle React d'appel constant des hooks
+- Fix : les 4 `useMemo` (`refPersons`, `commPersons`, `refEvolutionData`, `commEvolutionData`) déplacés AVANT le `return` anticipé (lignes 408-411 → avant ligne 453)
+- Tous les 35 hooks sont maintenant appelés inconditionnellement avant tout `return`
+- Vérifié : build production OK, login commercial sans erreur console
+- Fichier modifié : `src/app/(dashboard)/reporting/page.tsx`
+
+### Axe X dynamique (correction cache `.next`)
+- Les labels de l'axe X changent désormais correctement selon la granularité choisie : Semaine (`08 juin - 14 juin`), Mois (`juil. 2026`), Trimestre (`T3 2026`), Année (`2026`)
+- Cause : cache compilé `.next` périmé empêchait le code mis à jour de s'exécuter — résolu par nettoyage du cache
+
+### Évolution % sur le graphique des ventes par commercial
+- `bucketCommercialVentes()` calcule maintenant `ventesEvol` et `caEvol` (% d'évolution vs période précédente) pour chaque bucket
+- Cas limites gérés : 1ère période → null, précédent = 0 → null (pas de division par zéro), actuel = 0 → -100%
+- Le tooltip (`ChartTooltip`) affiche un badge coloré pour chaque ligne : vert (+X%), rouge (-X%), neutre (0%), absent si null
+- Rétrocompatibilité : le graphique référents n'a pas de champs `*Evol` → tooltip inchangé
+- Fichier modifié : `src/components/reporting/EvolutionChart.tsx`
+
+## 2026-08-01 — Graphiques d'évolution référents & commerciaux (Reporting Direction)
+
+### Nouveau composant `EvolutionChart`
+- `src/components/reporting/EvolutionChart.tsx` : composant réutilisable pour graphiques d'évolution temporelle
+- Sélecteur de personne (menu déroulant) : "Tous" ou un individu spécifique
+- Sélecteur de granularité (pills) : Semaine / Mois / Trimestre / Année
+- AreaChart Recharts avec support double axe Y (gauche + droite)
+- Tooltip personnalisé avec formatters par ligne, légende auto-générée
+- Fonctions utilitaires `bucketReferentFiches()` et `bucketCommercialVentes()` pour le calcul des séries temporelles
+
+### Intégration dans `/reporting` (direction)
+- Graphique « Évolution des fiches par référent » : nombre de fiches créées par période, filtrable par référent, couleur bleue (#3b82f6)
+- Graphique « Évolution des ventes par commercial » : double axe — ventes (vert #10b981, axe gauche) + CA HT (ambre #f59e0b, axe droit en k€), filtrable par commercial
+- Positionnés après le tableau des commerciaux et avant le pie chart / tableau des référents
+- Données calculées via `useMemo` à partir des fiches brutes déjà chargées (aucune requête supplémentaire)
+- États ajoutés : `rawFiches`, `selectedRefPerson`, `selectedCommPerson`, `refGranularity`, `commGranularity`
+- Fichier modifié : `src/app/(dashboard)/reporting/page.tsx`
+
+## 2026-08-01 — Reporting commercial : vue identique pour la direction
+
+### Composant partagé `CommercialReportingView`
+- Nouveau composant `src/components/reporting/CommercialReportingView.tsx` : reproduit à l'identique la vue reporting personnelle d'un commercial (KPIs, funnel, pie chart, performance, analyse refus/acceptations, tendance hebdomadaire)
+- Utilisé par la page `/reporting/commercial/[id]` (direction drill-down) ET par `/reporting` quand le rôle est COMMERCIAL (même composant, mêmes données, mêmes chiffres)
+- Paramètres configurables : `subjectId`, `topbarTitle`, `backHref`, `backLabel` — permet d'adapter le Topbar sans toucher au contenu
+
+### Page `/reporting/commercial/[id]` — refonte
+- Remplacée par un wrapper léger autour de `CommercialReportingView` — l'ancienne page affichait une liste de fiches par statut, la nouvelle affiche les mêmes blocs que le commercial voit sur `/reporting`
+- Topbar : nom du commercial + bouton « Retour au Tableau de Bord Direction » + Export PDF/CSV
+- Fichiers modifiés : `src/app/(dashboard)/reporting/commercial/[id]/page.tsx`
+
+### Page `/reporting` — commercial délégué
+- Quand `profile.role === "COMMERCIAL"`, la page rend directement `<CommercialReportingView subjectId={profile.id} />` au lieu de charger les données consolidées direction
+- Import ajouté + early return après les hooks — aucun hook conditionnel, pas de violation des règles React
+- Fichier modifié : `src/app/(dashboard)/reporting/page.tsx`
+
 ## 2026-08-01 — Reporting direction & Fiches (ajustements UX)
 
 ### Navigation reporting

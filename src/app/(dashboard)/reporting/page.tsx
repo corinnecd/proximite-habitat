@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 import { KpiCard, CustomTooltip } from "@/components/reporting/KpiCard";
 import { ConversionFunnel } from "@/components/reporting/ConversionFunnel";
+import { CommercialReportingView } from "@/components/reporting/CommercialReportingView";
+import { EvolutionChart, bucketReferentFiches, bucketCommercialVentes } from "@/components/reporting/EvolutionChart";
+import type { Granularity } from "@/components/reporting/EvolutionChart";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -102,6 +105,13 @@ export default function ReportingPage() {
   const [caTotal, setCaTotal] = useState(0);
   const [branchStats, setBranchStats] = useState<BranchRow[]>([]);
   const [confirmNav, setConfirmNav] = useState<{ type: "commercial" | "referent"; id: string; name: string } | null>(null);
+  const [rawFiches, setRawFiches] = useState<{ created_by: string; assigned_to: string | null; status: string; montant_ht: number | null; created_at: string }[]>([]);
+  const [selectedRefPerson, setSelectedRefPerson] = useState("all");
+  const [selectedCommPerson, setSelectedCommPerson] = useState("all");
+  const [refGranularity, setRefGranularity] = useState<Granularity>("month");
+  const [commGranularity, setCommGranularity] = useState<Granularity>("month");
+  const [selectedCommEvolPerson, setSelectedCommEvolPerson] = useState("all");
+  const [commEvolGranularity, setCommEvolGranularity] = useState<Granularity>("month");
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
@@ -221,6 +231,7 @@ export default function ReportingPage() {
       montant_ht: number | null; motif_refus: MotifRefus | null; prospect_ville: string | null; ville_id: string | null; created_at: string;
     };
     const fiches = (fichesRaw ?? []) as unknown as FicheRow[];
+    setRawFiches(fiches);
 
     // ── Compter les statuts côté client (remplace 7-8 requêtes COUNT individuelles) ──
     const statusMap: Record<string, number> = {};
@@ -387,6 +398,7 @@ export default function ReportingPage() {
   useEffect(() => {
     if (!profile) return;
     if (profile.role !== "DIRECTION" && profile.role !== "COMMERCIAL" && profile.role !== "DIRECTION_GENERALE" && profile.role !== "SUPER_ADMIN") { router.replace("/"); return; }
+    if (profile.role === "COMMERCIAL") { setLoading(false); return; } // délégué à CommercialReportingView
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData(profile.id, profile.role, periodFilter);
     setShowAllVilles(false);
@@ -395,6 +407,11 @@ export default function ReportingPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, periodFilter, selectedBranchId]);
 
+  const refPersons = useMemo(() => referents.map((r) => ({ id: r.id, name: r.name })), [referents]);
+  const commPersons = useMemo(() => commerciaux.map((c) => ({ id: c.id, name: c.name })), [commerciaux]);
+  const refEvolutionData = useMemo(() => bucketReferentFiches(rawFiches, refGranularity, selectedRefPerson), [rawFiches, refGranularity, selectedRefPerson]);
+  const commEvolutionData = useMemo(() => bucketCommercialVentes(rawFiches, commGranularity, selectedCommPerson), [rawFiches, commGranularity, selectedCommPerson]);
+  const commEvolutionPctData = useMemo(() => bucketCommercialVentes(rawFiches, commEvolGranularity, selectedCommEvolPerson), [rawFiches, commEvolGranularity, selectedCommEvolPerson]);
 
   const accepted      = statusCounts.find((s) => s.status === "ACCEPTEE")?.count ?? 0;
   const refused       = statusCounts.find((s) => s.status === "REFUSEE")?.count ?? 0;
@@ -404,9 +421,7 @@ export default function ReportingPage() {
   const retractation  = statusCounts.find((s) => s.status === "RETRACTATION")?.count ?? 0;
   const rdvTechnicien = statusCounts.find((s) => s.status === "RDV_TECHNICIEN")?.count ?? 0;
   const installees    = statusCounts.find((s) => s.status === "INSTALLEE")?.count ?? 0;
-  // En cours = tout sauf acceptees, refusées, archivées
   const inProgress    = soumises + validees + affectees + retractation;
-  // Dénominateur commun hors archivées → les 3 taux somment à 100%
   const baseActive    = accepted + refused + inProgress;
   const acceptanceRate = baseActive > 0 ? Math.round((accepted / baseActive) * 100) : 0;
   const refusalRate    = baseActive > 0 ? Math.round((refused / baseActive) * 100) : 0;
@@ -438,10 +453,12 @@ export default function ReportingPage() {
 
 
 
+  if (isCommercial && profile) return <CommercialReportingView subjectId={profile.id} />;
+
   return (
     <>
       <Topbar
-        title={isCommercial ? "Mon reporting" : "Reporting direction"}
+        title="Reporting direction"
         actions={<div className="flex items-center gap-2"><ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${_pl ? `${PERIOD_LABELS[periodFilter]} (${_pl})` : PERIOD_LABELS[periodFilter]}`} filename="reporting" /><ExportCsvButton filename="reporting" getData={() => ({
           columns: [
             { key: "indicateur", label: "Indicateur" },
@@ -752,6 +769,69 @@ export default function ReportingPage() {
               </button>
             )}
           </div>
+        )}
+
+        {/* ── Évolution des fiches par référent ──────────────────────── */}
+        {!isCommercial && referents.length > 0 && (
+          <EvolutionChart
+            title="Évolution des fiches par référent"
+            subtitle="Nombre de fiches créées par période"
+            icon={<FileText className="w-4 h-4 text-blue-600" />}
+            iconBg="bg-blue-50"
+            data={refEvolutionData}
+            lines={[{ dataKey: "fiches", label: "Fiches créées", color: "#3b82f6" }]}
+            persons={refPersons}
+            selectedPerson={selectedRefPerson}
+            onPersonChange={setSelectedRefPerson}
+            allLabel="Tous les référents"
+            granularity={refGranularity}
+            onGranularityChange={setRefGranularity}
+          />
+        )}
+
+        {/* ── Évolution des ventes par commercial ────────────────────── */}
+        {!isCommercial && commerciaux.length > 0 && (
+          <EvolutionChart
+            title="Évolution des ventes par commercial"
+            subtitle="Nombre de ventes et chiffre d'affaires par période"
+            icon={<Euro className="w-4 h-4 text-emerald-600" />}
+            iconBg="bg-emerald-50"
+            data={commEvolutionData}
+            lines={[
+              { dataKey: "ventes", label: "Ventes", color: "#10b981", yAxisId: "left" },
+              { dataKey: "ca", label: "CA HT", color: "#f59e0b", yAxisId: "right", formatter: (v: number) => `${v.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€` },
+            ]}
+            persons={commPersons}
+            selectedPerson={selectedCommPerson}
+            onPersonChange={setSelectedCommPerson}
+            allLabel="Tous les commerciaux"
+            dualAxis
+            rightAxisFormatter={(v: number) => `${(v / 1000).toFixed(0)}k€`}
+            granularity={commGranularity}
+            onGranularityChange={setCommGranularity}
+          />
+        )}
+
+        {/* ── Évolution en % des ventes par commercial ───────────────── */}
+        {!isCommercial && commerciaux.length > 0 && (
+          <EvolutionChart
+            title="Évolution en % des ventes par commercial"
+            subtitle="Variation d'une période à l'autre (ventes & CA HT)"
+            icon={<TrendingUp className="w-4 h-4 text-emerald-600" />}
+            iconBg="bg-emerald-50"
+            data={commEvolutionPctData}
+            showZeroLine
+            lines={[
+              { dataKey: "ventesEvol", label: "Évolution ventes", color: "#10b981", formatter: (v: number) => `${v > 0 ? "+" : ""}${v}%` },
+              { dataKey: "caEvol", label: "Évolution CA", color: "#f59e0b", formatter: (v: number) => `${v > 0 ? "+" : ""}${v}%` },
+            ]}
+            persons={commPersons}
+            selectedPerson={selectedCommEvolPerson}
+            onPersonChange={setSelectedCommEvolPerson}
+            allLabel="Tous les commerciaux"
+            granularity={commEvolGranularity}
+            onGranularityChange={setCommEvolGranularity}
+          />
         )}
 
         {/* ── Ligne 2 : Pie chart + Référents ──────────────────────────── */}

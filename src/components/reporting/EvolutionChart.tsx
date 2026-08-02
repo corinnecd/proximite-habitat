@@ -244,10 +244,7 @@ function generatePeriods(granularity: Granularity, fiches: FicheForBucket[]): { 
   if (!earliest) earliest = now;
 
   if (granularity === "week") {
-    const firstMonday = getWeekMonday(earliest);
-    const currentMonday = getWeekMonday(now);
-    const diffWeeks = Math.round((currentMonday.getTime() - firstMonday.getTime()) / (7 * 86400000));
-    const count = Math.max(4, diffWeeks + 1);
+    const count = 12; // fenêtre glissante : 12 dernières semaines
     for (let i = count - 1; i >= 0; i--) {
       const monday = getWeekMonday(new Date(now.getFullYear(), now.getMonth(), now.getDate() - i * 7));
       const sunday = new Date(monday);
@@ -261,10 +258,10 @@ function generatePeriods(granularity: Granularity, fiches: FicheForBucket[]): { 
       });
     }
   } else if (granularity === "month") {
-    const firstMonth = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+    const firstMonth = new Date(earliest.getFullYear(), 0, 1); // janvier de l'année calendaire
     const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const diffMonths = (currentMonth.getFullYear() - firstMonth.getFullYear()) * 12 + (currentMonth.getMonth() - firstMonth.getMonth());
-    const count = Math.max(4, diffMonths + 1);
+    const count = diffMonths + 1;
     for (let i = count - 1; i >= 0; i--) {
       const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
@@ -275,12 +272,11 @@ function generatePeriods(granularity: Granularity, fiches: FicheForBucket[]): { 
       });
     }
   } else if (granularity === "quarter") {
-    const firstQ = Math.floor(earliest.getMonth() / 3);
-    const firstQYear = earliest.getFullYear();
+    const firstQYear = earliest.getFullYear(); // ancré sur T1 de l'année calendaire
     const currentQ = Math.floor(now.getMonth() / 3);
     const currentQYear = now.getFullYear();
-    const diffQ = (currentQYear - firstQYear) * 4 + (currentQ - firstQ);
-    const count = Math.max(4, diffQ + 1);
+    const diffQ = (currentQYear - firstQYear) * 4 + currentQ;
+    const count = diffQ + 1;
     for (let i = count - 1; i >= 0; i--) {
       const totalQ = currentQYear * 4 + currentQ - i;
       const qYear = Math.floor(totalQ / 4);
@@ -295,12 +291,11 @@ function generatePeriods(granularity: Granularity, fiches: FicheForBucket[]): { 
       });
     }
   } else if (granularity === "semester") {
-    const firstS = Math.floor(earliest.getMonth() / 6);
-    const firstSYear = earliest.getFullYear();
+    const firstSYear = earliest.getFullYear(); // ancré sur S1 de l'année calendaire
     const currentS = Math.floor(now.getMonth() / 6);
     const currentSYear = now.getFullYear();
-    const diffS = (currentSYear - firstSYear) * 2 + (currentS - firstS);
-    const count = Math.max(4, diffS + 1);
+    const diffS = (currentSYear - firstSYear) * 2 + currentS;
+    const count = diffS + 1;
     for (let i = count - 1; i >= 0; i--) {
       const totalS = currentSYear * 2 + currentS - i;
       const sYear = Math.floor(totalS / 2);

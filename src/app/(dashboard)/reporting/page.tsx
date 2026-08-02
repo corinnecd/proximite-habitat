@@ -771,24 +771,6 @@ export default function ReportingPage() {
           </div>
         )}
 
-        {/* ── Évolution des fiches par référent ──────────────────────── */}
-        {!isCommercial && referents.length > 0 && (
-          <EvolutionChart
-            title="Évolution des fiches par référent"
-            subtitle="Nombre de fiches créées par période"
-            icon={<FileText className="w-4 h-4 text-blue-600" />}
-            iconBg="bg-blue-50"
-            data={refEvolutionData}
-            lines={[{ dataKey: "fiches", label: "Fiches créées", color: "#3b82f6" }]}
-            persons={refPersons}
-            selectedPerson={selectedRefPerson}
-            onPersonChange={setSelectedRefPerson}
-            allLabel="Tous les référents"
-            granularity={refGranularity}
-            onGranularityChange={setRefGranularity}
-          />
-        )}
-
         {/* ── Évolution des ventes par commercial ────────────────────── */}
         {!isCommercial && commerciaux.length > 0 && (
           <EvolutionChart
@@ -1299,6 +1281,24 @@ export default function ReportingPage() {
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
           </div>
         </div>
+
+        {/* ── Évolution des fiches par référent ──────────────────────── */}
+        {!isCommercial && referents.length > 0 && (
+          <EvolutionChart
+            title="Évolution des fiches par référent"
+            subtitle="Nombre de fiches créées par période"
+            icon={<FileText className="w-4 h-4 text-blue-600" />}
+            iconBg="bg-blue-50"
+            data={refEvolutionData}
+            lines={[{ dataKey: "fiches", label: "Fiches créées", color: "#3b82f6" }]}
+            persons={refPersons}
+            selectedPerson={selectedRefPerson}
+            onPersonChange={setSelectedRefPerson}
+            allLabel="Tous les référents"
+            granularity={refGranularity}
+            onGranularityChange={setRefGranularity}
+          />
+        )}
 
         {/* ── Répartition géographique ────────────────────────────────────── */}
         {!isCommercial && (

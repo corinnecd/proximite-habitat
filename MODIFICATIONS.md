@@ -1,5 +1,17 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-02 — Axe des graphiques d'évolution aligné sur l'année calendaire
+
+### Alignement calendaire de `generatePeriods` (EvolutionChart.tsx)
+- Avant : l'axe démarrait à la 1ère donnée (ex. 1ère vente = mai) au lieu de janvier
+- **Mois / Trimestre / Semestre** : ancrage sur le 1er janvier (janv. / T1 / S1) de l'année ; les périodes sans vente affichent 0 (pas de division par zéro pour l'évolution %)
+- **Semaine** : fenêtre glissante fixe de 12 dernières semaines (au lieu d'un ancrage sur la 1ère donnée)
+- **Année** : inchangée (déjà alignée au 1er janvier)
+- Avec le filtre « Cette année » en haut de page : l'axe démarre naturellement en janvier de l'année en cours
+- Composant partagé → s'applique à tous les graphiques d'évolution (référent, ventes commercial, évolution %, vue commercial)
+- Déplacement : « Évolution des fiches par référent » placé sous « Tendance globale hebdomadaire »
+- Fichiers : `src/components/reporting/EvolutionChart.tsx`, `src/app/(dashboard)/reporting/page.tsx`
+
 ## 2026-08-02 — Graphique dédié « Évolution en % des ventes » + granularité Semestre
 
 ### Nouveau graphique d'évolution en pourcentage

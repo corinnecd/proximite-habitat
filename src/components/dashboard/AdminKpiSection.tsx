@@ -116,17 +116,17 @@ export function AdminKpiSection({
             <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
           ) : (
             <div className="space-y-1">
-              <div className="grid grid-cols-[1fr_60px_80px_60px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+              <div className="grid grid-cols-[1fr_60px_80px] sm:grid-cols-[1fr_60px_80px_60px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                 <span>Commercial</span>
                 <span className="text-right">Ventes</span>
                 <span className="text-right">CA HT</span>
-                <span className="text-right">CA moy.</span>
+                <span className="text-right hidden sm:block">CA moy.</span>
               </div>
               <CollapsibleList items={commerciauxStats} renderItem={(c: typeof commerciauxStats[0], idx: number) => {
                 const rate = c.ventes > 0 ? Math.round((c.ventes / (commerciauxStats[0]?.ventes ?? 1)) * 100) : 0;
                 return (
                   <div key={c.id} className="space-y-1">
-                    <div className="grid grid-cols-[1fr_60px_80px_60px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
+                    <div className="grid grid-cols-[1fr_60px_80px] sm:grid-cols-[1fr_60px_80px_60px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="w-4 text-center text-xs font-bold text-muted-foreground shrink-0">{idx+1}</span>
                         <span className="text-sm font-medium truncate">{c.nom}</span>
@@ -135,7 +135,7 @@ export function AdminKpiSection({
                       <span className={`text-sm font-bold text-right tabular-nums ${c.ca > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
                         {c.ca > 0 ? c.ca.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}
                       </span>
-                      <span className="text-xs text-right tabular-nums text-muted-foreground">{c.ventes > 0 && c.ca > 0 ? Math.round(c.ca / c.ventes).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€/v" : "—"}</span>
+                      <span className="text-xs text-right tabular-nums text-muted-foreground hidden sm:block">{c.ventes > 0 && c.ca > 0 ? Math.round(c.ca / c.ventes).toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "€/v" : "—"}</span>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden mx-1">
                       <div className="h-full rounded-full bg-emerald-500 transition-all duration-700"
@@ -145,13 +145,13 @@ export function AdminKpiSection({
                 );
               }} />
               {commerciauxStats.length > 0 && (
-                <div className="grid grid-cols-[1fr_60px_80px_60px] gap-2 pt-3 border-t border-border">
+                <div className="grid grid-cols-[1fr_60px_80px] sm:grid-cols-[1fr_60px_80px_60px] gap-2 pt-3 border-t border-border">
                   <span className="text-sm font-bold">Total</span>
                   <span className="text-sm font-bold text-right tabular-nums">{commerciauxStats.reduce((s, c) => s + c.ventes, 0)}</span>
                   <span className="text-sm font-bold text-right tabular-nums text-amber-600">
                     {commerciauxStats.reduce((s, c) => s + c.ca, 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
                   </span>
-                  <span />
+                  <span className="hidden sm:block" />
                 </div>
               )}
             </div>

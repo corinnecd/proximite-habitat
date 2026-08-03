@@ -880,7 +880,7 @@ export default function DashboardPage() {
             <span className="text-sm font-semibold tracking-tight">Statuts des fiches ({totalFiches})</span>
             {statusOpenMobile ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
           </button>
-          <div className={`${statusOpenMobile ? "grid" : "hidden"} sm:grid grid-flow-col auto-cols-fr gap-3`}>
+          <div className={`${statusOpenMobile ? "grid" : "hidden"} sm:grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-flow-col xl:auto-cols-fr gap-3`}>
             {visibleStatuses.map((status) => (
               <Link key={status} href={`/fiches?status=${status}`}>
                 <Card className={`border border-border border-l-4 shadow-sm ${COUNTER_STYLES[status]} hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200 cursor-pointer`}>
@@ -1169,26 +1169,26 @@ export default function DashboardPage() {
                   </Link>
                 </div>
                 <div className="space-y-1">
-                  <div className="grid grid-cols-[1fr_100px_100px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+                  <div className="grid grid-cols-[1fr_100px] sm:grid-cols-[1fr_100px_100px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                     <span>Client</span>
-                    <span className="text-right">Date</span>
+                    <span className="text-right hidden sm:block">Date</span>
                     <span className="text-right">Montant HT</span>
                   </div>
                   <CollapsibleList items={fichesAcceptees} renderItem={(fiche: FicheAffectee) => (
                     <Link key={fiche.id} href={`/fiches/${fiche.id}`}>
-                      <div className="grid grid-cols-[1fr_100px_100px] gap-2 items-center py-2.5 hover:bg-secondary/40 rounded-lg px-1 transition-colors cursor-pointer">
+                      <div className="grid grid-cols-[1fr_100px] sm:grid-cols-[1fr_100px_100px] gap-2 items-center py-2.5 hover:bg-secondary/40 rounded-lg px-1 transition-colors cursor-pointer">
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">Fiche de {fiche.prospect_prenom} {fiche.prospect_nom}</p>
-                          
+
                         </div>
-                        <span className="text-xs text-muted-foreground text-right">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
+                        <span className="text-xs text-muted-foreground text-right hidden sm:block">{new Date(fiche.updated_at).toLocaleDateString("fr-FR")}</span>
                         <span className={`text-sm font-bold text-right tabular-nums ${fiche.montant_ht ? "text-amber-600" : "text-muted-foreground"}`}>
                           {fiche.montant_ht ? Number(fiche.montant_ht).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}
                         </span>
                       </div>
                     </Link>
                   )} />
-                  <div className="grid grid-cols-[1fr_100px_100px] gap-2 pt-3 border-t border-border">
+                  <div className="grid grid-cols-[1fr_100px] sm:grid-cols-[1fr_100px_100px] gap-2 pt-3 border-t border-border">
                     <span className="text-sm font-bold">Total</span>
                     <span />
                     <span className="text-sm font-bold text-right tabular-nums text-amber-600">

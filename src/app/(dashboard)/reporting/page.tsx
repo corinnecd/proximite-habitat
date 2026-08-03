@@ -633,27 +633,27 @@ export default function ReportingPage() {
 
             {/* Tableau ranking */}
             <div className="mb-5">
-              <div className="grid grid-cols-[1fr_56px_56px_56px_72px_80px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+              <div className="grid grid-cols-[1fr_48px_48px_50px] sm:grid-cols-[1fr_56px_56px_56px_72px_80px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                 <span>Succursale</span>
                 <span className="text-right">Fiches</span>
                 <span className="text-right text-emerald-600">Accept.</span>
-                <span className="text-right text-red-500">Refus.</span>
+                <span className="text-right text-red-500 hidden sm:block">Refus.</span>
                 <span className="text-right">Taux</span>
-                <span className="text-right text-amber-600">CA HT</span>
+                <span className="text-right text-amber-600 hidden sm:block">CA HT</span>
               </div>
               {branchStats.map((b, i) => {
                 const name = branches.find((br) => br.id === b.orgId)?.name ?? b.orgId.slice(0, 8) + "…";
                 return (
-                  <div key={b.orgId} className="grid grid-cols-[1fr_56px_56px_56px_72px_80px] gap-2 items-center py-2.5 border-b border-border/50 last:border-0 text-sm">
+                  <div key={b.orgId} className="grid grid-cols-[1fr_48px_48px_50px] sm:grid-cols-[1fr_56px_56px_56px_72px_80px] gap-2 items-center py-2.5 border-b border-border/50 last:border-0 text-sm">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={`text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${i === 0 ? "bg-amber-100 text-amber-700" : i === 1 ? "bg-slate-100 text-slate-600" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
                       <span className="font-medium truncate">{name}</span>
                     </div>
                     <span className="text-right tabular-nums text-muted-foreground">{b.total}</span>
                     <span className="text-right tabular-nums text-emerald-600 font-semibold">{b.accepted}</span>
-                    <span className="text-right tabular-nums text-red-500">{b.refused}</span>
+                    <span className="text-right tabular-nums text-red-500 hidden sm:block">{b.refused}</span>
                     <span className={`text-right tabular-nums font-bold ${b.rate >= 50 ? "text-emerald-600" : b.rate >= 25 ? "text-orange-500" : "text-red-500"}`}>{b.rate}%</span>
-                    <span className="text-right tabular-nums text-amber-700 dark:text-amber-400 font-medium text-xs">
+                    <span className="text-right tabular-nums text-amber-700 dark:text-amber-400 font-medium text-xs hidden sm:block">
                       {b.ca > 0 ? b.ca.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }) : "—"}
                     </span>
                   </div>

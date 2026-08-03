@@ -1,5 +1,19 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Audit responsive : 6 corrections desktop + mobile
+
+### P1 CRITIQUE — Layout cassé sur mobile (375px)
+- **Tableau succursales** (`reporting/page.tsx`) : ajout breakpoint `sm:` — colonnes Refusées + CA HT masquées sur mobile (`hidden sm:block`), grille mobile `grid-cols-[1fr_48px_48px_50px]` vs desktop `[1fr_56px_56px_56px_72px_80px]`
+- **Barre de contrôles calendrier** (`calendrier/page.tsx`) : input recherche `w-64` → `w-full sm:w-64` ; select commercial `w-[220px]` → `w-full sm:w-[220px]`
+- **Grille statuts dashboard** (`page.tsx`) : `grid-flow-col auto-cols-fr` → `grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-flow-col xl:auto-cols-fr` (7 cartes = 53px/carte sur 375px, illisible)
+
+### P2 IMPORTANT — Dégradation UX sur mobile
+- **Tableau CA commercial** (`page.tsx`) : colonne Date masquée sur mobile (`hidden sm:block`), grille `[1fr_100px]` mobile vs `[1fr_100px_100px]` desktop
+- **Tableau commerciaux** (`AdminKpiSection.tsx`) : colonne « CA moy. » masquée sur mobile, grille `[1fr_60px_80px]` mobile vs `[1fr_60px_80px_60px]` desktop
+
+### P3 MINEUR — UX calendrier 7 jours sur mobile
+- **Grille calendrier mensuel** (`calendrier/page.tsx`) : ajout `overflow-x-auto` sur le container + wrapper `min-w-[420px]` pour scroll propre sur petits écrans
+
 ## 2026-08-03 — Calendrier : nouveau bouton « Tous » (RDV commerciaux + techniciens)
 
 ### Ajout d'un 3e mode de vue « Tous » dans le calendrier

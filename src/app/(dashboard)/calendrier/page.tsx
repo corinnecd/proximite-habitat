@@ -253,7 +253,7 @@ export default function CalendrierPage() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
                 type="text"
@@ -275,7 +275,7 @@ export default function CalendrierPage() {
             </div>
             {isAdminOrDG && (
               <Select value={commercialFilter} onValueChange={(v) => setCommercialFilter(v ?? "ALL")}>
-                <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm w-[220px]">
+                <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm w-full sm:w-[220px]">
                   <SelectValue>
                     {commercialFilter === "ALL"
                       ? "Tous les commerciaux"
@@ -341,7 +341,8 @@ export default function CalendrierPage() {
           <div className="rounded-xl bg-red-50 text-red-700 ring-1 ring-red-200/60 px-4 py-2 text-sm">{fetchError}</div>
         )}
 
-        <div className="rounded-2xl border bg-background overflow-hidden">
+        <div className="rounded-2xl border bg-background overflow-x-auto">
+          <div className="min-w-[420px]">
           <div className="grid grid-cols-7 border-b bg-muted/40">
             {JOURS_ENTETE.map((j) => (
               <div key={j} className="px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">
@@ -402,6 +403,7 @@ export default function CalendrierPage() {
               })}
             </div>
           ))}
+          </div>
         </div>
 
         {!loading && totalCount === 0 && (

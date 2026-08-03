@@ -167,7 +167,7 @@ export function EvolutionChart({
               ))}
             </defs>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={data.length > 12 ? Math.ceil(data.length / 8) - 1 : 0} />
+            <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={data.length > 12 ? "preserveStartEnd" : 0} />
             {dualAxis ? (
               <>
                 <YAxis yAxisId="left" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />

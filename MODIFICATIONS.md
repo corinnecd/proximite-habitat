@@ -1,5 +1,18 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Réordonnancement commercial + fix dernier label semaine tronqué
+
+### Réordonnancement du profil commercial
+- « Tendance globale hebdomadaire » déplacée en dernière position (après « Évolution en % de mes ventes »), pour mettre en avant les 2 graphiques d'évolution des ventes en premier
+- Fichier : `src/components/reporting/CommercialReportingView.tsx`
+
+### Fix : dernier label de l'axe X manquant en vue Semaine
+- Symptôme : en granularité Semaine, l'axe semblait s'arrêter mi-juillet alors qu'on est début août
+- Diagnostic : ce n'était pas un problème de données (le tracé du graphique atteignait bien le bord droit, jusqu'à la semaine courante) mais un problème d'affichage — la formule `interval={Math.ceil(data.length / 8) - 1}` espace les labels depuis l'index 0 sans jamais garantir l'affichage du tout dernier point (avec ~31 semaines depuis janvier, le dernier label multiple de l'espacement tombait mi-juillet)
+- Fix : remplacé par `interval="preserveStartEnd"` (natif Recharts), qui garantit toujours le premier ET le dernier label, en amincissant automatiquement le reste
+- Appliqué aux 3 graphiques concernés : `EvolutionChart.tsx` (composant partagé), « Tendance globale hebdomadaire » direction (`reporting/page.tsx`) et commercial (`CommercialReportingView.tsx`)
+- Vérifié : dernier label affiché = « 03 août - 09 août » sur les 3 graphiques
+
 ## 2026-08-03 — Graphique « Évolution de mes ventes » dans le profil commercial
 
 ### Ajout du graphique ventes/CA (non-%) dans CommercialReportingView

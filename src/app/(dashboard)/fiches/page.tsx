@@ -75,6 +75,7 @@ interface FicheRow {
   id: string; reference: string; status: FicheStatus;
   prospect_nom: string; prospect_prenom: string; prospect_ville: string; prospect_cp: string;
   updated_at: string; created_at: string;
+  rdv_technicien_date: string | null; rdv_technicien_heure: string | null;
   assigned_to_profile: { first_name: string; last_name: string } | null;
   created_by_profile: { first_name: string; last_name: string } | null;
 }
@@ -255,7 +256,7 @@ export default function FichesPage() {
     let query = supabase
       .from("fiches")
       .select(
-        "id, reference, status, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, updated_at, created_at, " +
+        "id, reference, status, prospect_nom, prospect_prenom, prospect_ville, prospect_cp, updated_at, created_at, rdv_technicien_date, rdv_technicien_heure, " +
         "assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name), " +
         "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name)"
       )
@@ -932,7 +933,9 @@ export default function FichesPage() {
                                 {fiche.assigned_to_profile && <span className="text-xs text-muted-foreground hidden md:block">→ {fiche.assigned_to_profile.first_name} {fiche.assigned_to_profile.last_name}</span>}
                                 <FicheStatusBadge status={fiche.status} />
                                 {isHighlighted && <span className="text-[10px] font-semibold text-[#F97316] bg-[#F97316]/10 px-2 py-0.5 rounded-full whitespace-nowrap">Antérieure</span>}
-                                <span className="text-xs text-muted-foreground hidden sm:block">{new Date(fiche.created_at).toLocaleDateString("fr-FR")}</span>
+                                <span className="text-xs text-muted-foreground hidden sm:block">{fiche.status === "RDV_TECHNICIEN" && fiche.rdv_technicien_date
+                                    ? `${new Date(fiche.rdv_technicien_date).toLocaleDateString("fr-FR")}${fiche.rdv_technicien_heure ? ` · ${fiche.rdv_technicien_heure.replace(":", "h")}` : ""}`
+                                    : new Date(fiche.created_at).toLocaleDateString("fr-FR")}</span>
                               </div>
                             </div>
                           </Link>
@@ -980,7 +983,9 @@ export default function FichesPage() {
                         {fiche.assigned_to_profile && <span className="text-xs text-muted-foreground hidden md:block">→ {fiche.assigned_to_profile.first_name} {fiche.assigned_to_profile.last_name}</span>}
                         <FicheStatusBadge status={fiche.status} />
                         {isHighlighted && <span className="text-[10px] font-semibold text-[#F97316] bg-[#F97316]/10 px-2 py-0.5 rounded-full whitespace-nowrap">Antérieure</span>}
-                        <span className="text-xs text-muted-foreground hidden sm:block">{new Date(fiche.created_at).toLocaleDateString("fr-FR")}</span>
+                        <span className="text-xs text-muted-foreground hidden sm:block">{fiche.status === "RDV_TECHNICIEN" && fiche.rdv_technicien_date
+                                    ? `${new Date(fiche.rdv_technicien_date).toLocaleDateString("fr-FR")}${fiche.rdv_technicien_heure ? ` · ${fiche.rdv_technicien_heure.replace(":", "h")}` : ""}`
+                                    : new Date(fiche.created_at).toLocaleDateString("fr-FR")}</span>
                       </div>
                     </div>
                   </Link>

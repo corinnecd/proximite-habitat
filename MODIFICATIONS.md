@@ -1,5 +1,13 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Date + heure du RDV technicien visibles sur la carte de fiche
+
+### Carte fiche « RDV Technicien » affiche désormais la date/heure du RDV
+- Avant : la liste `/fiches` affichait uniquement `created_at` (date de création) sur chaque carte, y compris pour le statut RDV Technicien — peu utile pour savoir quand est le rendez-vous
+- Après : pour le statut RDV_TECHNICIEN, la carte affiche `rdv_technicien_date` + `rdv_technicien_heure` (ex. « 03/08/2026 · 13h00 »), même formatage que la page détail fiche (`.replace(":", "h")`) ; fallback sur la date seule si l'heure n'est pas renseignée
+- Les autres statuts continuent d'afficher `created_at` comme avant — aucune régression
+- Fichier : `src/app/(dashboard)/fiches/page.tsx` (colonnes ajoutées à la requête + interface `FicheRow` + 2 emplacements d'affichage de carte)
+
 ## 2026-08-03 — Fix placeholder tronqué dans la barre de recherche du calendrier
 
 ### Champ de recherche élargi

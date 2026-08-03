@@ -731,7 +731,7 @@ export function CommercialReportingView({
                   onClick={() => setWeeklyTrendOffset((o) => Math.min(o + 1, weeklyData.length - windowSize))}
                   disabled={!canGoBack}
                   aria-label="Semaines précédentes"
-                  className="w-7 h-7 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="w-7 h-7 flex items-center justify-center rounded-full border border-[#F97316]/50 text-[#F97316] hover:bg-[#F97316]/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -740,7 +740,7 @@ export function CommercialReportingView({
                   onClick={() => setWeeklyTrendOffset((o) => Math.max(o - 1, 0))}
                   disabled={!canGoForward}
                   aria-label="Semaines suivantes"
-                  className="w-7 h-7 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="w-7 h-7 flex items-center justify-center rounded-full border border-[#F97316]/50 text-[#F97316] hover:bg-[#F97316]/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -751,7 +751,7 @@ export function CommercialReportingView({
             <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée disponible</p>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={visibleWeeklyData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={visibleWeeklyData} margin={{ top: 5, right: 55, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gradCreees" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />

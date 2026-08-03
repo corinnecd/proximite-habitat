@@ -1,5 +1,17 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Fix label tronqué à droite des graphiques + flèches plus visibles
+
+### Dernier label de l'axe X tronqué (toutes granularités)
+- Le label du point le plus à droite (période en cours) était partiellement coupé par le bord arrondi de la carte (ex. « S2 202... », « T3 202... »)
+- Cause : chaque label Recharts est centré sur son point (`textAnchor="middle"`), et pour le dernier point (en bord de zone de tracé), la moitié droite du texte débordait au-delà de la marge du graphique (`margin.right` insuffisant à 10px)
+- Fix : `margin.right` augmenté à 55px sur les 3 graphiques hebdomadaires/évolution concernés — testé avec le label le plus large (« 03 août - 09 août ») qui reste maintenant à ~14px de la bordure du SVG
+- Fichiers : `EvolutionChart.tsx`, `reporting/page.tsx` (Tendance hebdo direction), `CommercialReportingView.tsx` (Tendance hebdo commercial)
+
+### Flèches de navigation plus visibles
+- Couleur changée de gris clair (`border-border text-muted-foreground`) vers l'orange de marque `#F97316` déjà utilisé pour les éléments interactifs actifs ailleurs dans l'app
+- Mêmes 3 fichiers, état désactivé toujours grisé via `disabled:opacity-30`
+
 ## 2026-08-03 — Fenêtre glissante de 8 semaines avec navigation (granularité Semaine)
 
 ### Remplacement de la vue compressée (31 semaines) par une fenêtre de 8 semaines paginée

@@ -178,7 +178,7 @@ export function EvolutionChart({
               onClick={() => setWeekOffset((o) => Math.min(o + 1, data.length - windowSize))}
               disabled={!canGoBack}
               aria-label="Semaines précédentes"
-              className="w-7 h-7 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-full border border-[#F97316]/50 text-[#F97316] hover:bg-[#F97316]/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -187,7 +187,7 @@ export function EvolutionChart({
               onClick={() => setWeekOffset((o) => Math.max(o - 1, 0))}
               disabled={!canGoForward}
               aria-label="Semaines suivantes"
-              className="w-7 h-7 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-full border border-[#F97316]/50 text-[#F97316] hover:bg-[#F97316]/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -200,7 +200,7 @@ export function EvolutionChart({
         <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée disponible</p>
       ) : (
         <ResponsiveContainer width="100%" height={260}>
-          <AreaChart data={displayData} margin={{ top: 5, right: dualAxis ? 10 : 10, left: -20, bottom: 0 }}>
+          <AreaChart data={displayData} margin={{ top: 5, right: 55, left: -20, bottom: 0 }}>
             <defs>
               {lines.map((line) => (
                 <linearGradient key={`grad-${line.dataKey}`} id={`grad-${line.dataKey}`} x1="0" y1="0" x2="0" y2="1">

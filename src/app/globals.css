@@ -157,10 +157,8 @@
   * {
     @apply border-border outline-ring/50;
   }
-  .recharts-wrapper:focus,
-  .recharts-wrapper:focus-visible,
-  .recharts-surface:focus,
-  .recharts-surface:focus-visible {
+  .recharts-wrapper,
+  .recharts-wrapper * {
     outline: none;
   }
   body {

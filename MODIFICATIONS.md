@@ -4,7 +4,9 @@
 
 ### Suppression du contour gris sur les graphiques Recharts
 - Quand on cliquait/survolait un graphique, un contour rectangulaire gris apparaissait (outline CSS global `*` appliqué aux SVG)
-- Ajout d'une règle ciblée `.recharts-wrapper:focus, .recharts-surface:focus { outline: none; }` dans `globals.css`
+- 1ère tentative (`.recharts-wrapper:focus, .recharts-surface:focus`) insuffisante : le focus réel atterrit sur un `<g class="recharts-zIndex-layer_100">` interne à Recharts (couche du point actif/tooltip), pas sur les 2 éléments racine
+- Fix corrigé : `.recharts-wrapper, .recharts-wrapper * { outline: none; }` — couvre tous les descendants, plus robuste
+- Vérifié en navigateur (clic réel sur un point) : plus aucun contour, sur tous les graphiques (Tendance hebdo, Évolution ventes, Évolution %)
 - Fichier : `src/app/globals.css`
 
 ### « Tendance globale hebdomadaire » alignée sur le 1er janvier calendaire

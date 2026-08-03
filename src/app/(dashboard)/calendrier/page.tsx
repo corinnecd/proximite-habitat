@@ -245,7 +245,7 @@ export default function CalendrierPage() {
             </div>
             {isAdminOrDG && (
               <Select value={commercialFilter} onValueChange={(v) => setCommercialFilter(v ?? "ALL")}>
-                <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm w-[180px]">
+                <SelectTrigger className="h-[34px] bg-background rounded-xl text-sm w-[220px]">
                   <SelectValue>
                     {commercialFilter === "ALL"
                       ? "Tous les commerciaux"
@@ -269,14 +269,14 @@ export default function CalendrierPage() {
               <button
                 type="button"
                 onClick={() => setCalType("commercial")}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${calType === "commercial" ? "bg-[#F97316] text-white font-medium" : "text-muted-foreground"}`}
+                className={`px-4 py-1.5 text-sm rounded-lg transition-colors whitespace-nowrap ${calType === "commercial" ? "bg-[#F97316] text-white font-medium" : "text-muted-foreground"}`}
               >
                 Commercial
               </button>
               <button
                 type="button"
                 onClick={() => setCalType("technicien")}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${calType === "technicien" ? "bg-sky-500 text-white font-medium" : "text-muted-foreground"}`}
+                className={`px-4 py-1.5 text-sm rounded-lg transition-colors whitespace-nowrap ${calType === "technicien" ? "bg-sky-500 text-white font-medium" : "text-muted-foreground"}`}
               >
                 Technicien
               </button>
@@ -285,14 +285,14 @@ export default function CalendrierPage() {
               <button
                 type="button"
                 onClick={() => setViewMode("month")}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${viewMode === "month" ? "bg-muted font-medium" : "text-muted-foreground"}`}
+                className={`px-4 py-1.5 text-sm rounded-lg transition-colors whitespace-nowrap ${viewMode === "month" ? "bg-[#F97316] text-white font-medium" : "text-muted-foreground"}`}
               >
                 Mois
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode("week")}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${viewMode === "week" ? "bg-muted font-medium" : "text-muted-foreground"}`}
+                className={`px-4 py-1.5 text-sm rounded-lg transition-colors whitespace-nowrap ${viewMode === "week" ? "bg-[#F97316] text-white font-medium" : "text-muted-foreground"}`}
               >
                 Semaine
               </button>

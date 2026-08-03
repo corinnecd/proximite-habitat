@@ -100,52 +100,8 @@ export function AdminKpiSection({
         );
       })()}
 
-      {/* Tableaux référents + commerciaux */}
+      {/* Tableaux commerciaux + référents */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Classement référents — ventes uniquement */}
-        <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                <Trophy className="w-4 h-4 text-amber-600" />
-              </div>
-              <h3 className="font-semibold text-sm">Objectif mensuel de prime (3 ventes) · {referentsStats.length} Référent{referentsStats.length > 1 ? "s" : ""}</h3>
-            </div>
-          </div>
-          {referentsStats.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
-          ) : (
-            <div className="space-y-1">
-              <div className="grid grid-cols-[1fr_60px_70px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
-                <span>Référent</span>
-                <span className="text-right">Ventes</span>
-                <span className="text-right">En +</span>
-              </div>
-              <CollapsibleList items={referentsStats} renderItem={(p: typeof referentsStats[0], idx: number) => {
-                const bonus = Math.max(0, p.ventes - 3);
-                return (
-                  <div key={p.id} className="grid grid-cols-[1fr_60px_70px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-4 text-center text-xs font-bold text-muted-foreground shrink-0">{idx+1}</span>
-                      <span className="text-sm font-medium truncate">{p.nom}</span>
-                      {p.ventes >= 3 && <Star className="w-3 h-3 text-amber-500 shrink-0" />}
-                    </div>
-                    <span className="text-sm font-bold text-right tabular-nums">{p.ventes}</span>
-                    <span className={`text-xs text-right tabular-nums ${bonus > 0 ? "text-emerald-600 font-bold" : "text-muted-foreground"}`}>{bonus > 0 ? `+${bonus}` : "—"}</span>
-                  </div>
-                );
-              }} />
-              {referentsStats.length > 0 && (
-                <div className="grid grid-cols-[1fr_60px_70px] gap-2 pt-3 border-t border-border">
-                  <span className="text-sm font-bold">Total</span>
-                  <span className="text-sm font-bold text-right tabular-nums">{referentsStats.reduce((s, r) => s + r.ventes, 0)}</span>
-                  <span className="text-sm font-bold text-right tabular-nums text-emerald-600">+{referentsStats.reduce((s, r) => s + Math.max(0, r.ventes - 3), 0)}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Classement commerciaux avec CA */}
         <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
           <div className="flex items-center justify-between">
@@ -196,6 +152,50 @@ export function AdminKpiSection({
                     {commerciauxStats.reduce((s, c) => s + c.ca, 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 })}
                   </span>
                   <span />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Classement référents — ventes uniquement */}
+        <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                <Trophy className="w-4 h-4 text-amber-600" />
+              </div>
+              <h3 className="font-semibold text-sm">Objectif mensuel de prime (3 ventes) · {referentsStats.length} Référent{referentsStats.length > 1 ? "s" : ""}</h3>
+            </div>
+          </div>
+          {referentsStats.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Aucune vente enregistrée</p>
+          ) : (
+            <div className="space-y-1">
+              <div className="grid grid-cols-[1fr_60px_70px] gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+                <span>Référent</span>
+                <span className="text-right">Ventes</span>
+                <span className="text-right">En +</span>
+              </div>
+              <CollapsibleList items={referentsStats} renderItem={(p: typeof referentsStats[0], idx: number) => {
+                const bonus = Math.max(0, p.ventes - 3);
+                return (
+                  <div key={p.id} className="grid grid-cols-[1fr_60px_70px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-4 text-center text-xs font-bold text-muted-foreground shrink-0">{idx+1}</span>
+                      <span className="text-sm font-medium truncate">{p.nom}</span>
+                      {p.ventes >= 3 && <Star className="w-3 h-3 text-amber-500 shrink-0" />}
+                    </div>
+                    <span className="text-sm font-bold text-right tabular-nums">{p.ventes}</span>
+                    <span className={`text-xs text-right tabular-nums ${bonus > 0 ? "text-emerald-600 font-bold" : "text-muted-foreground"}`}>{bonus > 0 ? `+${bonus}` : "—"}</span>
+                  </div>
+                );
+              }} />
+              {referentsStats.length > 0 && (
+                <div className="grid grid-cols-[1fr_60px_70px] gap-2 pt-3 border-t border-border">
+                  <span className="text-sm font-bold">Total</span>
+                  <span className="text-sm font-bold text-right tabular-nums">{referentsStats.reduce((s, r) => s + r.ventes, 0)}</span>
+                  <span className="text-sm font-bold text-right tabular-nums text-emerald-600">+{referentsStats.reduce((s, r) => s + Math.max(0, r.ventes - 3), 0)}</span>
                 </div>
               )}
             </div>

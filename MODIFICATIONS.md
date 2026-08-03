@@ -1,5 +1,17 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Inversion cartes tableau de bord + boutons calendrier élargis
+
+### Tableau de bord direction : « CA par commercial » déplacé à gauche
+- Échange de position entre « CA par commercial » et « Objectif mensuel de prime » dans la grille 2 colonnes
+- Fichier : `src/components/dashboard/AdminKpiSection.tsx`
+
+### Calendrier des RDV : boutons élargis + couleur active Mois/Semaine
+- Liste déroulante « Tous les commerciaux » élargie (180px → 220px) pour éviter la troncature du texte
+- Boutons Commercial/Technicien : padding horizontal augmenté (px-3 → px-4) + `whitespace-nowrap`
+- Boutons Mois/Semaine : même élargissement, et état actif désormais coloré en orange (`#F97316`, identique au bouton Commercial) au lieu d'un simple fond gris peu visible
+- Fichier : `src/app/(dashboard)/calendrier/page.tsx`
+
 ## 2026-08-03 — Fix label tronqué à droite des graphiques + flèches plus visibles
 
 ### Dernier label de l'axe X tronqué (toutes granularités)

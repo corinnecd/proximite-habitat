@@ -1,5 +1,20 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Suppression contour gris graphiques + Tendance hebdo alignée sur janvier
+
+### Suppression du contour gris sur les graphiques Recharts
+- Quand on cliquait/survolait un graphique, un contour rectangulaire gris apparaissait (outline CSS global `*` appliqué aux SVG)
+- Ajout d'une règle ciblée `.recharts-wrapper:focus, .recharts-surface:focus { outline: none; }` dans `globals.css`
+- Fichier : `src/app/globals.css`
+
+### « Tendance globale hebdomadaire » alignée sur le 1er janvier calendaire
+- Avant : fenêtre glissante de 12 dernières semaines (début mai) — incohérent avec les autres graphiques
+- Après : démarre à la semaine ISO contenant le 1er janvier (« 29 déc. - 04 janv. » pour 2026), ~31 semaines affichées
+- Labels amincis automatiquement (`interval`) pour gérer la densité, tous les points survolables via tooltip
+- Subtitle mis à jour : « Fiches créées et acceptées depuis le début de l'année »
+- Appliqué dans les deux vues : direction (`reporting/page.tsx`) et commercial (`CommercialReportingView.tsx`)
+- Fichiers : `src/app/(dashboard)/reporting/page.tsx`, `src/components/reporting/CommercialReportingView.tsx`
+
 ## 2026-08-02 — Axe des graphiques d'évolution aligné sur l'année calendaire (toutes granularités)
 
 ### Alignement calendaire de `generatePeriods` (EvolutionChart.tsx)

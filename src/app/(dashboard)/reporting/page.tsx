@@ -353,9 +353,16 @@ export default function ReportingPage() {
       .sort((a, b) => b.total - a.total);
     setVilles(villeRows);
 
-    // ── 4. Évolution semaine par semaine (8-12 dernières semaines) ──
-    const WEEK_COUNT = 12;
+    // ── 4. Évolution semaine par semaine (depuis le 1er janvier calendaire) ──
     const now = new Date();
+    const getMonday = (d: Date) => {
+      const day = d.getDay();
+      const diff = d.getDate() - (day === 0 ? 6 : day - 1);
+      return new Date(d.getFullYear(), d.getMonth(), diff);
+    };
+    const firstMonday = getMonday(new Date(now.getFullYear(), 0, 1));
+    const currentMonday = getMonday(now);
+    const WEEK_COUNT = Math.round((currentMonday.getTime() - firstMonday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
     const weekStarts: Date[] = [];
     for (let i = WEEK_COUNT - 1; i >= 0; i--) {
       const d = new Date(now);
@@ -1249,7 +1256,7 @@ export default function ReportingPage() {
             </div>
             <div>
               <h3 className="font-semibold text-sm">{isAllPeriod ? "Tendance globale hebdomadaire" : "Tendance hebdomadaire"}{periodSuffix}</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Fiches créées et acceptées sur les 12 dernières semaines</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Fiches créées et acceptées depuis le début de l&apos;année</p>
             </div>
           </div>
           {weeklyData.length === 0 ? (
@@ -1268,7 +1275,7 @@ export default function ReportingPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={weeklyData.length > 12 ? Math.ceil(weeklyData.length / 8) - 1 : 0} />
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="creees" name="Fiches créées" stroke="#3b82f6" strokeWidth={2} fill="url(#gradCreees)" animationDuration={700} />

@@ -1,5 +1,15 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Fenêtre glissante de 8 semaines avec navigation (granularité Semaine)
+
+### Remplacement de la vue compressée (31 semaines) par une fenêtre de 8 semaines paginée
+- Avant : granularité Semaine affichait les ~31 semaines depuis janvier compressées sur l'axe, avec seulement 8 labels espacés régulièrement (`pickEvenTicks`) — jugé difficile à lire
+- Après : seules 8 semaines réelles sont affichées à la fois (semaine en cours + 7 précédentes par défaut), chacune avec son propre label d'axe — plus de compression, plus d'espacement calculé nécessaire
+- Navigation par flèches `◀ ▶` (sans étiquette de période ni bouton retour) : `◀` recule d'une semaine à la fois jusqu'au 1er janvier (désactivée à la butée), `▶` avance vers le présent (désactivée à la semaine courante)
+- Changer de granularité (ex. Semaine → Mois) réinitialise la fenêtre à la semaine courante
+- Appliqué aux 3 graphiques hebdomadaires : `EvolutionChart.tsx` (composant partagé, prop interne `weekOffset`), Tendance globale hebdomadaire direction (`reporting/page.tsx`) et commercial (`CommercialReportingView.tsx`), chacun avec son propre state `weeklyTrendOffset`
+- Le calcul des données reste inchangé (toujours généré depuis le 1er janvier) — seul l'affichage est fenêtré, donc toutes les semaines de l'année restent accessibles via la navigation
+
 ## 2026-08-03 — Fix espacement irrégulier des labels d'axe (illusion de trou mi-juillet/août)
 
 ### Espacement régulier des labels de l'axe X (granularités denses)

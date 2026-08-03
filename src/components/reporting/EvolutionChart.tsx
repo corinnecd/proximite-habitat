@@ -1,10 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer,
 } from "recharts";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -108,6 +109,19 @@ export function EvolutionChart({
   granularity, onGranularityChange,
   hidePersonSelector = false, showZeroLine = false,
 }: EvolutionChartProps) {
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  useEffect(() => {
+    setWeekOffset(0);
+  }, [granularity]);
+
+  const windowSize = 8;
+  const isWeek = granularity === "week";
+  const displayData = isWeek && data.length > windowSize
+    ? data.slice(Math.max(0, data.length - windowSize - weekOffset), data.length - weekOffset)
+    : data;
+  const canGoBack = isWeek && (data.length - windowSize - weekOffset) > 0;
+  const canGoForward = isWeek && weekOffset > 0;
 
   return (
     <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
@@ -142,7 +156,7 @@ export function EvolutionChart({
       </div>
 
       {/* Granularity pills */}
-      <div className="flex flex-wrap gap-1.5 mb-5">
+      <div className="flex flex-wrap items-center gap-1.5 mb-5">
         {(Object.keys(GRANULARITY_LABELS) as Granularity[]).map((g) => (
           <button
             key={g}
@@ -157,6 +171,28 @@ export function EvolutionChart({
             {GRANULARITY_LABELS[g]}
           </button>
         ))}
+        {isWeek && data.length > windowSize && (
+          <div className="flex items-center gap-1 ml-auto">
+            <button
+              type="button"
+              onClick={() => setWeekOffset((o) => Math.min(o + 1, data.length - windowSize))}
+              disabled={!canGoBack}
+              aria-label="Semaines précédentes"
+              className="w-7 h-7 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeekOffset((o) => Math.max(o - 1, 0))}
+              disabled={!canGoForward}
+              aria-label="Semaines suivantes"
+              className="w-7 h-7 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Chart */}
@@ -164,7 +200,7 @@ export function EvolutionChart({
         <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée disponible</p>
       ) : (
         <ResponsiveContainer width="100%" height={260}>
-          <AreaChart data={data} margin={{ top: 5, right: dualAxis ? 10 : 10, left: -20, bottom: 0 }}>
+          <AreaChart data={displayData} margin={{ top: 5, right: dualAxis ? 10 : 10, left: -20, bottom: 0 }}>
             <defs>
               {lines.map((line) => (
                 <linearGradient key={`grad-${line.dataKey}`} id={`grad-${line.dataKey}`} x1="0" y1="0" x2="0" y2="1">
@@ -174,7 +210,7 @@ export function EvolutionChart({
               ))}
             </defs>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} ticks={data.length > 12 ? pickEvenTicks(data.map((d) => d.label as string)) : undefined} interval={0} />
+            <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} ticks={displayData.length > 12 ? pickEvenTicks(displayData.map((d) => d.label as string)) : undefined} interval={0} />
             {dualAxis ? (
               <>
                 <YAxis yAxisId="left" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />

@@ -15,13 +15,14 @@ import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel as getReportPeriodLabel } from "@/lib/periods";
 import {
   BarChart3, TrendingUp, Users, FileText, Search, X, ChevronDown, ChevronUp,
+  ChevronLeft, ChevronRight,
   CheckCircle2, XCircle, Clock, Euro,
   Trophy, RefreshCw, CalendarDays, MapPin, Wrench, CalendarCheck,
 } from "lucide-react";
 import { KpiCard, CustomTooltip } from "@/components/reporting/KpiCard";
 import { ConversionFunnel } from "@/components/reporting/ConversionFunnel";
 import { CommercialReportingView } from "@/components/reporting/CommercialReportingView";
-import { EvolutionChart, bucketReferentFiches, bucketCommercialVentes, pickEvenTicks } from "@/components/reporting/EvolutionChart";
+import { EvolutionChart, bucketReferentFiches, bucketCommercialVentes } from "@/components/reporting/EvolutionChart";
 import type { Granularity } from "@/components/reporting/EvolutionChart";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -112,6 +113,7 @@ export default function ReportingPage() {
   const [commGranularity, setCommGranularity] = useState<Granularity>("month");
   const [selectedCommEvolPerson, setSelectedCommEvolPerson] = useState("all");
   const [commEvolGranularity, setCommEvolGranularity] = useState<Granularity>("month");
+  const [weeklyTrendOffset, setWeeklyTrendOffset] = useState(0);
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
@@ -1248,22 +1250,54 @@ export default function ReportingPage() {
           );
         })()}
 
-        {/* ── Évolution semaine par semaine (courbe 12 semaines) ──────────── */}
+        {/* ── Évolution semaine par semaine (fenêtre de 8 semaines) ──────────── */}
+        {(() => {
+          const windowSize = 8;
+          const visibleWeeklyData = weeklyData.length > windowSize
+            ? weeklyData.slice(Math.max(0, weeklyData.length - windowSize - weeklyTrendOffset), weeklyData.length - weeklyTrendOffset)
+            : weeklyData;
+          const canGoBack = (weeklyData.length - windowSize - weeklyTrendOffset) > 0;
+          const canGoForward = weeklyTrendOffset > 0;
+          return (
         <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-              <TrendingUp className="w-4 h-4 text-blue-600" />
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">{isAllPeriod ? "Tendance globale hebdomadaire" : "Tendance hebdomadaire"}{periodSuffix}</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Fiches créées et acceptées depuis le début de l&apos;année</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-sm">{isAllPeriod ? "Tendance globale hebdomadaire" : "Tendance hebdomadaire"}{periodSuffix}</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Fiches créées et acceptées depuis le début de l&apos;année</p>
-            </div>
+            {weeklyData.length > windowSize && (
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setWeeklyTrendOffset((o) => Math.min(o + 1, weeklyData.length - windowSize))}
+                  disabled={!canGoBack}
+                  aria-label="Semaines précédentes"
+                  className="w-7 h-7 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWeeklyTrendOffset((o) => Math.max(o - 1, 0))}
+                  disabled={!canGoForward}
+                  aria-label="Semaines suivantes"
+                  className="w-7 h-7 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
           {weeklyData.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée disponible</p>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={weeklyData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={visibleWeeklyData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gradCreees" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
@@ -1275,7 +1309,7 @@ export default function ReportingPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} ticks={weeklyData.length > 12 ? pickEvenTicks(weeklyData.map((d) => d.label)) : undefined} interval={0} />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="creees" name="Fiches créées" stroke="#3b82f6" strokeWidth={2} fill="url(#gradCreees)" animationDuration={700} />
@@ -1288,6 +1322,8 @@ export default function ReportingPage() {
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
           </div>
         </div>
+          );
+        })()}
 
         {/* ── Évolution des fiches par référent ──────────────────────── */}
         {!isCommercial && referents.length > 0 && (

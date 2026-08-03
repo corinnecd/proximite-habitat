@@ -12,11 +12,11 @@ import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel as getReportPeriodLabel } from "@/lib/periods";
 import {
   BarChart3, TrendingUp, FileText, CalendarDays, RefreshCw, Euro, XCircle,
-  Clock, Wrench, CalendarCheck, CheckCircle2, ArrowLeft,
+  Clock, Wrench, CalendarCheck, CheckCircle2, ArrowLeft, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { KpiCard, CustomTooltip } from "@/components/reporting/KpiCard";
 import { ConversionFunnel } from "@/components/reporting/ConversionFunnel";
-import { EvolutionChart, bucketCommercialVentes, pickEvenTicks, type Granularity } from "@/components/reporting/EvolutionChart";
+import { EvolutionChart, bucketCommercialVentes, type Granularity } from "@/components/reporting/EvolutionChart";
 import { Button } from "@/components/ui/button";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -92,6 +92,7 @@ export function CommercialReportingView({
   const [pieTooltipPos, setPieTooltipPos] = useState<{ x: number; y: number } | undefined>(undefined);
   const [rawFiches, setRawFiches] = useState<{ created_by: string; assigned_to: string | null; status: string; montant_ht: number | null; created_at: string }[]>([]);
   const [evolGranularity, setEvolGranularity] = useState<Granularity>("month");
+  const [weeklyTrendOffset, setWeeklyTrendOffset] = useState(0);
 
   const cacheKey = `rpt_cache_${subjectId}`;
 
@@ -703,22 +704,54 @@ export function CommercialReportingView({
           onGranularityChange={setEvolGranularity}
         />
 
-        {/* ── Tendance hebdomadaire ─────────────────────────────────────── */}
+        {/* ── Tendance hebdomadaire (fenêtre de 8 semaines) ─────────────── */}
+        {(() => {
+          const windowSize = 8;
+          const visibleWeeklyData = weeklyData.length > windowSize
+            ? weeklyData.slice(Math.max(0, weeklyData.length - windowSize - weeklyTrendOffset), weeklyData.length - weeklyTrendOffset)
+            : weeklyData;
+          const canGoBack = (weeklyData.length - windowSize - weeklyTrendOffset) > 0;
+          const canGoForward = weeklyTrendOffset > 0;
+          return (
         <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 hover:shadow-md transition-all duration-200">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-              <TrendingUp className="w-4 h-4 text-blue-600" />
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">{isAllPeriod ? "Tendance globale hebdomadaire" : "Tendance hebdomadaire"}{periodSuffix}</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Fiches créées et acceptées depuis le début de l&apos;année</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-sm">{isAllPeriod ? "Tendance globale hebdomadaire" : "Tendance hebdomadaire"}{periodSuffix}</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Fiches créées et acceptées depuis le début de l&apos;année</p>
-            </div>
+            {weeklyData.length > windowSize && (
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setWeeklyTrendOffset((o) => Math.min(o + 1, weeklyData.length - windowSize))}
+                  disabled={!canGoBack}
+                  aria-label="Semaines précédentes"
+                  className="w-7 h-7 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWeeklyTrendOffset((o) => Math.max(o - 1, 0))}
+                  disabled={!canGoForward}
+                  aria-label="Semaines suivantes"
+                  className="w-7 h-7 flex items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
           {weeklyData.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Aucune donnée disponible</p>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={weeklyData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={visibleWeeklyData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gradCreees" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
@@ -730,7 +763,7 @@ export function CommercialReportingView({
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} ticks={weeklyData.length > 12 ? pickEvenTicks(weeklyData.map((d) => d.label)) : undefined} interval={0} />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="creees" name="Fiches créées" stroke="#3b82f6" strokeWidth={2} fill="url(#gradCreees)" animationDuration={700} />
@@ -743,6 +776,8 @@ export function CommercialReportingView({
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block" />Acceptées</span>
           </div>
         </div>
+          );
+        })()}
 
         </div>
       </div>

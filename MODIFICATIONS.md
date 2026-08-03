@@ -1,5 +1,13 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Fix espacement irrégulier des labels d'axe (illusion de trou mi-juillet/août)
+
+### Espacement régulier des labels de l'axe X (granularités denses)
+- Le fix précédent (`interval="preserveStartEnd"`) forçait le premier ET le dernier label mais espaçait le reste automatiquement, créant un écart final anormalement grand (4 semaines) par rapport aux autres écarts (2-3 semaines) — donnait l'illusion que des semaines manquaient entre mi-juillet et le 3 août, alors que les données étaient continues
+- Nouvelle fonction utilitaire `pickEvenTicks(labels, maxTicks=8)` dans `EvolutionChart.tsx` : sélectionne des indices régulièrement espacés (pas fixe, incluant toujours le premier et le dernier point) et les passe explicitement via la prop `ticks` de Recharts (`interval={0}` pour désactiver le recalcul automatique)
+- Résultat vérifié : écarts homogènes de 4-5 semaines sur toute la plage, y compris le dernier segment
+- Appliqué aux 3 graphiques hebdomadaires : `EvolutionChart.tsx` (composant partagé), Tendance globale hebdomadaire direction (`reporting/page.tsx`) et commercial (`CommercialReportingView.tsx`)
+
 ## 2026-08-03 — Réordonnancement commercial + fix dernier label semaine tronqué
 
 ### Réordonnancement du profil commercial

@@ -21,7 +21,7 @@ import {
 import { KpiCard, CustomTooltip } from "@/components/reporting/KpiCard";
 import { ConversionFunnel } from "@/components/reporting/ConversionFunnel";
 import { CommercialReportingView } from "@/components/reporting/CommercialReportingView";
-import { EvolutionChart, bucketReferentFiches, bucketCommercialVentes } from "@/components/reporting/EvolutionChart";
+import { EvolutionChart, bucketReferentFiches, bucketCommercialVentes, pickEvenTicks } from "@/components/reporting/EvolutionChart";
 import type { Granularity } from "@/components/reporting/EvolutionChart";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -1275,7 +1275,7 @@ export default function ReportingPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={weeklyData.length > 12 ? "preserveStartEnd" : 0} />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} ticks={weeklyData.length > 12 ? pickEvenTicks(weeklyData.map((d) => d.label)) : undefined} interval={0} />
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="creees" name="Fiches créées" stroke="#3b82f6" strokeWidth={2} fill="url(#gradCreees)" animationDuration={700} />

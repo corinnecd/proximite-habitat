@@ -18,6 +18,13 @@ const GRANULARITY_LABELS: Record<Granularity, string> = {
   year: "Année",
 };
 
+export function pickEvenTicks(labels: string[], maxTicks = 8): string[] {
+  if (labels.length <= maxTicks) return labels;
+  const step = (labels.length - 1) / (maxTicks - 1);
+  const indices = Array.from({ length: maxTicks }, (_, i) => Math.round(i * step));
+  return [...new Set(indices)].map((i) => labels[i]);
+}
+
 export interface LineConfig {
   dataKey: string;
   label: string;
@@ -167,7 +174,7 @@ export function EvolutionChart({
               ))}
             </defs>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={data.length > 12 ? "preserveStartEnd" : 0} />
+            <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} ticks={data.length > 12 ? pickEvenTicks(data.map((d) => d.label as string)) : undefined} interval={0} />
             {dualAxis ? (
               <>
                 <YAxis yAxisId="left" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />

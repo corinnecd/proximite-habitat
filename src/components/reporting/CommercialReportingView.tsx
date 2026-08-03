@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { KpiCard, CustomTooltip } from "@/components/reporting/KpiCard";
 import { ConversionFunnel } from "@/components/reporting/ConversionFunnel";
-import { EvolutionChart, bucketCommercialVentes, type Granularity } from "@/components/reporting/EvolutionChart";
+import { EvolutionChart, bucketCommercialVentes, pickEvenTicks, type Granularity } from "@/components/reporting/EvolutionChart";
 import { Button } from "@/components/ui/button";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -730,7 +730,7 @@ export function CommercialReportingView({
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval={weeklyData.length > 12 ? "preserveStartEnd" : 0} />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} ticks={weeklyData.length > 12 ? pickEvenTicks(weeklyData.map((d) => d.label)) : undefined} interval={0} />
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<CustomTooltip />} />
                 <Area type="monotone" dataKey="creees" name="Fiches créées" stroke="#3b82f6" strokeWidth={2} fill="url(#gradCreees)" animationDuration={700} />

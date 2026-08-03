@@ -1,5 +1,12 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Fix placeholder tronqué dans la barre de recherche du calendrier
+
+### Champ de recherche élargi
+- Le placeholder « Rechercher un RDV… » (140px) dépassait l'espace utilisable du champ (128px avec icône + bouton d'effacement), causant une troncature visuelle
+- Largeur du champ passée de `w-48` (192px) à `w-64` (256px) — espace utilisable désormais 192px, confortable
+- Fichier : `src/app/(dashboard)/calendrier/page.tsx`
+
 ## 2026-08-03 — Période toujours visible + message si aucune fiche (reporting)
 
 ### Période active toujours affichée dans les titres de carte

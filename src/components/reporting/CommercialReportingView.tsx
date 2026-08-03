@@ -703,6 +703,27 @@ export function CommercialReportingView({
           </div>
         </div>
 
+        {/* ── Évolution de mes ventes ──────────────────────────────────── */}
+        <EvolutionChart
+          title="Évolution de mes ventes"
+          subtitle="Nombre de ventes et chiffre d'affaires par période"
+          icon={<Euro className="w-4 h-4 text-emerald-600" />}
+          iconBg="bg-emerald-100 dark:bg-emerald-900/30"
+          data={commEvolutionData}
+          lines={[
+            { dataKey: "ventes", label: "Ventes", color: "#10b981", yAxisId: "left" },
+            { dataKey: "ca", label: "CA HT", color: "#f59e0b", yAxisId: "right", formatter: (v: number) => `${v.toLocaleString("fr-FR", { maximumFractionDigits: 0 })}€` },
+          ]}
+          persons={[]}
+          selectedPerson={subjectId}
+          onPersonChange={() => {}}
+          dualAxis
+          rightAxisFormatter={(v: number) => `${(v / 1000).toFixed(0)}k€`}
+          hidePersonSelector
+          granularity={evolGranularity}
+          onGranularityChange={setEvolGranularity}
+        />
+
         {/* ── Évolution en % de mes ventes ──────────────────────────────── */}
         <EvolutionChart
           title="Évolution en % de mes ventes"

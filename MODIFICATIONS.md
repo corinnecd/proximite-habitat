@@ -1,5 +1,15 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Graphique « Évolution de mes ventes » dans le profil commercial
+
+### Ajout du graphique ventes/CA (non-%) dans CommercialReportingView
+- Le profil commercial avait déjà « Évolution en % de mes ventes » mais pas son équivalent en valeurs brutes (nombre de ventes + CA HT), présent côté direction sous le nom « Évolution des ventes par commercial »
+- Ajout d'un `<EvolutionChart>` « Évolution de mes ventes » (double axe : Ventes à gauche, CA HT à droite), réutilisant les données déjà calculées (`commEvolutionData`) et la même granularité (`evolGranularity`) que le graphique % existant
+- Ordre des sections : Tendance globale hebdomadaire → Évolution de mes ventes (nouveau) → Évolution en % de mes ventes
+- « Tendance globale hebdomadaire » n'est PAS supprimée (demande initiale annulée en cours d'échange)
+- `CommercialReportingView.tsx` étant partagé entre `/reporting` (commercial connecté) et `/reporting/commercial/[id]` (détail vu par la direction), le changement s'applique aux deux — confirmé avec l'utilisateur. La vue direction consolidée et la vue référent sont inchangées.
+- Fichier : `src/components/reporting/CommercialReportingView.tsx`
+
 ## 2026-08-03 — Suppression contour gris graphiques + Tendance hebdo alignée sur janvier
 
 ### Suppression du contour gris sur les graphiques Recharts

@@ -437,7 +437,7 @@ export default function ReportingPage() {
   const inProgressRate = baseActive > 0 ? Math.round((inProgress / baseActive) * 100) : 0;
   const installationRate = (accepted + rdvTechnicien + installees) > 0 ? Math.round((installees / (accepted + rdvTechnicien + installees)) * 100) : 0;
   const _pl = getReportPeriodLabel(periodFilter);
-  const periodSuffix = _pl ? ` (${_pl})` : "";
+  const periodSuffix = ` (${_pl ?? PERIOD_LABELS[periodFilter]})`;
   const isAllPeriod = periodFilter === "ALL";
   const filteredCommerciaux = commSearch
     ? commerciaux.filter((c) => c.name.toLowerCase().includes(commSearch.toLowerCase()))
@@ -606,19 +606,17 @@ export default function ReportingPage() {
         </div>
 
         {/* ── Funnel de conversion ────────────────────────────────────────── */}
-        {totalFiches > 0 && (
-          <ConversionFunnel
-            statusCounts={statusCounts}
-            isCommercial={isCommercial}
-            soumises={soumises}
-            validees={validees}
-            affectees={affectees}
-            accepted={accepted}
-            refused={refused}
-            acceptanceRate={acceptanceRate}
-            periodSuffix={periodSuffix}
-          />
-        )}
+        <ConversionFunnel
+          statusCounts={statusCounts}
+          isCommercial={isCommercial}
+          soumises={soumises}
+          validees={validees}
+          affectees={affectees}
+          accepted={accepted}
+          refused={refused}
+          acceptanceRate={acceptanceRate}
+          periodSuffix={periodSuffix}
+        />
 
         {/* ── Vue comparative succursales (DG, vue globale) ────────────────── */}
         {isDG && selectedBranchId === "all" && branchStats.length > 0 && (

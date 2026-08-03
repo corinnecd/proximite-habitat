@@ -1,5 +1,17 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Période toujours visible + message si aucune fiche (reporting)
+
+### Période active toujours affichée dans les titres de carte
+- Avant : quand le filtre « Toutes les dates » était sélectionné, le suffixe de période était vide (aucune indication visuelle) — seuls les filtres précis (Ce mois, Cette semaine...) affichaient une période
+- Après : `periodSuffix` affiche toujours un texte, avec repli sur le libellé court (`PERIOD_LABELS[periodFilter]`, ex. « Toutes les dates ») quand le libellé détaillé n'existe pas
+- S'applique à tous les titres de carte du reporting (direction et commercial) qui utilisaient déjà `periodSuffix`, pas seulement « Répartition des fiches par statut »
+- Fichiers : `reporting/page.tsx`, `CommercialReportingView.tsx`
+
+### Message explicite si aucune fiche sur la période
+- Le graphique « Répartition des fiches par statut » (`ConversionFunnel.tsx`) était entièrement masqué (`{totalFiches > 0 && ...}`) quand aucune fiche ne correspondait à la période sélectionnée — remplacé par un message « Aucune fiche sur la période sélectionnée » à l'intérieur du composant, qui reste désormais toujours monté
+- Fichiers : `ConversionFunnel.tsx`, `reporting/page.tsx`, `CommercialReportingView.tsx`
+
 ## 2026-08-03 — Inversion cartes tableau de bord + boutons calendrier élargis
 
 ### Tableau de bord direction : « CA par commercial » déplacé à gauche

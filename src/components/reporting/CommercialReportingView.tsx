@@ -232,7 +232,7 @@ export function CommercialReportingView({
   const inProgressRate = baseActive > 0 ? Math.round((inProgress / baseActive) * 100) : 0;
   const installationRate = (accepted + rdvTechnicien + installees) > 0 ? Math.round((installees / (accepted + rdvTechnicien + installees)) * 100) : 0;
   const _pl = getReportPeriodLabel(periodFilter);
-  const periodSuffix = _pl ? ` (${_pl})` : "";
+  const periodSuffix = ` (${_pl ?? PERIOD_LABELS[periodFilter]})`;
   const isAllPeriod = periodFilter === "ALL";
 
   const pieData = statusCounts.filter((s) => s.count > 0).map((s) => ({
@@ -380,16 +380,14 @@ export function CommercialReportingView({
         </div>
 
         {/* ── Funnel de conversion ────────────────────────────────────── */}
-        {totalFiches > 0 && (
-          <ConversionFunnel
-            statusCounts={statusCounts}
-            isCommercial
-            accepted={accepted}
-            refused={refused}
-            acceptanceRate={acceptanceRate}
-            periodSuffix={periodSuffix}
-          />
-        )}
+        <ConversionFunnel
+          statusCounts={statusCounts}
+          isCommercial
+          accepted={accepted}
+          refused={refused}
+          acceptanceRate={acceptanceRate}
+          periodSuffix={periodSuffix}
+        />
 
         {/* ── Ligne 2 : Pie chart + Ma performance ─────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

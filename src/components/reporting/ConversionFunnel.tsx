@@ -63,6 +63,9 @@ export function ConversionFunnel({
           </div>
         </div>
       </div>
+      {total === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-8">Aucune fiche sur la période sélectionnée</p>
+      ) : (
       <div className="space-y-1.5">
         {steps.map((step) => {
           const pct = total > 0 ? Math.round((step.count / total) * 100) : 0;
@@ -87,6 +90,7 @@ export function ConversionFunnel({
           );
         })}
       </div>
+      )}
       {total > 0 && (
         <div className="mt-3 pt-3 border-t border-border flex items-center gap-4 text-xs">
           <span className="text-muted-foreground">Taux de conversion :</span>

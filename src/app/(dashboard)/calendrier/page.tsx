@@ -29,7 +29,10 @@ const MOIS_NOMS = [
 const JOURS_ENTETE = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 type ViewMode = "month" | "week";
-type CalType = "commercial" | "technicien";
+type CalType = "commercial" | "technicien" | "all";
+
+type RdvKind = "commercial" | "technicien";
+interface RdvEvent { fiche: RdvFiche; kind: RdvKind; date: string; heure: string | null; }
 
 interface ProfileOption { id: string; first_name: string; last_name: string; }
 
@@ -104,11 +107,13 @@ export default function CalendrierPage() {
   const fetchRdvs = useCallback(async () => {
     if (!profile) return;
     setLoading(true);
-    const dateField = calType === "technicien" ? "rdv_technicien_date" : "rdv_date";
-    const heureField = calType === "technicien" ? "rdv_technicien_heure" : "heure_visite";
+    const COMMERCIAL_STATUSES: FicheStatus[] = ["VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "REFUSEE"];
+    const TECHNICIEN_STATUSES: FicheStatus[] = ["RDV_TECHNICIEN", "INSTALLEE"];
     const statuses: FicheStatus[] = calType === "technicien"
-      ? ["RDV_TECHNICIEN", "INSTALLEE"]
-      : ["VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "REFUSEE"];
+      ? TECHNICIEN_STATUSES
+      : calType === "all"
+        ? [...new Set([...COMMERCIAL_STATUSES, ...TECHNICIEN_STATUSES])]
+        : COMMERCIAL_STATUSES;
 
     let query = supabase
       .from("fiches")
@@ -116,12 +121,23 @@ export default function CalendrierPage() {
         "id, reference, status, rdv_date, rdv_technicien_date, rdv_technicien_heure, heure_visite, prospect_nom, prospect_prenom, prospect_adresse, prospect_ville, prospect_telephone, organization_id, created_by, " +
         "assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)"
       )
-      .not(dateField, "is", null)
-      .in("status", statuses)
-      .gte(dateField, rangeStartKey)
-      .lte(dateField, rangeEndKey)
-      .order(dateField, { ascending: true })
-      .order(heureField, { ascending: true, nullsFirst: false });
+      .in("status", statuses);
+
+    if (calType === "all") {
+      // fiche a un RDV commercial OU technicien dans la plage
+      query = query.or(
+        `and(rdv_date.gte.${rangeStartKey},rdv_date.lte.${rangeEndKey}),and(rdv_technicien_date.gte.${rangeStartKey},rdv_technicien_date.lte.${rangeEndKey})`
+      );
+    } else {
+      const dateField = calType === "technicien" ? "rdv_technicien_date" : "rdv_date";
+      const heureField = calType === "technicien" ? "rdv_technicien_heure" : "heure_visite";
+      query = query
+        .not(dateField, "is", null)
+        .gte(dateField, rangeStartKey)
+        .lte(dateField, rangeEndKey)
+        .order(dateField, { ascending: true })
+        .order(heureField, { ascending: true, nullsFirst: false });
+    }
 
     if (isReferent) {
       query = query.eq("created_by", profile.id);
@@ -180,17 +196,27 @@ export default function CalendrierPage() {
     });
   }, [fiches, searchQuery]);
 
-  const fichesByDay = useMemo(() => {
-    const map = new Map<string, RdvFiche[]>();
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, RdvEvent[]>();
+    const pushEvent = (fiche: RdvFiche, kind: RdvKind, date: string | null, heure: string | null) => {
+      if (!date) return;
+      if (date < rangeStartKey || date > rangeEndKey) return;
+      const list = map.get(date) ?? [];
+      list.push({ fiche, kind, date, heure });
+      map.set(date, list);
+    };
     for (const f of filteredFiches) {
-      const key = calType === "technicien" ? f.rdv_technicien_date : f.rdv_date;
-      if (!key) continue;
-      const list = map.get(key) ?? [];
-      list.push(f);
-      map.set(key, list);
+      if (calType === "commercial") {
+        pushEvent(f, "commercial", f.rdv_date, f.heure_visite);
+      } else if (calType === "technicien") {
+        pushEvent(f, "technicien", f.rdv_technicien_date, f.rdv_technicien_heure);
+      } else {
+        pushEvent(f, "commercial", f.rdv_date, f.heure_visite);
+        pushEvent(f, "technicien", f.rdv_technicien_date, f.rdv_technicien_heure);
+      }
     }
     return map;
-  }, [filteredFiches, calType]);
+  }, [filteredFiches, calType, rangeStartKey, rangeEndKey]);
 
   const goPrev = () => setRefDate((d) => (viewMode === "month" ? addMonths(d, -1) : addWeeks(d, -1)));
   const goNext = () => setRefDate((d) => (viewMode === "month" ? addMonths(d, 1) : addWeeks(d, 1)));
@@ -201,8 +227,12 @@ export default function CalendrierPage() {
       ? formatMonthLabel(refDate)
       : `${grid[0][0].getDate()} ${MOIS_NOMS[grid[0][0].getMonth()]} – ${grid[0][6].getDate()} ${MOIS_NOMS[grid[0][6].getMonth()]} ${grid[0][6].getFullYear()}`;
 
-  const totalCount = filteredFiches.length;
-  const selectedFiches = selectedDayKey ? fichesByDay.get(selectedDayKey) ?? [] : [];
+  const totalCount = useMemo(() => {
+    let n = 0;
+    for (const list of eventsByDay.values()) n += list.length;
+    return n;
+  }, [eventsByDay]);
+  const selectedEvents = selectedDayKey ? eventsByDay.get(selectedDayKey) ?? [] : [];
 
   return (
     <>
@@ -280,6 +310,13 @@ export default function CalendrierPage() {
               >
                 Technicien
               </button>
+              <button
+                type="button"
+                onClick={() => setCalType("all")}
+                className={`px-4 py-1.5 text-sm rounded-lg transition-colors whitespace-nowrap ${calType === "all" ? "bg-violet-600 text-white font-medium" : "text-muted-foreground"}`}
+              >
+                Tous
+              </button>
             </div>
             <div className="flex items-center rounded-xl border bg-background p-0.5">
               <button
@@ -317,22 +354,21 @@ export default function CalendrierPage() {
             <div key={wi} className={`grid grid-cols-7 ${wi < grid.length - 1 ? "border-b" : ""}`}>
               {week.map((day) => {
                 const key = toDateKey(day);
-                const heureKey = calType === "technicien" ? "rdv_technicien_heure" : "heure_visite";
-                const dayFiches = (fichesByDay.get(key) ?? []).slice().sort((a, b) => ((a[heureKey] as string | null) ?? "99:99").localeCompare((b[heureKey] as string | null) ?? "99:99"));
+                const dayEvents = (eventsByDay.get(key) ?? []).slice().sort((a, b) => (a.heure ?? "99:99").localeCompare(b.heure ?? "99:99"));
                 const inCurrentMonth = viewMode === "week" || day.getMonth() === refDate.getMonth();
                 const isToday = isSameDay(day, new Date());
                 const maxShown = viewMode === "week" ? 20 : 3;
-                const shown = dayFiches.slice(0, maxShown);
-                const hidden = dayFiches.length - shown.length;
+                const shown = dayEvents.slice(0, maxShown);
+                const hidden = dayEvents.length - shown.length;
 
                 return (
                   <button
                     key={key}
                     type="button"
-                    onClick={() => dayFiches.length > 0 && setSelectedDayKey(key)}
+                    onClick={() => dayEvents.length > 0 && setSelectedDayKey(key)}
                     className={`min-h-[92px] sm:min-h-[110px] border-r last:border-r-0 p-1.5 sm:p-2 text-left align-top flex flex-col gap-1 transition-colors ${
                       inCurrentMonth ? "bg-background" : "bg-muted/20"
-                    } ${dayFiches.length > 0 ? "hover:bg-muted/40 cursor-pointer" : "cursor-default"}`}
+                    } ${dayEvents.length > 0 ? "hover:bg-muted/40 cursor-pointer" : "cursor-default"}`}
                   >
                     <span
                       className={`text-xs font-medium w-5 h-5 flex items-center justify-center rounded-full ${
@@ -342,16 +378,18 @@ export default function CalendrierPage() {
                       {day.getDate()}
                     </span>
                     <div className="flex flex-col gap-0.5 flex-1">
-                      {shown.map((f) => {
-                        const chip = STATUS_CHIP[f.status] ?? { bg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-700 ring-1 ring-blue-200/60" };
+                      {shown.map((ev, i) => {
+                        const chip = ev.kind === "technicien"
+                          ? { bg: "bg-sky-50 dark:bg-sky-950/30", text: "text-sky-700 dark:text-sky-300 ring-1 ring-sky-200/60" }
+                          : (STATUS_CHIP[ev.fiche.status] ?? { bg: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-700 ring-1 ring-blue-200/60" });
                         return (
                           <span
-                            key={f.id}
+                            key={`${ev.fiche.id}-${ev.kind}-${i}`}
                             title="Plus de détails"
                             className={`truncate rounded px-1.5 py-0.5 text-[10px] sm:text-[11px] leading-tight ${chip.bg} ${chip.text}`}
                           >
-                            {((calType === "technicien" ? f.rdv_technicien_heure : f.heure_visite)?.slice(0, 5) ?? "") + " "}
-                            <span className="font-bold">{f.prospect_nom ?? "Sans nom"}</span>
+                            {(ev.heure?.slice(0, 5) ?? "") + " "}
+                            <span className="font-bold">{ev.fiche.prospect_nom ?? "Sans nom"}</span>
                           </span>
                         );
                       })}
@@ -384,9 +422,11 @@ export default function CalendrierPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-2">
-            {selectedFiches.map((f) => (
+            {selectedEvents.map((ev, idx) => {
+              const f = ev.fiche;
+              return (
               <div
-                key={f.id}
+                key={`${f.id}-${ev.kind}-${idx}`}
                 className="rounded-xl border p-3 hover:bg-muted/40 transition-colors flex flex-col gap-1.5"
               >
                 <Link
@@ -397,11 +437,16 @@ export default function CalendrierPage() {
                   <span className="font-medium text-sm">
                     {f.prospect_prenom} {f.prospect_nom}
                   </span>
-                  <FicheStatusBadge status={f.status} short />
+                  <span className="flex items-center gap-1.5">
+                    {ev.kind === "technicien" && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-700 ring-1 ring-sky-200/60">RDV Technicien</span>
+                    )}
+                    <FicheStatusBadge status={f.status} short />
+                  </span>
                 </Link>
                 <Link href={`/fiches/${f.id}`} className="flex flex-col gap-1 text-xs text-muted-foreground">
-                  {(calType === "technicien" ? f.rdv_technicien_heure : f.heure_visite) && (
-                    <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 shrink-0" />{(calType === "technicien" ? f.rdv_technicien_heure : f.heure_visite)!.slice(0, 5)}</span>
+                  {ev.heure && (
+                    <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 shrink-0" />{ev.heure.slice(0, 5)}</span>
                   )}
                   {(f.prospect_adresse || f.prospect_ville) && (
                     <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 shrink-0" />{[f.prospect_adresse, f.prospect_ville].filter(Boolean).join(", ")}</span>
@@ -413,7 +458,7 @@ export default function CalendrierPage() {
                     <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 shrink-0" />{fullName(f.assigned_to_profile)}</span>
                   )}
                 </Link>
-                {(f.status === "RDV_A_REPRENDRE" || (isReferent && f.created_by === profile?.id)) && (
+                {ev.kind === "commercial" && (f.status === "RDV_A_REPRENDRE" || (isReferent && f.created_by === profile?.id)) && (
                   <Button
                     type="button"
                     variant="outline"
@@ -426,7 +471,8 @@ export default function CalendrierPage() {
                   </Button>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>

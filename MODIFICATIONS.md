@@ -1,5 +1,18 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-03 — Calendrier : nouveau bouton « Tous » (RDV commerciaux + techniciens)
+
+### Ajout d'un 3e mode de vue « Tous » dans le calendrier
+- Avant : le calendrier alternait entre RDV commerciaux (bouton Commercial, `rdv_date` : visites, validations, acceptations) et RDV techniciens (bouton Technicien, `rdv_technicien_date`). Impossible de voir les deux sur le même mois → un commercial n'ayant que des RDV technicien voyait un calendrier vide en mode Commercial par défaut.
+- Ajout d'un bouton « Tous » (couleur violet, à côté de Commercial/Technicien) qui affiche les deux types de RDV simultanément, avec un code couleur distinct par type (bleu pour commercial selon statut, sky/bleu ciel pour technicien).
+- Refactor interne : `fichesByDay` remplacé par `eventsByDay` (map de `RdvEvent { fiche, kind, date, heure }`) — permet à une même fiche d'apparaître deux fois si elle a un RDV commercial ET un RDV technicien dans la période.
+- Modal jour : chaque événement porte son étiquette « RDV Technicien » quand applicable ; le bouton « Modifier la date » ne s'affiche que sur les événements commerciaux (car il modifie `rdv_date`).
+- Requête Supabase adaptée : mode `all` utilise `.or()` pour récupérer fiches ayant rdv_date OU rdv_technicien_date dans la plage, avec l'union des statuts pertinents.
+- Fichier : `src/app/(dashboard)/calendrier/page.tsx`
+
+### Revert commit précédent
+- Retour arrière du commit `90e4973` (« Affiche la date et l'heure du RDV technicien sur la carte de fiche ») : la carte fiche `/fiches` réaffiche `created_at` comme avant, l'info horaire du RDV est désormais accessible via le calendrier avec le bouton « Tous ».
+
 ## 2026-08-03 — Fix placeholder tronqué dans la barre de recherche du calendrier
 
 ### Champ de recherche élargi

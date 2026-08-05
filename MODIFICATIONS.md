@@ -1,5 +1,13 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-05 — Suite audit : fiche introuvable + export CSV complet
+
+### UX / robustesse
+- **Fiche introuvable** (`fiches/[id]/page.tsx`) : séparation loading vs fiche=null — affiche désormais un état "Fiche introuvable" clair avec bouton retour au lieu d'une page vide blanche. Import `FileText` ajouté.
+
+### Export CSV
+- **Export CSV fiches** (`fiches/page.tsx` + `lib/data/fiches.ts`) : l'export respecte maintenant tous les filtres actifs : période (customFrom/customTo ou periodFilter), référent, commercial, ville, département, succursale. Avant : seuls statusFilter, search et isReferent étaient transmis.
+
 ## 2026-08-05 — Audit multi-profils : 11 corrections bugs, sécurité et cohérence
 
 ### Sécurité / accès par rôle

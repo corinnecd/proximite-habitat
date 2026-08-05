@@ -38,7 +38,7 @@ import {
   User,
   Clock, ArrowLeft, UserCheck, Loader2, Pencil, Trash2,
   MapPin, Calendar, CheckCircle2, ShieldCheck, AlertTriangle, Ban, Copy, ChevronDown, ChevronUp,
-  Send, Archive, UserX, XCircle,
+  Send, Archive, UserX, XCircle, FileText,
 } from "lucide-react";
 import { DownloadFicheButton } from "@/components/pdf/DownloadFicheButton";
 import confetti from "canvas-confetti";
@@ -664,11 +664,29 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
   // ── Loading ────────────────────────────────────────────────────────────────
 
-  if (loading || !fiche) {
+  if (loading) {
     return (
       <>
         <Topbar title="Détail de la fiche" />
         <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto" />
+      </>
+    );
+  }
+
+  if (!fiche) {
+    return (
+      <>
+        <Topbar title="Fiche introuvable" />
+        <div className="p-4 sm:p-6 lg:p-8 max-w-lg mx-auto text-center space-y-4 mt-12">
+          <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+            <FileText className="w-7 h-7 text-muted-foreground opacity-50" />
+          </div>
+          <h2 className="text-lg font-bold">Fiche introuvable</h2>
+          <p className="text-sm text-muted-foreground">Cette fiche n&#39;existe pas ou vous n&#39;avez pas les droits pour y accéder.</p>
+          <Button onClick={() => router.push("/fiches")} className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-6">
+            Retour aux fiches
+          </Button>
+        </div>
       </>
     );
   }

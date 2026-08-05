@@ -430,8 +430,24 @@ export default function FichesPage() {
   async function handleExport() {
     setExporting(true);
     try {
+      const exportDates = (customFrom || customTo)
+        ? { from: customFrom || "1970-01-01", to: customTo || new Date().toISOString().slice(0, 10) }
+        : getPeriodDates(periodFilter);
+      const exportBranchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
       const rows = await getFichesForExport(supabase, {
-        statusFilter, isReferent, createdBy: profile?.id, search: search || undefined,
+        statusFilter,
+        isReferent,
+        isAdmin,
+        createdBy: isReferent ? profile?.id : undefined,
+        assignedTo: isCommercial ? profile?.id : undefined,
+        search: search || undefined,
+        referentFilter,
+        commercialFilter,
+        villeFilter,
+        departementFilter,
+        organizationId: exportBranchFilter ?? (isAdmin ? undefined : profile?.organization_id),
+        dateFrom: exportDates?.from,
+        dateTo: exportDates?.to,
       });
       if (rows.length === 0) { toast.info("Aucune fiche à exporter"); return; }
       const csvRows: FicheCsvRow[] = rows.map((f) => ({

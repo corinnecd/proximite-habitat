@@ -121,7 +121,21 @@ export type FicheExportRow = {
  */
 export async function getFichesForExport(
   db: Db,
-  opts: { statusFilter: FicheStatus | "ALL"; isReferent: boolean; createdBy?: string; search?: string },
+  opts: {
+    statusFilter: FicheStatus | "ALL";
+    isReferent: boolean;
+    isAdmin?: boolean;
+    createdBy?: string;
+    assignedTo?: string;
+    search?: string;
+    referentFilter?: string;
+    commercialFilter?: string;
+    villeFilter?: string;
+    departementFilter?: string;
+    organizationId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  },
 ): Promise<FicheExportRow[]> {
   let query = db
     .from("fiches")
@@ -138,6 +152,18 @@ export async function getFichesForExport(
   if (opts.isReferent && opts.createdBy) {
     query = query.eq("created_by", opts.createdBy);
   }
+  if (opts.assignedTo) {
+    query = query.eq("assigned_to", opts.assignedTo);
+  }
+  if (opts.isAdmin) {
+    if (opts.dateFrom) query = query.gte("updated_at", `${opts.dateFrom}T00:00:00Z`);
+    if (opts.dateTo)   query = query.lte("updated_at", `${opts.dateTo}T23:59:59Z`);
+    if (opts.referentFilter && opts.referentFilter !== "ALL") query = query.eq("created_by", opts.referentFilter);
+    if (opts.commercialFilter && opts.commercialFilter !== "ALL") query = query.eq("assigned_to", opts.commercialFilter);
+  }
+  if (opts.villeFilter && opts.villeFilter !== "ALL") query = query.eq("prospect_ville", opts.villeFilter);
+  if (opts.departementFilter && opts.departementFilter !== "ALL") query = query.like("prospect_cp", `${opts.departementFilter}%`);
+  if (opts.organizationId) query = query.eq("organization_id", opts.organizationId);
   if (opts.search) {
     query = query.or(
       `prospect_nom.ilike.%${opts.search}%,prospect_prenom.ilike.%${opts.search}%,reference.ilike.%${opts.search}%,prospect_ville.ilike.%${opts.search}%`,

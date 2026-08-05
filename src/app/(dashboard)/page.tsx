@@ -288,6 +288,9 @@ export default function DashboardPage() {
       if (isReferent) vq = vq.eq("created_by", profile.id);
       if (branchFilter) vq = vq.eq("organization_id", branchFilter);
       if (periodDates) vq = vq.gte("updated_at", `${periodDates.from}T00:00:00Z`).lte("updated_at", `${periodDates.to}T23:59:59Z`);
+      // Agrégation côté client : on borne explicitement le volume rapatrié
+      // (PostgREST plafonne déjà à 1000, on garde les ventes les plus récentes).
+      vq = vq.order("updated_at", { ascending: false }).limit(1000);
       keys.push("ventes");
       promises.push(vq);
     }

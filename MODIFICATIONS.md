@@ -1,5 +1,14 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-05 — Suite audit : fiabilité transitions, borne requête ventes, fetch dédoublonné
+
+### Fiabilité des données
+- **Motif de refus / montant HT / date RDV** (`fiches/[id]/page.tsx`) : les écritures complémentaires exécutées après le RPC `transition_fiche` sont désormais dans un try/catch. Si le réseau coupe entre la transition (réussie) et l'enregistrement du complément, un toast explicite invite l'utilisateur à ressaisir la donnée au lieu de la perdre silencieusement.
+
+### Performance
+- **Requête ventes dashboard** (`page.tsx`, ~L.290) : ajout de `.order("updated_at", desc).limit(1000)`. Avant, toutes les fiches `ACCEPTEE` étaient rapatriées sans borne explicite pour l'agrégation client (CA, ventes par référent/commercial).
+- **Double fetch fiche détail** (`fiches/[id]/page.tsx`) : `realtime` et `visibilitychange` déclenchaient deux `fetchData()` concurrents, donc deux séries de `createSignedUrl` sur toutes les photos. Ajout d'un `scheduleRefetch` debouncé à 200 ms partagé par les deux sources, avec nettoyage du timer au démontage.
+
 ## 2026-08-05 — Suite audit : fiche introuvable + export CSV complet
 
 ### UX / robustesse

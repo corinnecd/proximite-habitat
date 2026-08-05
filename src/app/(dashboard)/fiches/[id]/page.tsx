@@ -181,23 +181,38 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     return () => { document.title = "Proximité Habitat Conseil"; };
   }, [fetchData]);
 
+  // Realtime et visibilitychange se déclenchent souvent ensemble : on les fusionne
+  // en un seul fetch pour éviter deux séries concurrentes de createSignedUrl.
+  const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRefetch = useCallback(() => {
+    if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current);
+    refetchTimerRef.current = setTimeout(() => {
+      refetchTimerRef.current = null;
+      fetchData();
+    }, 200);
+  }, [fetchData]);
+
+  useEffect(() => {
+    return () => { if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current); };
+  }, []);
+
   useEffect(() => {
     const channel = supabase
       .channel(`fiche-detail-${id}`)
       .on("postgres_changes",
         { event: "UPDATE", schema: "public", table: "fiches", filter: `id=eq.${id}` },
-        () => { fetchData(); })
+        () => { scheduleRefetch(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [id, supabase, fetchData]);
+  }, [id, supabase, scheduleRefetch]);
 
   useEffect(() => {
     function handleVisibility() {
-      if (document.visibilityState === "visible") fetchData();
+      if (document.visibilityState === "visible") scheduleRefetch();
     }
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [fetchData]);
+  }, [scheduleRefetch]);
 
   // Initialise les états RDV tech depuis la fiche au chargement
   useEffect(() => {
@@ -236,29 +251,44 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       return;
     }
 
-    if (newStatus === "REFUSEE" && motifRefus) {
-      await supabase.from("fiches").update({ motif_refus: motifRefus }).eq("id", fiche.id);
-      await supabase.from("fiche_history").insert({
-        fiche_id: fiche.id, organization_id: profile.organization_id, user_id: profile.id,
-        action: "Motif de refus renseigné", comment: MOTIF_REFUS_LABELS[motifRefus],
-      });
-    }
-
+    // La transition est déjà validée en base : si l'un de ces compléments échoue
+    // (réseau coupé), le statut reste correct mais la donnée manque — on prévient
+    // l'utilisateur pour qu'il la ressaisisse au lieu de la perdre silencieusement.
     const montantHtValue = newStatus === "ACCEPTEE" && montantHtInput ? parseFloat(montantHtInput) : null;
-    if (newStatus === "ACCEPTEE" && montantHtValue) {
-      await supabase.from("fiches").update({ montant_ht: montantHtValue }).eq("id", fiche.id);
-      await supabase.from("fiche_history").insert({
-        fiche_id: fiche.id, organization_id: profile.organization_id, user_id: profile.id,
-        action: "Montant HT renseigné", comment: `${montantHtValue.toLocaleString("fr-FR")} €`,
-      });
-    }
+    try {
+      if (newStatus === "REFUSEE" && motifRefus) {
+        const { error: e1 } = await supabase.from("fiches").update({ motif_refus: motifRefus }).eq("id", fiche.id);
+        if (e1) throw e1;
+        await supabase.from("fiche_history").insert({
+          fiche_id: fiche.id, organization_id: profile.organization_id, user_id: profile.id,
+          action: "Motif de refus renseigné", comment: MOTIF_REFUS_LABELS[motifRefus],
+        });
+      }
 
-    if (newStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE" && rdvDateParam) {
-      await supabase.from("fiches").update({ rdv_date: rdvDateParam }).eq("id", fiche.id);
-      await supabase.from("fiche_history").insert({
-        fiche_id: fiche.id, organization_id: profile.organization_id, user_id: profile.id,
-        action: "Nouvelle date de RDV", comment: new Date(rdvDateParam).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
-      });
+      if (newStatus === "ACCEPTEE" && montantHtValue) {
+        const { error: e2 } = await supabase.from("fiches").update({ montant_ht: montantHtValue }).eq("id", fiche.id);
+        if (e2) throw e2;
+        await supabase.from("fiche_history").insert({
+          fiche_id: fiche.id, organization_id: profile.organization_id, user_id: profile.id,
+          action: "Montant HT renseigné", comment: `${montantHtValue.toLocaleString("fr-FR")} €`,
+        });
+      }
+
+      if (newStatus === "AFFECTEE" && fiche.status === "RDV_A_REPRENDRE" && rdvDateParam) {
+        const { error: e3 } = await supabase.from("fiches").update({ rdv_date: rdvDateParam }).eq("id", fiche.id);
+        if (e3) throw e3;
+        await supabase.from("fiche_history").insert({
+          fiche_id: fiche.id, organization_id: profile.organization_id, user_id: profile.id,
+          action: "Nouvelle date de RDV", comment: new Date(rdvDateParam).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+        });
+      }
+    } catch (err) {
+      console.error("[handleStatusChange] complément non enregistré", err);
+      const quoi =
+        newStatus === "REFUSEE" ? "Le motif de refus"
+        : newStatus === "ACCEPTEE" ? "Le montant HT"
+        : "La date de RDV";
+      toast.error(`Statut mis à jour, mais ${quoi.toLowerCase()} n'a pas pu être enregistré. Merci de le ressaisir depuis la fiche.`);
     }
 
     setFiche({

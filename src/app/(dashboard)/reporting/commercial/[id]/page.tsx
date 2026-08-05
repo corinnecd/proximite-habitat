@@ -53,6 +53,7 @@ export default function CommercialDashboardPage() {
   return (
     <CommercialReportingView
       subjectId={id}
+      viewerProfileId={currentProfile.id}
       topbarTitle={commercial ? `${commercial.first_name} ${commercial.last_name}` : "Commercial"}
       backHref="/reporting"
       backLabel="Retour au Tableau de Bord Direction"

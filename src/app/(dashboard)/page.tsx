@@ -208,7 +208,7 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async (period: DashPeriod = "ALL") => {
     if (!profile) return;
-    const isReferent = profile.role === "PROSPECTEUR";
+    const isReferent = profile.role === "PROSPECTEUR" || profile.role === "CHEF_EQUIPE";
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cd: Record<string, any> = {};
     try {
@@ -584,7 +584,7 @@ export default function DashboardPage() {
   }
 
   const totalFiches   = Object.values(counts).reduce((a, b) => a + b, 0);
-  const isReferent = profile?.role === "PROSPECTEUR";
+  const isReferent = profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE";
   const isAdmin       = profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN";
   const isAdminOrDG   = isAdmin || profile?.role === "DIRECTION_GENERALE";
   const isCommercial  = profile?.role === "COMMERCIAL";
@@ -684,9 +684,13 @@ export default function DashboardPage() {
             className="rounded-xl"
             onClick={async () => {
               if (!ficheToDelete) return;
-              await deleteFicheCascade(supabase, ficheToDelete.id);
-              setFicheToDelete(null);
-              fetchData();
+              try {
+                await deleteFicheCascade(supabase, ficheToDelete.id);
+                setFicheToDelete(null);
+                fetchData();
+              } catch {
+                toast.error("Erreur lors de la suppression, veuillez réessayer.");
+              }
             }}
           >
             Supprimer

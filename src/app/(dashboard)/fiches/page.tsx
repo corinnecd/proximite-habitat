@@ -322,8 +322,22 @@ export default function FichesPage() {
         : ["SOUMISE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "RDV_TECHNICIEN", "INSTALLEE", "REFUSEE", "ARCHIVEE"];
       const countPromises = !append ? countStatuses.map((s) => {
         let cq = supabase.from("fiches").select("*", { count: "exact", head: true }).eq("status", s);
-        if (_isReferent && profile.id) cq = cq.eq("created_by", profile.id);
-        else if (isCommercial && profile.id) cq = cq.eq("assigned_to", profile.id);
+        if (_isReferent && profile.id) {
+          cq = cq.eq("created_by", profile.id);
+          if (effectiveDates) {
+            cq = cq
+              .gte("updated_at", `${effectiveDates.from}T00:00:00Z`)
+              .lte("updated_at", `${effectiveDates.to}T23:59:59Z`);
+          }
+        } else if (isCommercial && profile.id) {
+          cq = cq.eq("assigned_to", profile.id);
+        } else if (_isAdmin && effectiveDates) {
+          cq = cq
+            .gte("updated_at", `${effectiveDates.from}T00:00:00Z`)
+            .lte("updated_at", `${effectiveDates.to}T23:59:59Z`);
+          if (referentFilter !== "ALL") cq = cq.eq("created_by", referentFilter);
+          if (commercialFilter !== "ALL") cq = cq.eq("assigned_to", commercialFilter);
+        }
         if (_branchFilter) cq = cq.eq("organization_id", _branchFilter);
         return cq;
       }) : [];
@@ -502,7 +516,7 @@ export default function FichesPage() {
           { key: "date", label: "Date" },
         ] as { key: keyof { reference: string; nom: string; prenom: string; ville: string; status: string; date: string }; label: string }[],
         rows: fiches.map((f) => ({ reference: f.reference, nom: f.prospect_nom, prenom: f.prospect_prenom, ville: f.prospect_ville || "", status: f.status, date: f.created_at?.slice(0, 10) || "" })),
-      })} />{(isReferent || isAdminOrDG) && profile && <ImportCsvDialog organizationId={profile.organization_id} createdBy={profile.id} onImported={() => fetchFiches(0, false)} />}</div>} />
+      })} />{isAdminOrDG && profile && <ImportCsvDialog organizationId={profile.organization_id} createdBy={profile.id} onImported={() => fetchFiches(0, false)} />}</div>} />
       <div className="p-4 sm:p-6 lg:p-8 space-y-4">
 
         {/* ═══ HERO FICHES — navy signature avec recherche intégrée ═══════ */}

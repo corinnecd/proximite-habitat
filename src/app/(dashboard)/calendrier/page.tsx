@@ -147,7 +147,9 @@ export default function CalendrierPage() {
       query = query.eq("assigned_to", commercialFilter);
     }
 
-    const branchFilter = isDG && selectedBranchId !== "all" ? selectedBranchId : null;
+    const branchFilter = isDG
+      ? (selectedBranchId !== "all" ? selectedBranchId : null)
+      : profile.organization_id;
     if (branchFilter) query = query.eq("organization_id", branchFilter);
 
     // Commerciaux pour le filtre admin — chargés en parallèle avec les RDV

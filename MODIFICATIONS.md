@@ -1,5 +1,27 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-05 — Audit multi-profils : 11 corrections bugs, sécurité et cohérence
+
+### Sécurité / accès par rôle
+- **DIRECTION_GENERALE lecture seule dans /utilisateurs** : bouton "Nouvel utilisateur" masqué + guards dans handleCreateUser, handleToggleActive, handleEditUser
+- **COMMERCIAL ne peut plus modifier la planification** : retiré de `canEditParcours` dans planification/page.tsx
+- **Calendrier : filtre organization_id manquant pour DIRECTION** : un DIRECTION non-DG voit maintenant uniquement les RDV de son org (calendrier/page.tsx)
+- **Import CSV masqué pour PROSPECTEUR** : bouton ImportCsvDialog limité à isAdminOrDG (fiches/page.tsx)
+
+### Exactitude des données
+- **CHEF_EQUIPE invisible sur le dashboard** : ajout de `|| CHEF_EQUIPE` dans la définition de `isReferent` (2 occurrences dans page.tsx)
+- **Compteurs de statut cohérents avec le filtre de période** : `countPromises` applique maintenant les mêmes filtres date/référent/commercial que la requête principale (fiches/page.tsx)
+- **Cache CommercialReportingView différencié par viewer** : clé `rpt_cache_${viewerProfileId}_${subjectId}` — la direction qui consulte le rapport d'un commercial ne pollue plus son cache (CommercialReportingView.tsx + appels)
+- **Export CSV utilisateurs respecte le filtre succursale** : utilise `branchScopedUsers` au lieu de `users` (utilisateurs/page.tsx)
+
+### Robustesse / UX
+- **Suppression brouillon avec try/catch** : toast d'erreur si la suppression échoue, le dialog ne se ferme plus (page.tsx)
+- **Spinner infini CommercialReportingView sur erreur réseau** : `.catch(() => { setLoading(false); setRefreshing(false); })` ajouté (CommercialReportingView.tsx)
+- **Cache reporting période vide sauvegardé** : `saveRptCache()` appelé avec valeurs à zéro avant le early return — plus de flash au rechargement (reporting/page.tsx)
+
+### Design
+- **Couleur RETRACTATION unifiée** : `#ec4899` (pink) → `#8b5cf6` (violet) dans les graphiques reporting pour correspondre au dashboard
+
 ## 2026-08-03 — Audit responsive : 6 corrections desktop + mobile
 
 ### P1 CRITIQUE — Layout cassé sur mobile (375px)

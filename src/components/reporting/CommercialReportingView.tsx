@@ -71,9 +71,10 @@ function Bar2({ value, max, colorClass }: { value: number; max: number; colorCla
  * en lecture seule (seul le Topbar diffère : titre + bouton retour).
  */
 export function CommercialReportingView({
-  subjectId, topbarTitle, backHref, backLabel,
+  subjectId, viewerProfileId, topbarTitle, backHref, backLabel,
 }: {
   subjectId: string;
+  viewerProfileId?: string;
   topbarTitle?: string;
   backHref?: string;
   backLabel?: string;
@@ -94,7 +95,7 @@ export function CommercialReportingView({
   const [evolGranularity, setEvolGranularity] = useState<Granularity>("month");
   const [weeklyTrendOffset, setWeeklyTrendOffset] = useState(0);
 
-  const cacheKey = `rpt_cache_${subjectId}`;
+  const cacheKey = `rpt_cache_${viewerProfileId ?? subjectId}_${subjectId}`;
 
   useLayoutEffect(() => {
     try {
@@ -213,7 +214,7 @@ export function CommercialReportingView({
   }, [supabase, subjectId, cacheKey]);
 
   useEffect(() => {
-    loadData(periodFilter);
+    loadData(periodFilter).catch(() => { setLoading(false); setRefreshing(false); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subjectId, periodFilter]);
 

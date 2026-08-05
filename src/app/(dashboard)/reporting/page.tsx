@@ -55,7 +55,7 @@ function roundToHundred(values: number[], total: number): number[] {
 const STATUS_COLORS_HEX: Record<FicheStatus, string> = {
   BROUILLON: "#94a3b8", SOUMISE: "#3b82f6", VALIDEE: "#6366f1",
   AFFECTEE: "#f97316", RDV_A_REPRENDRE: "#eab308", ACCEPTEE: "#10b981",
-  RETRACTATION: "#ec4899", RDV_TECHNICIEN: "#a855f7", INSTALLEE: "#14b8a6",
+  RETRACTATION: "#8b5cf6", RDV_TECHNICIEN: "#a855f7", INSTALLEE: "#14b8a6",
   REFUSEE: "#ef4444", ARCHIVEE: "#cbd5e1",
 };
 
@@ -180,6 +180,7 @@ export default function ReportingPage() {
         })));
         setVilles([]);
         setWeeklyData([]);
+        saveRptCache({ statusCounts: statuses.map((s) => ({ status: s, count: 0 })), totalFiches: 0, caTotal: 0, referents: [], commerciaux: [], villes: [], weeklyData: [], motifRefusCounts: { RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 } });
         setLoading(false);
         return;
       }
@@ -462,7 +463,7 @@ export default function ReportingPage() {
 
 
 
-  if (isCommercial && profile) return <CommercialReportingView subjectId={profile.id} />;
+  if (isCommercial && profile) return <CommercialReportingView subjectId={profile.id} viewerProfileId={profile.id} />;
 
   return (
     <>

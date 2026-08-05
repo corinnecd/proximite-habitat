@@ -119,7 +119,7 @@ export default function UtilisateursPage() {
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
-    if (!profile) return;
+    if (!profile || profile.role === "DIRECTION_GENERALE") return;
     const orgId = isDG ? (targetOrgId || profile.organization_id) : profile.organization_id;
     setCreating(true);
     try {
@@ -140,7 +140,7 @@ export default function UtilisateursPage() {
   }
 
   async function handleToggleActive() {
-    if (!confirmUser) return;
+    if (!confirmUser || profile?.role === "DIRECTION_GENERALE") return;
     setToggling(true);
     try {
       const { error } = await setProfileActive(supabase, confirmUser.id, !confirmUser.is_active);
@@ -162,7 +162,7 @@ export default function UtilisateursPage() {
 
   async function handleEditUser(e: React.FormEvent) {
     e.preventDefault();
-    if (!editUser) return;
+    if (!editUser || profile?.role === "DIRECTION_GENERALE") return;
     setSaving(true);
     try {
       const res = await fetch("/api/users", {
@@ -208,7 +208,7 @@ export default function UtilisateursPage() {
           { key: "role", label: "Rôle" },
           { key: "actif", label: "Actif" },
         ] as { key: keyof { nom: string; prenom: string; email: string; role: string; actif: string }; label: string }[],
-        rows: users.map((u) => ({ nom: u.last_name, prenom: u.first_name, email: u.email, role: ROLE_LABELS[u.role] || u.role, actif: u.is_active ? "Oui" : "Non" })),
+        rows: branchScopedUsers.map((u) => ({ nom: u.last_name, prenom: u.first_name, email: u.email, role: ROLE_LABELS[u.role] || u.role, actif: u.is_active ? "Oui" : "Non" })),
       })} /></div>} />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
 
@@ -227,7 +227,7 @@ export default function UtilisateursPage() {
                   {`${stats.total} collaborateur${stats.total > 1 ? "s" : ""} · ${stats.active} actif${stats.active > 1 ? "s" : ""} · ${stats.commercials} commerciaux · ${stats.référents} référents`}
                 </p>
               </div>
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              {profile?.role !== "DIRECTION_GENERALE" && <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger render={<button className="flex-shrink-0 bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 py-2 text-sm font-medium inline-flex items-center gap-2 transition-colors self-start" />}>
                   <UserPlus className="w-4 h-4" />Nouvel utilisateur
                 </DialogTrigger>
@@ -307,7 +307,7 @@ export default function UtilisateursPage() {
                 </Button>
               </form>
             </DialogContent>
-          </Dialog>
+          </Dialog>}
             </div>
 
             {/* Recherche + filtres rôle intégrés dans le hero */}

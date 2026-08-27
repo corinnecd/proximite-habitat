@@ -1,5 +1,11 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-05 — Migration montant HT appliquée : retrait du code de repli
+
+- **Migration `20260805_montant_ht_obligatoire.sql` appliquée en base.** Vérifié via trois appels PostgREST (3, 4 et 5 arguments nommés) : tous résolvent vers la nouvelle fonction, aucune erreur `PGRST202` ni ambiguïté de surcharge `PGRST203`.
+- **`handleStatusChange`** (`fiches/[id]/page.tsx`) : suppression du repli (double appel RPC + `UPDATE montant_ht` séparé) devenu inutile. Un seul appel `transition_fiche` avec `p_montant_ht`, le montant est écrit par le RPC.
+- **Message d'erreur ajusté** : pour `ACCEPTEE`, seule la ligne d'historique peut désormais échouer — le toast ne demande plus de ressaisir un montant qui est bel et bien enregistré (`toast.warning` au lieu de `toast.error`).
+
 ## 2026-08-05 — Fin d'audit : lot polish (bundle, cache par rôle, mobile)
 
 ### Bundle

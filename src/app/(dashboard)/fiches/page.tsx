@@ -17,7 +17,7 @@ import { getFichesForExport } from "@/lib/data/fiches";
 import { toCsv, downloadCsv, type CsvColumn } from "@/lib/csv";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { useBranch } from "@/lib/context/branch-context";
-import { getCachedProfileId } from "@/lib/utils";
+import { getCachedProfileId, getCachedProfileRole } from "@/lib/utils";
 import { STATUS_LABELS } from "@/lib/permissions";
 import type { FicheStatus } from "@/types/database";
 import { toast } from "sonner";
@@ -114,9 +114,10 @@ export default function FichesPage() {
     setStatusFilter(newStatus);
     const newEffective = initialStatus === "SOUMISE" ? "SOUMISE" : newStatus;
     const pid = getCachedProfileId();
+    const prole = getCachedProfileRole();
     if (pid) {
       try {
-        const raw = localStorage.getItem(`fiches_cache_${pid}_${newEffective}`);
+        const raw = localStorage.getItem(`fiches_cache_${pid}_${prole}_${newEffective}`);
         if (raw) {
           const c = JSON.parse(raw);
           if (c.fiches?.length) { setFiches(c.fiches); setLoading(false); }
@@ -161,13 +162,15 @@ export default function FichesPage() {
 
   // ── Cache localStorage : affichage instantané ───────────────────────────
   const effectiveStatus = isValidationMode ? "SOUMISE" : statusFilter;
-  const fichesCacheKey = profile ? `fiches_cache_${profile.id}_${effectiveStatus}` : null;
+  // Le rôle fait partie de la clé : le périmètre des fiches visibles en dépend.
+  const fichesCacheKey = profile ? `fiches_cache_${profile.id}_${profile.role}_${effectiveStatus}` : null;
   useLayoutEffect(() => {
     setHydrated(true);
     const pid = getCachedProfileId();
+    const prole = getCachedProfileRole();
     if (!pid) return;
     try {
-      const raw = localStorage.getItem(`fiches_cache_${pid}_${effectiveStatus}`);
+      const raw = localStorage.getItem(`fiches_cache_${pid}_${prole}_${effectiveStatus}`);
       if (!raw) return;
       const c = JSON.parse(raw);
       if (c.fiches?.length) { setFiches(c.fiches); setLoading(false); }
@@ -846,11 +849,13 @@ export default function FichesPage() {
 
         <div className="space-y-4">
         {/* Filtres par statut */}
-        {!isValidationMode && (profile || hydrated) && (<div className="flex gap-2 flex-wrap">
+        {/* Mobile : rangée unique scrollable (les tooltips au survol, clippées par
+            overflow-x, ne servent pas au tactile). sm+ : retour au wrap classique. */}
+        {!isValidationMode && (profile || hydrated) && (<div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 sm:flex-wrap sm:overflow-x-visible sm:pb-0 sm:mx-0 sm:px-0">
           <button
             onClick={() => setStatusFilter("ALL")}
             aria-pressed={statusFilter === "ALL"}
-            className={`relative group px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+            className={`relative group shrink-0 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
               statusFilter === "ALL" ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-secondary border"
             }`}
           >
@@ -866,7 +871,7 @@ export default function FichesPage() {
               key={s}
               onClick={() => setStatusFilter(s)}
               aria-pressed={statusFilter === s}
-              className={`relative group px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+              className={`relative group shrink-0 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                 statusFilter === s ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-secondary border"
               }`}
             >

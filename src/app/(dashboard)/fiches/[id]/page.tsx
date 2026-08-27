@@ -41,7 +41,6 @@ import {
   Send, Archive, UserX, XCircle, FileText,
 } from "lucide-react";
 import { DownloadFicheButton } from "@/components/pdf/DownloadFicheButton";
-import confetti from "canvas-confetti";
 import type { ZoneVille } from "@/types/database";
 
 // ── Status accent colors (same palette as fiches list) ────────────────────────
@@ -316,7 +315,11 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     window.dispatchEvent(new CustomEvent("phc:fiche-status-changed"));
     toast.success(`Statut changé : ${STATUS_LABELS[newStatus]}`);
     if (newStatus === "ACCEPTEE") {
-      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#1E3A5F", "#F97316", "#10B981", "#F59E0B"] });
+      // Import dynamique : canvas-confetti n'est chargé qu'au moment de l'acceptation,
+      // il ne pèse plus sur le bundle initial de la page détail.
+      void import("canvas-confetti").then(({ default: confetti }) => {
+        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#1E3A5F", "#F97316", "#10B981", "#F59E0B"] });
+      }).catch(() => { /* animation non critique */ });
     }
 
     // Notifications + email (non bloquant)

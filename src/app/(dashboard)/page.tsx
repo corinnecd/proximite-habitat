@@ -31,7 +31,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
-import { getCachedProfileId } from "@/lib/utils";
+import { getCachedProfileId, getCachedProfileRole } from "@/lib/utils";
 import { sendEmailFicheAffectee, sendEmailFicheDecision } from "@/lib/email";
 import { toast } from "sonner";
 import { StatusBlock } from "@/components/dashboard/StatusBlock";
@@ -167,13 +167,16 @@ export default function DashboardPage() {
   const supabase = useMemo(() => createClient(), []);
 
   // ── Cache localStorage : affichage instantané au chargement ─────────────
-  const cacheKey = profile ? `dash_cache_${profile.id}` : null;
+  // Le rôle fait partie de la clé : un changement de rôle ne doit pas restaurer
+  // le dashboard de l'ancien rôle (sections et chiffres différents).
+  const cacheKey = profile ? `dash_cache_${profile.id}_${profile.role}` : null;
 
   useLayoutEffect(() => {
     const pid = getCachedProfileId();
+    const prole = getCachedProfileRole();
     if (!pid) return;
     try {
-      const raw = localStorage.getItem(`dash_cache_${pid}`);
+      const raw = localStorage.getItem(`dash_cache_${pid}_${prole}`);
       if (!raw) return;
       const c = JSON.parse(raw);
       if (c.counts) setCounts(c.counts);

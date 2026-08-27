@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, ChevronLeft, ChevronRight, Clock, MapPin, Phone, Search, X, User } from "lucide-react";
 import Link from "next/link";
 import { Topbar } from "@/components/layout/Topbar";
@@ -86,6 +86,7 @@ export default function CalendrierPage() {
   const [commercials, setCommercials] = useState<ProfileOption[]>([]);
   const [fiches, setFiches] = useState<RdvFiche[]>([]);
   const [loading, setLoading] = useState(true);
+  const hasLoadedOnceRef = useRef(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
   const [editingFiche, setEditingFiche] = useState<RdvFiche | null>(null);
@@ -106,7 +107,10 @@ export default function CalendrierPage() {
 
   const fetchRdvs = useCallback(async () => {
     if (!profile) return;
-    setLoading(true);
+    // Stale-while-revalidate : au premier chargement seulement. Sur une navigation
+    // mois/semaine, la grille reste affichée et les RDV se remplacent silencieusement,
+    // sans repasser par l'état vide « Aucun rendez-vous » entre deux périodes.
+    if (!hasLoadedOnceRef.current) setLoading(true);
     const COMMERCIAL_STATUSES: FicheStatus[] = ["VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "REFUSEE"];
     const TECHNICIEN_STATUSES: FicheStatus[] = ["RDV_TECHNICIEN", "INSTALLEE"];
     const statuses: FicheStatus[] = calType === "technicien"
@@ -178,6 +182,7 @@ export default function CalendrierPage() {
       console.error("fetchRdvs error", err);
       setFetchError("Erreur lors du chargement des rendez-vous.");
     } finally {
+      hasLoadedOnceRef.current = true;
       setLoading(false);
     }
   }, [profile, role, isAdminOrDG, isReferent, commercialFilter, isDG, selectedBranchId, branchFilterForUsers, rangeStartKey, rangeEndKey, supabase, calType]);

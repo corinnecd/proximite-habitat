@@ -9,7 +9,7 @@ import { FicheStatusBadge } from "@/components/fiches/FicheStatusBadge";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { useBranch } from "@/lib/context/branch-context";
-import { getCachedProfileId } from "@/lib/utils";
+import { getCachedProfileId, getCachedProfileRole } from "@/lib/utils";
 import type { FicheStatus, MotifRefus } from "@/types/database";
 import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel as getReportPeriodLabel } from "@/lib/periods";
@@ -117,12 +117,14 @@ export default function ReportingPage() {
 
   const isCommercial = profile?.role === "COMMERCIAL";
 
-  const rpCacheKey = profile ? `rpt_cache_${profile.id}` : null;
+  // Le rôle fait partie de la clé : les sections et agrégats diffèrent par rôle.
+  const rpCacheKey = profile ? `rpt_cache_${profile.id}_${profile.role}` : null;
   useLayoutEffect(() => {
     const pid = getCachedProfileId();
+    const prole = getCachedProfileRole();
     if (!pid) return;
     try {
-      const raw = localStorage.getItem(`rpt_cache_${pid}`);
+      const raw = localStorage.getItem(`rpt_cache_${pid}_${prole}`);
       if (!raw) return;
       const c = JSON.parse(raw);
       if (c.statusCounts) setStatusCounts(c.statusCounts);

@@ -1,5 +1,20 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-05 — Fin d'audit : lot polish (bundle, cache par rôle, mobile)
+
+### Bundle
+- **`canvas-confetti` en import dynamique** (`fiches/[id]/page.tsx`) : chargé uniquement au passage en `ACCEPTEE`, plus au chargement de la page détail. Vérifié : la lib est désormais isolée dans son propre chunk de 12 Ko.
+
+### Cache localStorage par rôle
+- **Nouveau helper `getCachedProfileRole()`** (`lib/utils.ts`) : lit le rôle depuis `ph_profile_v1`, ce qui permet de construire la clé de cache avant même le rechargement du profil.
+- **Clés enrichies du rôle** sur les trois pages à cache : `dash_cache_${id}_${role}` (`page.tsx`), `rpt_cache_${id}_${role}` (`reporting/page.tsx`), `fiches_cache_${id}_${role}_${status}` (`fiches/page.tsx`). Avant, un utilisateur changeant de rôle restaurait le cache de l'ancien rôle (sections et périmètre de fiches différents). Effet de bord attendu : un chargement à froid une seule fois après déploiement.
+
+### Mobile
+- **Filtres de statut** (`fiches/page.tsx`) : sur mobile, rangée unique en scroll horizontal (`overflow-x-auto` + `shrink-0`) au lieu de 4-5 lignes de boutons empilées sur 375 px. À partir de `sm`, retour au `flex-wrap` classique — nécessaire car `overflow-x-auto` clippe les tooltips au survol (sans conséquence sur tactile, où le survol n'existe pas).
+
+### Calendrier
+- **Stale-while-revalidate** (`calendrier/page.tsx`) : `setLoading(true)` n'est plus déclenché qu'au premier chargement (`hasLoadedOnceRef`). Une navigation mois/semaine ne repasse plus par l'état vide « Aucun rendez-vous » entre deux périodes. Note : conserver les events du mois précédent en opaque n'est pas applicable — `eventsByDay` filtre sur la nouvelle plage de dates, donc les anciens events disparaissent de toute façon.
+
 ## 2026-08-05 — Suite audit : montant HT obligatoire en base, vue DG globale, tri calendrier
 
 ### Montant HT obligatoire (audit #5) — ⚠️ migration à appliquer

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { ADMIN, login } from "./helpers";
+import { ADMIN, GREETING_RE, login } from "./helpers";
 
 test.describe("Authentification", () => {
   test("la page de connexion s'affiche", async ({ page }) => {
@@ -22,12 +22,12 @@ test.describe("Authentification", () => {
 
     await expect(page.locator("p.text-destructive")).toBeVisible();
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByText(/Bonjour/i)).toHaveCount(0);
+    await expect(page.getByText(GREETING_RE)).toHaveCount(0);
   });
 
   test("une connexion valide mène au tableau de bord", async ({ page }) => {
     await login(page, ADMIN.email, ADMIN.password);
-    await expect(page.getByText(/Bonjour/i)).toBeVisible();
+    await expect(page.getByText(GREETING_RE)).toBeVisible();
     await expect(page.getByRole("link", { name: "Tableau de bord" })).toBeVisible();
   });
 });

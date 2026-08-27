@@ -32,7 +32,10 @@ export async function updateSession(request: NextRequest) {
   const isAuthPage =
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/forgot-password") ||
-    request.nextUrl.pathname.startsWith("/reset-password");
+    request.nextUrl.pathname.startsWith("/reset-password") ||
+    // Repli hors ligne de la PWA : doit rester atteignable sans session, sinon
+    // la redirection vers /login (qui exige le réseau) casse l'écran hors ligne.
+    request.nextUrl.pathname === "/offline";
 
   if (!user && !isAuthPage) {
     const url = request.nextUrl.clone();

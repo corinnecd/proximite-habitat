@@ -1,5 +1,31 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-05 — Suite e2e remise au vert : 18 PASS / 0 FAIL
+
+Diagnostic des 8 échecs préexistants. **Un vrai défaut applicatif, le reste des tests écrits contre une UI qui n'existe pas (ou plus).**
+
+### Correctif applicatif
+- **`/offline` inaccessible sans session** (`lib/supabase/middleware.ts`) : la route n'était pas dans les chemins publics, donc une visite non authentifiée était redirigée vers `/login` — une page qui exige justement le réseau. Le repli hors ligne de la PWA était donc cassé pour un utilisateur déconnecté. `/offline` ajouté aux chemins publics.
+
+### Tests qui visaient du texte inexistant
+- **« Funnel de conversion » et « Objectifs du mois »** n'existaient que dans des **commentaires du source**, jamais rendus — ces tests ne pouvaient pas passer. Réécrits sur les titres réels (`Reporting direction`, `Répartition par statut`, `Taux d'acceptation`).
+- **« Objectifs du mois »** visait `/reporting` alors que la carte vit sur le dashboard COMMERCIAL. De plus `CommercialObjectifs` retourne `null` sans ligne dans `objectifs_commerciaux`, table vide ici : test gated par `E2E_WITH_OBJECTIFS=1` plutôt qu'un skip conditionnel qui serait vert sans rien vérifier.
+- **Heading « Connexion »** : le titre du formulaire est « Bon retour ».
+- **`p.text-destructive`** : l'erreur est rendue dans un `<div>`, pas un `<p>`.
+- **« Étape 1 »** : le stepper affiche « Chapitre 1 sur 7 ».
+- **Heading `/PHC-/`** sur le détail : le `<h2>` porte le nom du prospect, la Topbar « Détail de la fiche ».
+
+### Bugs de test réels
+- **Le workflow ne soumettait jamais la fiche.** « Soumettre » n'est pas atteignable depuis le chapitre 1 (les 7 chapitres sont requis, signature comprise), et le garde `if (await submitBtn.isVisible())` masquait l'absence de clic. Les fiches restaient en `BROUILLON`, donc l'assertion sur la liste `SOUMISE` ne pouvait pas passer. Test recentré sur ce que le parcours produit vraiment : création d'un brouillon, plus un test distinct pour l'accès admin à la file de validation.
+- **Aucune déconnexion entre deux comptes** : `goto("/login")` sur une session active est redirigé vers `/` par le middleware, le formulaire n'apparaît jamais. Helper `logout()` ajouté (cookies + storage).
+- **Les boutons « Sauvegarder » n'émettent aucun toast** (`saveDraft({ silent: true })`) : l'assertion porte désormais sur l'horodatage « Sauvegardé à HH:MM ».
+- **Sélecteurs ambigus** : `getByRole(name)` matche en sous-chaîne — « Fiches » attrapait « Statut des Fiches » et « Fiches à valider » (navigation non déterministe), « Toutes » attrapait « Toutes les dates ». Navigation explicite et `exact: true`.
+- **Attente manquante** sur la liste des fiches : assertion sur le compteur avant les cartes.
+
+### Reste à traiter
+- **Deux `<h1>` identiques** sur `/fiches` (Topbar + hero). Contourné par un locator scopé au `header`, mais c'est un défaut d'accessibilité à corriger dans le markup.
+- **Fiches de test résiduelles** : les exécutions du workflow ont laissé des brouillons `E2E-Test-*` en base. À supprimer si souhaité — je ne l'ai pas fait de moi-même.
+
 ## 2026-08-05 — Tests e2e des correctifs de rôles
 
 ### Nouvelle spec `e2e/roles.spec.ts`

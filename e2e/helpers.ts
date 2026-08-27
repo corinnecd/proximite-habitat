@@ -58,3 +58,15 @@ export async function login(
 
 /** Le salut du dashboard, variable selon l'heure (cf. `(dashboard)/page.tsx`). */
 export const GREETING_RE = /Bonjour|Bon après-midi|Bonsoir/i;
+
+/**
+ * Termine la session avant de se reconnecter sous un autre compte. Un simple
+ * `goto("/login")` ne suffit pas : le middleware renvoie un utilisateur déjà
+ * authentifié vers "/", et le formulaire n'est jamais rendu.
+ */
+export async function logout(page: Page) {
+  await page.context().clearCookies();
+  await page.goto("/login");
+  await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+  await expect(page.locator('input[type="email"]')).toBeVisible();
+}

@@ -4,7 +4,9 @@ import { ADMIN, GREETING_RE, login } from "./helpers";
 test.describe("Authentification", () => {
   test("la page de connexion s'affiche", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByRole("heading", { name: "Connexion" })).toBeVisible();
+    // Le titre du formulaire est « Bon retour » ; « Connexion » n'apparaît que
+    // dans la mention « Connexion sécurisée », qui n'est pas un heading.
+    await expect(page.getByRole("heading", { name: "Bon retour" })).toBeVisible();
     await expect(page.locator('input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
   });
@@ -20,7 +22,9 @@ test.describe("Authentification", () => {
     await page.locator('input[type="password"]').fill("MauvaisMotDePasse!");
     await page.getByRole("button", { name: "Se connecter" }).click();
 
-    await expect(page.locator("p.text-destructive")).toBeVisible();
+    // Le message d'erreur est rendu dans un <div class="… text-destructive …">,
+    // pas dans un <p> : cibler la classe, pas la balise.
+    await expect(page.locator(".text-destructive")).toBeVisible();
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByText(GREETING_RE)).toHaveCount(0);
   });

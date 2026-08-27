@@ -1,5 +1,24 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-05 — Tests e2e des correctifs de rôles
+
+### Nouvelle spec `e2e/roles.spec.ts`
+Couvre les correctifs de périmètre par rôle de l'audit. **5 tests passent, stables sur 3 passes consécutives** :
+- #9 — un COMMERCIAL ne voit aucune action d'édition de parcours sur `/planification`
+- #20 — un PROSPECTEUR ne voit pas le bouton Import CSV ; une DIRECTION le voit
+- #6 — une DIRECTION non-DG ne voit pas le sélecteur « Toutes les succursales »
+- #5 — la confirmation d'acceptation reste désactivée sans montant HT, et s'active dès qu'un montant valide est saisi (test non mutant : on ne confirme pas)
+
+2 tests ignorés faute de comptes : #1 (CHEF_EQUIPE) et #10 (DIRECTION_GENERALE). Ils s'activent via `E2E_CHEF_EQUIPE_EMAIL/_PASSWORD` et `E2E_DG_EMAIL/_PASSWORD` — volontairement pas de mot de passe versionné pour ces comptes réels.
+
+### Bugs corrigés dans l'outillage de test
+- **`e2e/helpers.ts`** : le helper `login` attendait le texte « Bonjour », mais le dashboard affiche « Bonjour / Bon après-midi / Bonsoir » selon l'heure. **Toute la suite e2e ne pouvait donc passer que le matin.** Constante `GREETING_RE` introduite et utilisée aussi dans `auth.spec.ts`.
+- Comptes `PROSPECTEUR` et `COMMERCIAL_AVEC_FICHES` (`commercial2@phc.fr`, qui porte des fiches AFFECTEE) ajoutés aux helpers.
+- Suppression de `scripts/_audit_full.mjs` et `scripts/_check_404.mjs` : scripts ad hoc de l'audit, avec un mot de passe en dur dans le source.
+
+### État des specs préexistantes
+`auth`, `navigation` et `fiche-workflow` comptent 8 échecs. **Vérifié qu'ils sont antérieurs à cette session** : la même suite rejouée avec le `src/` du commit `05efc02` donne exactement le même résultat (5 PASS / 8 FAIL). Sélecteurs obsolètes (heading « Connexion », `p.text-destructive`, « Étape 1 », « Funnel de conversion », « Objectifs du mois », « Vous êtes hors ligne ») et une violation de mode strict sur « Fiches de pré-visite », présent en double dans le header et la page. **À reprendre dans une session dédiée.**
+
 ## 2026-08-05 — Migration montant HT appliquée : retrait du code de repli
 
 - **Migration `20260805_montant_ht_obligatoire.sql` appliquée en base.** Vérifié via trois appels PostgREST (3, 4 et 5 arguments nommés) : tous résolvent vers la nouvelle fonction, aucune erreur `PGRST202` ni ambiguïté de surcharge `PGRST203`.

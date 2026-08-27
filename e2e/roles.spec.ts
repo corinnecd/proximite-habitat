@@ -73,17 +73,15 @@ test.describe("Audit #5 — montant HT obligatoire pour accepter", () => {
       .filter({ hasNot: page.locator("nav") })
       .and(page.locator('a[href*="-"]'))
       .first();
-    if ((await premiereFiche.count()) === 0) {
-      test.skip(true, "Aucune fiche AFFECTEE disponible pour ce commercial");
-    }
+    await expect(premiereFiche).toBeVisible();
     await premiereFiche.click();
     await expect(page).toHaveURL(/\/fiches\/[0-9a-f-]{36}/);
     await settle(page);
 
+    // `count()` ne patiente pas : on attend explicitement le rendu des actions,
+    // sinon le test se saute lui-même de façon aléatoire.
     const boutonAccepter = page.getByRole("button", { name: /Acceptation client/i }).first();
-    if ((await boutonAccepter.count()) === 0) {
-      test.skip(true, "La fiche ouverte ne propose pas la transition ACCEPTEE");
-    }
+    await expect(boutonAccepter).toBeVisible();
     await boutonAccepter.click();
     await expect(page.getByText(/montant HT est obligatoire/i)).toBeVisible();
 

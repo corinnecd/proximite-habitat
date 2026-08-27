@@ -1,5 +1,21 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-05 — Suite audit : montant HT obligatoire en base, vue DG globale, tri calendrier
+
+### Montant HT obligatoire (audit #5) — ⚠️ migration à appliquer
+- **Nouvelle migration `supabase/migrations/20260805_montant_ht_obligatoire.sql`** : `transition_fiche` prend un 5ᵉ paramètre `p_montant_ht`. Le passage en `ACCEPTEE` lève une exception si `coalesce(p_montant_ht, fiches.montant_ht, 0) <= 0`, et le montant est écrit dans le même `UPDATE` que le statut. L'ancienne signature à 4 arguments est supprimée (`drop function`) pour éviter une surcharge ambiguë côté PostgREST.
+- **Client** (`fiches/[id]/page.tsx`) : `handleStatusChange` envoie `p_montant_ht` avec la transition. Repli automatique sur l'ancien appel + `UPDATE` séparé tant que la migration n'est pas appliquée, donc le déploiement front peut précéder la migration sans casse.
+- **Types** (`types/database.types.ts`) : `p_montant_ht` ajouté à la signature `transition_fiche`.
+- L'UI bloquait déjà la confirmation sans montant > 0 (`FicheStatusChangeDialog`) ; la règle est désormais garantie côté base, y compris pour un appel direct à l'API.
+
+### Vue DG « toutes les succursales »
+- **Reporting** (`reporting/page.tsx`) : la requête `planification_hebdo` filtrait sur `profile.organization_id` en vue globale → seules les villes du siège remontaient. Plus de filtre organisation en vue globale DG (la RLS borne la visibilité).
+- **Planification** (`planification/page.tsx`) : même correctif sur l'historique des parcours (`parcours_hebdo`) et sur la requête `planification_hebdo` associée.
+
+### Cohérence des chiffres
+- **Dashboard COMMERCIAL** (`page.tsx`) : `caTotal` et `mesVentes` étaient écrits deux fois (bloc `ventes` puis bloc `commAcceptees`) avec des jeux de données différents. La requête `ventes` n'est plus émise pour le rôle COMMERCIAL — `commAcceptees` est la source unique, ce qui supprime aussi une requête par chargement.
+- **Calendrier** (`calendrier/page.tsx`) : en mode « Tous », la requête n'a pas de `.order()` (filtre `or` sur deux colonnes de date) → ordre non déterministe dans une journée. Tri par heure puis par nom appliqué dans `eventsByDay` ; le tri redondant de la grille mensuelle est supprimé.
+
 ## 2026-08-05 — Suite audit : fiabilité transitions, borne requête ventes, fetch dédoublonné
 
 ### Fiabilité des données

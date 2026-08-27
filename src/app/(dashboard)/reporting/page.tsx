@@ -202,11 +202,13 @@ export default function ReportingPage() {
       .eq("is_active", true);
     if (_branchFilter) allProfilesQ = allProfilesQ.eq("organization_id", _branchFilter);
 
-    const _planifOrg = _branchFilter ?? profile!.organization_id;
+    // En vue DG « toutes les succursales », on ne filtre pas par organisation :
+    // sinon seules les villes planifiées au siège remontent. La RLS borne la visibilité.
+    const _planifOrg = _branchFilter ?? (isDG ? null : profile!.organization_id);
     let planifQ = supabase
       .from("planification_hebdo")
-      .select("ville_id, zones_villes!inner(nom)")
-      .eq("organization_id", _planifOrg);
+      .select("ville_id, zones_villes!inner(nom)");
+    if (_planifOrg) planifQ = planifQ.eq("organization_id", _planifOrg);
     if (dates) {
       const fromDate = new Date(dates.from + "T00:00:00");
       const fromDay = fromDate.getDay();

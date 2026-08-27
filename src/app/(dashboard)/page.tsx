@@ -277,14 +277,16 @@ export default function DashboardPage() {
       promises.push(arq.order("updated_at", { ascending: false }).limit(30));
     }
 
-    // Ventes (ADMIN + COMMERCIAL + REFERENT)
-    if (isAdmin || isCommercial || isReferent) {
+    // Ventes (ADMIN + REFERENT). Le COMMERCIAL est exclu : son CA et son nombre
+    // de ventes sont calculés depuis `commAcceptees` (bloc dédié plus bas), qui
+    // sert aussi à l'affichage de la liste — une seule source évite deux écritures
+    // concurrentes de caTotal/mesVentes.
+    if (isAdmin || isReferent) {
       let vq = supabase.from("fiches").select(
         "id, created_by, assigned_to, updated_at, montant_ht, " +
         "created_by_profile:profiles!fiches_created_by_fkey(first_name, last_name), " +
         "assigned_to_profile:profiles!fiches_assigned_to_fkey(first_name, last_name)"
       ).eq("status", "ACCEPTEE");
-      if (isCommercial) vq = vq.eq("assigned_to", profile.id);
       if (isReferent) vq = vq.eq("created_by", profile.id);
       if (branchFilter) vq = vq.eq("organization_id", branchFilter);
       if (periodDates) vq = vq.gte("updated_at", `${periodDates.from}T00:00:00Z`).lte("updated_at", `${periodDates.to}T23:59:59Z`);
@@ -391,12 +393,12 @@ export default function DashboardPage() {
       cd.fichesArchivees = _arch.slice(0, 20);
     }
 
-    if (isAdmin || isCommercial || isReferent) {
+    if (isAdmin || isReferent) {
       const rows = ((r.get("ventes")?.data ?? r.get("ventes")) as unknown as VenteRow[]) ?? [];
       const computedCa = rows.reduce((sum, v) => sum + (v.montant_ht ? Number(v.montant_ht) : 0), 0);
       setTotalVentes(rows.length);
       setCaTotal(computedCa);
-      if (isCommercial || isReferent) setMesVentes(rows.length);
+      if (isReferent) setMesVentes(rows.length);
       cd.totalVentes = rows.length; cd.caTotal = computedCa; cd.mesVentes = rows.length;
 
       if (isAdmin) {

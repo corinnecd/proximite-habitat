@@ -236,11 +236,25 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   async function handleStatusChange(newStatus: FicheStatus, comment?: string, motifRefus?: MotifRefus, rdvDateParam?: string) {
     if (!fiche || !profile) return;
     setTransitioning(true);
-    const { error } = await supabase.rpc("transition_fiche", {
+    const montantHtValue = newStatus === "ACCEPTEE" && montantHtInput ? parseFloat(montantHtInput) : null;
+    const rpcArgs = {
       p_fiche_id: fiche.id,
       p_new_status: newStatus,
       p_comment: comment || null,
-    });
+    };
+    // Le montant HT part avec la transition : le RPC le valide (> 0) et l'écrit
+    // dans le même UPDATE, donc une fiche ne peut plus être ACCEPTEE sans montant.
+    let { error } = await supabase.rpc(
+      "transition_fiche",
+      montantHtValue ? { ...rpcArgs, p_montant_ht: montantHtValue } : rpcArgs,
+    );
+    // Repli tant que la migration 20260805 n'est pas appliquée en base : l'ancienne
+    // signature ignore p_montant_ht, on retombe sur l'UPDATE séparé ci-dessous.
+    let montantEcritParRpc = montantHtValue != null;
+    if (error && montantHtValue != null && /p_montant_ht|PGRST202|does not exist|could not find/i.test(error.message)) {
+      montantEcritParRpc = false;
+      ({ error } = await supabase.rpc("transition_fiche", rpcArgs));
+    }
     if (error) {
       if (newStatus === "RDV_TECHNICIEN" && fiche.status === "INSTALLEE") {
         toast.error("RDV Technicien annulé, l'installation n'a pas eu lieu. Veuillez reprogrammer un autre RDV Technicien.");
@@ -254,7 +268,6 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     // La transition est déjà validée en base : si l'un de ces compléments échoue
     // (réseau coupé), le statut reste correct mais la donnée manque — on prévient
     // l'utilisateur pour qu'il la ressaisisse au lieu de la perdre silencieusement.
-    const montantHtValue = newStatus === "ACCEPTEE" && montantHtInput ? parseFloat(montantHtInput) : null;
     try {
       if (newStatus === "REFUSEE" && motifRefus) {
         const { error: e1 } = await supabase.from("fiches").update({ motif_refus: motifRefus }).eq("id", fiche.id);
@@ -266,8 +279,10 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       }
 
       if (newStatus === "ACCEPTEE" && montantHtValue) {
-        const { error: e2 } = await supabase.from("fiches").update({ montant_ht: montantHtValue }).eq("id", fiche.id);
-        if (e2) throw e2;
+        if (!montantEcritParRpc) {
+          const { error: e2 } = await supabase.from("fiches").update({ montant_ht: montantHtValue }).eq("id", fiche.id);
+          if (e2) throw e2;
+        }
         await supabase.from("fiche_history").insert({
           fiche_id: fiche.id, organization_id: profile.organization_id, user_id: profile.id,
           action: "Montant HT renseigné", comment: `${montantHtValue.toLocaleString("fr-FR")} €`,

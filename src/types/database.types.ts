@@ -388,6 +388,8 @@ export interface Database {
           p_new_status: FicheStatus;
           p_comment?: string | null;
           p_assigned_to?: string | null;
+          /** Obligatoire (> 0) pour p_new_status = "ACCEPTEE" — cf. migration 20260805. */
+          p_montant_ht?: number | null;
         };
         Returns: Database["public"]["Tables"]["fiches"]["Row"];
       };

@@ -208,12 +208,17 @@ export default function PlanificationPage() {
   const fetchSavedParcoursList = useCallback(async () => {
     if (!profile) return;
     setLoadingSavedParcours(true);
-    const branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : profile.organization_id;
+    // En vue DG « toutes les succursales », pas de filtre organisation : sinon
+    // l'historique n'affiche que les parcours du siège. La RLS borne la visibilité.
+    const branchFilter = (isDG && selectedBranchId !== "all")
+      ? selectedBranchId
+      : (isDG ? null : profile.organization_id);
 
-    const { data: parcoursRows } = await supabase
+    let parcoursQ = supabase
       .from("parcours_hebdo")
-      .select("id, semaine_du, distance_m, duration_s, waypoints, updated_at, created_by, nom, date_effective")
-      .eq("organization_id", branchFilter)
+      .select("id, semaine_du, distance_m, duration_s, waypoints, updated_at, created_by, nom, date_effective");
+    if (branchFilter) parcoursQ = parcoursQ.eq("organization_id", branchFilter);
+    const { data: parcoursRows } = await parcoursQ
       .order("semaine_du", { ascending: false })
       .limit(50);
 
@@ -227,7 +232,9 @@ export default function PlanificationPage() {
     const creatorIds = [...new Set(parcoursRows.map((p) => p.created_by))];
 
     const [planRes, villesRes, creatorsRes] = await Promise.all([
-      supabase.from("planification_hebdo").select("semaine_du, ville_id").eq("organization_id", branchFilter).in("semaine_du", semaines),
+      (branchFilter
+        ? supabase.from("planification_hebdo").select("semaine_du, ville_id").eq("organization_id", branchFilter).in("semaine_du", semaines)
+        : supabase.from("planification_hebdo").select("semaine_du, ville_id").in("semaine_du", semaines)),
       supabase.from("zones_villes").select("id, nom"),
       supabase.from("profiles").select("id, first_name, last_name").in("id", creatorIds),
     ]);

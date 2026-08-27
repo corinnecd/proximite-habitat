@@ -217,6 +217,14 @@ export default function CalendrierPage() {
         pushEvent(f, "technicien", f.rdv_technicien_date, f.rdv_technicien_heure);
       }
     }
+    // En mode « Tous », la requête n'a pas de `.order()` (filtre `or` sur deux
+    // colonnes de date) : on trie ici pour un ordre déterministe dans la journée.
+    for (const list of map.values()) {
+      list.sort((a, b) =>
+        (a.heure ?? "99:99").localeCompare(b.heure ?? "99:99") ||
+        `${a.fiche.prospect_nom ?? ""}`.localeCompare(`${b.fiche.prospect_nom ?? ""}`),
+      );
+    }
     return map;
   }, [filteredFiches, calType, rangeStartKey, rangeEndKey]);
 
@@ -357,7 +365,7 @@ export default function CalendrierPage() {
             <div key={wi} className={`grid grid-cols-7 ${wi < grid.length - 1 ? "border-b" : ""}`}>
               {week.map((day) => {
                 const key = toDateKey(day);
-                const dayEvents = (eventsByDay.get(key) ?? []).slice().sort((a, b) => (a.heure ?? "99:99").localeCompare(b.heure ?? "99:99"));
+                const dayEvents = eventsByDay.get(key) ?? []; // déjà trié par heure dans eventsByDay
                 const inCurrentMonth = viewMode === "week" || day.getMonth() === refDate.getMonth();
                 const isToday = isSameDay(day, new Date());
                 const maxShown = viewMode === "week" ? 20 : 3;

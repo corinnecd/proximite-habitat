@@ -91,6 +91,20 @@ export const MOTIF_REFUS_LABELS: Record<MotifRefus, string> = {
   REFUS_CLASSIQUE: "Refus classique",
 };
 
+/**
+ * Qui peut tracer, modifier ou supprimer un parcours hebdomadaire.
+ *
+ * Le chef d'équipe n'est pas un profil dédié : il est nommé pour la semaine via
+ * `planification_hebdo.chef_equipe_id` et peut être un référent, un commercial
+ * ou un membre de la direction. L'édition du parcours est donc ouverte à ces
+ * trois profils. `DIRECTION_GENERALE` en est exclu : ce rôle est en lecture seule.
+ */
+export function canEditParcours(role: UserRole | undefined | null): boolean {
+  if (!role) return false;
+  return (["PROSPECTEUR", "COMMERCIAL", "DIRECTION", "CHEF_EQUIPE", "SUPER_ADMIN"] as UserRole[])
+    .includes(role);
+}
+
 export const MOTIF_ARCHIVAGE_LABELS: Record<string, string> = {
   DOSSIER_INCOMPLET: "Dossier incomplet",
   INJOIGNABLE: "Client injoignable",

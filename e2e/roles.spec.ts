@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import {
-  COMMERCIAL, COMMERCIAL_AVEC_FICHES, PROSPECTEUR,
+  COMMERCIAL_AVEC_FICHES, PROSPECTEUR,
   DIRECTION_GENERALE, ADMIN, login,
 } from "./helpers";
 
@@ -19,17 +19,14 @@ async function settle(page: Page) {
   await page.waitForTimeout(500);
 }
 
-test.describe("Audit #9 — COMMERCIAL ne peut pas modifier la planification", () => {
-  test("la carte des parcours est en lecture seule", async ({ page }) => {
-    await login(page, COMMERCIAL.email, COMMERCIAL.password);
-    await page.goto("/planification");
-    await settle(page);
-
-    // `isEditable={canEditParcours}` est false : aucune action d'édition de parcours.
-    await expect(page.getByRole("button", { name: /Enregistrer le parcours/i })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Supprimer le parcours/i })).toHaveCount(0);
-  });
-});
+/*
+ * Audit #9 : test e2e retiré. La règle a été rectifiée — l'édition des parcours
+ * est ouverte aux référents, commerciaux et direction, puisque le chef d'équipe
+ * est nommé parmi ces trois profils. La carte n'est rendue que s'il existe une
+ * planification pour la semaine affichée : un test e2e dépendrait donc des
+ * données de la semaine en cours. La règle est désormais couverte de façon
+ * déterministe par `canEditParcours` dans src/lib/permissions.test.ts.
+ */
 
 test.describe("Audit #20 — l'import CSV de masse est réservé à la direction", () => {
   test("un PROSPECTEUR ne voit pas le bouton Import CSV", async ({ page }) => {

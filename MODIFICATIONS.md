@@ -1,5 +1,23 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-05 — Rectification : l'édition des parcours est ouverte aux 3 profils
+
+**Correction d'une décision précédente.** L'édition des parcours hebdomadaires doit être accessible au **référent, au commercial et à la direction** — les trois profils parmi lesquels un chef d'équipe est nommé. La restriction à la direction seule, retenue plus tôt dans la journée, était une mauvaise compréhension de ma part.
+
+### Ce qui change
+- **`canEditParcours` extrait dans `lib/permissions.ts`** en fonction pure et documentée. Elle autorise `PROSPECTEUR`, `COMMERCIAL`, `DIRECTION`, plus `CHEF_EQUIPE` et `SUPER_ADMIN`. `DIRECTION_GENERALE` reste exclu (lecture seule).
+- **`planification/page.tsx`** consomme désormais ce helper au lieu d'une condition inline.
+- **Le correctif d'audit #9 est donc annulé** : il retirait `COMMERCIAL` de l'édition des parcours, ce qui était contraire au métier.
+
+### Tests
+- **4 tests unitaires** ajoutés dans `permissions.test.ts` : les trois profils, le rôle historique, l'exclusion du DG, le rôle absent.
+- **Test e2e d'audit #9 retiré.** La carte n'est rendue que s'il existe une planification pour la semaine affichée — et il n'y en a aucune pour la semaine courante. Un test e2e aurait donc dépendu des données du moment. La règle est couverte de façon déterministe par le test unitaire.
+- Suite e2e : **17 PASS / 0 FAIL / 2 skipped**. Build vert, `tsc` 0 erreur.
+
+### Signalé au passage
+`canManageUsers` (`lib/permissions.ts:25`) renvoie `true` uniquement pour `SUPER_ADMIN`, alors que son test unitaire attend `true` pour `DIRECTION`. **Échec préexistant** — la fonction est identique au commit `05efc02`, antérieur à cette session — et **la fonction n'est utilisée nulle part** dans l'application : le contrôle d'accès réel vit dans `utilisateurs/page.tsx`. Code mort à trancher (corriger la fonction ou la supprimer avec son test).
+
+
 ## 2026-08-05 — Chef d'équipe : le sélecteur de planification ne proposait presque personne
 
 ### Le constat métier

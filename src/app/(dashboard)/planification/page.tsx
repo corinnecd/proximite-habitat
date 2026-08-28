@@ -9,6 +9,7 @@ import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { useBranch } from "@/lib/context/branch-context";
+import { canEditParcours as canEditParcoursFor } from "@/lib/permissions";
 import { toast } from "sonner";
 import {
   Calendar, ChevronLeft, ChevronRight, MapPin, Check, Copy,
@@ -91,7 +92,7 @@ export default function PlanificationPage() {
   const sundayStr = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, "0")}-${String(sunday.getDate()).padStart(2, "0")}`;
 
   const isAdmin = profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN" || profile?.role === "CHEF_EQUIPE" || profile?.role === "COMMERCIAL";
-  const canEditParcours = profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN" || profile?.role === "CHEF_EQUIPE";
+  const canEditParcours = canEditParcoursFor(profile?.role);
 
   const fetchPlan = useCallback(async () => {
     if (!profile) return;

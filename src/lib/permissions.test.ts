@@ -5,6 +5,7 @@ import {
   canManageUsers,
   canAssignFiche,
   canEditFiche,
+  canEditParcours,
 } from "./permissions";
 
 describe("canTransition", () => {
@@ -100,5 +101,27 @@ describe("canEditFiche", () => {
     expect(canEditFiche("DIRECTION", me, me, null, "ARCHIVEE")).toBe(false);
     expect(canEditFiche("COMMERCIAL", me, me, me, "ARCHIVEE")).toBe(false);
     expect(canEditFiche("PROSPECTEUR", me, me, null, "ARCHIVEE")).toBe(false);
+  });
+});
+
+describe("canEditParcours", () => {
+  it("autorise les trois profils parmi lesquels un chef d'équipe est nommé", () => {
+    expect(canEditParcours("PROSPECTEUR")).toBe(true);
+    expect(canEditParcours("COMMERCIAL")).toBe(true);
+    expect(canEditParcours("DIRECTION")).toBe(true);
+  });
+
+  it("autorise le rôle CHEF_EQUIPE historique et le super admin", () => {
+    expect(canEditParcours("CHEF_EQUIPE")).toBe(true);
+    expect(canEditParcours("SUPER_ADMIN")).toBe(true);
+  });
+
+  it("refuse la direction générale, qui est en lecture seule", () => {
+    expect(canEditParcours("DIRECTION_GENERALE")).toBe(false);
+  });
+
+  it("refuse un rôle absent", () => {
+    expect(canEditParcours(undefined)).toBe(false);
+    expect(canEditParcours(null)).toBe(false);
   });
 });

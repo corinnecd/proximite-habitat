@@ -1,5 +1,29 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-28 — Test e2e auto-nettoyant + migration SUPER_ADMIN appliquée
+
+### Migration appliquée
+`20260828_super_admin_transitions.sql` est **appliquée en base**. `SUPER_ADMIN` dispose désormais des mêmes transitions que `DIRECTION`, côté base comme côté client.
+
+### Le test de brouillon ne pollue plus la base
+Le test de création de brouillon écrivait une fiche en base **à chaque exécution**, sans jamais la supprimer : le stock est passé de 5 à 24 au fil de la journée.
+
+Ajout d'un `test.afterEach` qui supprime le brouillon créé **via l'interface** — ce qui couvre au passage le parcours de suppression d'un brouillon par son auteur. Le nom de la fiche est mémorisé dès sa saisie, donc le nettoyage a lieu même si le test échoue en cours de route. Une erreur de nettoyage est signalée en `console.warn` sans faire échouer la suite.
+
+Vérifié : 24 fiches avant, 24 après deux passes complètes — plus aucune accumulation.
+
+### Deux pièges rencontrés, à retenir
+- **`aria-label` masque le texte du bouton.** Le bouton de suppression affiche « Supprimer la fiche » mais porte `aria-label="Supprimer cette fiche"` : c'est ce dernier qui fait office de nom accessible. `getByRole("button", { name: "Supprimer la fiche" })` ne matchait donc rien.
+- **Les actions Playwright n'ont pas de timeout par défaut** (`actionTimeout` non configuré = 0 = infini). Un `click()` sur un locator introuvable attend indéfiniment, jusqu'au timeout global du test — l'erreur remontée mentionne alors le hook, pas la ligne fautive. Tous les `click()` et `fill()` du hook portent désormais un timeout explicite.
+- Un `afterEach` **partage le budget de temps du test** : `test.setTimeout()` est appelé dans le hook.
+
+### Reste à faire
+Purger les 24 brouillons de test accumulés avant ce correctif :
+```sql
+delete from fiches where status = 'BROUILLON' and prospect_nom like 'E2E-Test-%';
+```
+
+
 ## 2026-08-28 — Correction de bugs hors périmètre d'audit
 
 ### 🔴 SUPER_ADMIN ne pouvait changer aucun statut de fiche — ⚠️ migration à appliquer

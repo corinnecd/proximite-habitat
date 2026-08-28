@@ -10,6 +10,37 @@ test.describe("Workflow fiche : création du brouillon", () => {
    * sur la liste SOUMISE ne pouvait pas passer. Le test couvre désormais ce que
    * le parcours produit réellement : la création d'un brouillon par le référent.
    */
+  // Nom du brouillon créé par le test en cours, pour le supprimer ensuite même si
+  // le test échoue en cours de route.
+  let brouillonCree: string | null = null;
+
+  test.afterEach(async ({ page }) => {
+    if (!brouillonCree) return;
+    const nom = brouillonCree;
+    brouillonCree = null;
+    // Le hook partage le budget du test : lui en donner explicitement.
+    test.setTimeout(120_000);
+    try {
+      await page.goto("/fiches?status=BROUILLON");
+      const lien = page.getByText(nom).first();
+      await lien.waitFor({ state: "visible", timeout: 20_000 });
+      await lien.click({ timeout: 15_000 });
+      await page.waitForURL(/\/fiches\/[0-9a-f-]{36}/, { timeout: 20_000 });
+      // Attention : le bouton porte aria-label="Supprimer cette fiche", qui remplace
+      // son texte visible comme nom accessible.
+      await page.getByRole("button", { name: "Supprimer cette fiche" })
+        .click({ timeout: 15_000 });
+      await page.locator("#delete-motif").fill("Nettoyage automatique du test e2e", { timeout: 15_000 });
+      await page.getByRole("button", { name: "Supprimer définitivement" })
+        .click({ timeout: 15_000 });
+      // La suppression redirige vers le tableau de bord.
+      await page.waitForURL((u) => new URL(u).pathname === "/", { timeout: 20_000 });
+    } catch (err) {
+      // Le nettoyage ne doit jamais faire échouer la suite : on signale sans casser.
+      console.warn(`[e2e] brouillon « ${nom} » non supprimé, à purger manuellement`, err);
+    }
+  });
+
   test("un référent crée un brouillon, qui apparaît dans sa liste", async ({ page }) => {
     // 1. Le référent se connecte et crée une fiche
     await login(page, REFERENT.email, REFERENT.password);
@@ -20,6 +51,7 @@ test.describe("Workflow fiche : création du brouillon", () => {
 
     // Remplir les coordonnées prospect (étape 1)
     const nom = `E2E-Test-${Date.now()}`;
+    brouillonCree = nom;
     await page.locator('input[name="prospect_nom"]').fill(nom);
     await page.locator('input[name="prospect_prenom"]').fill("Playwright");
     await page.locator('input[name="prospect_adresse"]').fill("1 rue du Test");
@@ -36,6 +68,8 @@ test.describe("Workflow fiche : création du brouillon", () => {
     // 2. Le brouillon est bien listé pour son auteur
     await page.goto("/fiches?status=BROUILLON");
     await expect(page.getByText(nom)).toBeVisible({ timeout: 15_000 });
+    // La suppression est faite par le afterEach ci-dessus, qui couvre au passage
+    // le parcours de suppression d'un brouillon par son auteur.
   });
 
   test("l'admin accède à la file des fiches à valider", async ({ page }) => {

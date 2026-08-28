@@ -1046,7 +1046,9 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           {/* Actions — barre visible sous le hero */}
           <div className="mt-5 pt-5 border-t border-border space-y-3">
 
-            <div className="flex items-center gap-2 flex-wrap">
+            {/* Centré en mobile : à 364px les boutons se répartissaient en quinconce
+                (deux à gauche, un à droite), ce qui donnait une barre déséquilibrée. */}
+            <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
               {isDirection && (
                 <Button variant="outline" size="sm"
                   onClick={() => { setDeleteMotif(""); setShowDeleteConfirm(true); }}
@@ -1145,12 +1147,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 fiche.rdv_date && new Date(fiche.rdv_date) < new Date() && fiche.status === "AFFECTEE"
                   ? <Button size="sm" variant="outline"
                       onClick={() => { setPendingStatus("RDV_A_REPRENDRE"); setStatusComment(""); }}
-                      className="ml-auto rounded-xl gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20">
+                      className="sm:ml-auto rounded-xl gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20">
                       <Calendar className="w-4 h-4" /> Reprendre un RDV
                     </Button>
                   : <Button size="sm" variant="outline"
                       onClick={() => setShowRdvEditDialog(true)}
-                      className={`ml-auto rounded-xl gap-2 border-border ${fiche.rdv_date ? "bg-secondary text-foreground hover:bg-secondary/80" : "bg-[#F97316] hover:bg-[#EA580C] text-white border-transparent"}`}>
+                      className={`sm:ml-auto rounded-xl gap-2 border-border ${fiche.rdv_date ? "bg-secondary text-foreground hover:bg-secondary/80" : "bg-[#F97316] hover:bg-[#EA580C] text-white border-transparent"}`}>
                       <Calendar className="w-4 h-4" />{fiche.rdv_date ? "Modifier le rendez-vous" : "Planifier le RDV"}
                     </Button>
               )}
@@ -1400,7 +1402,9 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         {/* ── Modifier l'affectation (AFFECTEE / RDV_A_REPRENDRE · direction uniquement) ──── */}
         {profile && canAssignFiche(profile.role) && (fiche.status === "AFFECTEE" || fiche.status === "RDV_A_REPRENDRE") && (
           <div data-no-print className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-2xl px-6 py-4 space-y-3">
-            <div className="flex items-center gap-4">
+            {/* Empilé en mobile : sur une seule ligne, le libellé se coupait en deux
+                et le nom du commercial était tronqué par le bouton. */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center shrink-0">
                 <UserCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
@@ -1470,9 +1474,11 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         {/* ── Annuler la validation (AFFECTEE · direction uniquement) ──── */}
         {fiche.status === "AFFECTEE" && isDirection && (
           <div className="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/20 p-4">
-            <div className="flex items-center justify-between">
+            {/* Empilé en mobile : le texte se répartissait sur trois lignes face à un
+                bouton comprimé contre le bord. */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-600 dark:text-red-400" />
                 <p className="text-sm font-medium text-red-700 dark:text-red-300">Annuler la validation de cette fiche</p>
               </div>
               <Button

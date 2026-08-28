@@ -1,5 +1,30 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-28 — Boutons centrés et blocs recomposés en mobile étroit (364 px)
+
+Défauts signalés sur captures réelles à **364 px**. Mon audit tournait à 390 px : ces problèmes n'apparaissaient pas à cette largeur. Reproduits à 364 px, corrigés, revérifiés à 364 px.
+
+### Fiche détail
+- **Barre d'actions en escalier** : le bouton RDV portait `ml-auto`, qui le plaquait à droite de la ligne repliée. Résultat : deux boutons, puis un à gauche, puis un à droite. `ml-auto` conditionné à `sm`, et la barre est centrée sous `sm` — trois lignes symétriques.
+- **Carte « Commercial affecté »** : sur une seule ligne, le libellé se coupait en deux (« COMMERCIAL / AFFECTÉ ») et le nom du commercial était tronqué (« Virg… ») par le bouton. Passée en colonne sous `sm` : libellé, nom complet, puis bouton pleine largeur.
+- **Bandeau « Annuler la validation »** : texte réparti sur trois lignes face à un bouton comprimé contre le bord. Empilé sous `sm`.
+
+### Page Fiches
+- **Rangée de filtres de statut coupée net au bord de l'écran** : le conteneur en `overflow-x-auto` donnait un bouton tranché, sans le moindre indice qu'il fallait faire défiler. Remplacé par un repli centré — tous les statuts visibles, sur deux lignes.
+- **Puces de période et « Filtres avancés » centrés** sous `sm` : la répartition à gauche laissait des lignes inégales.
+
+### Dashboard
+- **Puces de période centrées** sous `sm`, même motif.
+
+### Vérification
+Aucun débordement horizontal à 364 px. `tsc` 0 erreur, build vert, unitaires 51/51, e2e 17 PASS / 0 FAIL.
+
+**Note** : deux exécutions e2e ont échoué sur `ERR_NETWORK_IO_SUSPENDED` et `ERR_EMPTY_RESPONSE` — la machine suspend ses E/S réseau et le serveur de dev tombe. Erreurs d'environnement, pas de régression : les exécutions suivantes sont vertes.
+
+### Enseignement
+Auditer à 390 px ne suffit pas. Les écrans de 360-375 px (iPhone SE, nombreux Android) sont plus contraints, et c'est là que les lignes repliées se déséquilibrent. À intégrer aux prochains audits.
+
+
 ## 2026-08-28 — Cartes KPI du dashboard sur 2 colonnes en mobile
 
 Les 6 cartes KPI (CA consolidé, ventes, CA moyen, taux d'acceptation, de refus, en cours) s'empilaient sur une seule colonne en mobile — environ 600 px de défilement pour la seule zone d'indicateurs.

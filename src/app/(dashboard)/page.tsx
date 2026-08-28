@@ -847,7 +847,7 @@ export default function DashboardPage() {
                     <span className="text-[11px] text-white/70">· {getPeriodLabel(dashPeriod)}</span>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
                   {(Object.keys(DASH_PERIOD_LABELS) as DashPeriod[]).map((p) => (
                     <button
                       key={p}

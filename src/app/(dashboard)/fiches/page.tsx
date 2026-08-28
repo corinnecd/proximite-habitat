@@ -676,11 +676,11 @@ export default function FichesPage() {
                     <span className="text-xs font-medium text-muted-foreground tracking-normal normal-case">{getPeriodLabel(periodFilter)}</span>
                   )}
                 </label>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
                   {/* `flex-1` seul faisait partager la ligne avec « Filtres avancés » : en
                     mobile la colonne restante était si étroite que les 8 puces
                     s'empilaient une par ligne (~330px de hauteur). */}
-                <div className="flex gap-2 flex-wrap w-full sm:w-auto sm:flex-1">
+                <div className="flex gap-2 flex-wrap justify-center sm:justify-start w-full sm:w-auto sm:flex-1">
                     {(Object.keys(PERIOD_LABELS) as PeriodFilter[])
                       .filter((p) => !isValidationMode || (p !== "QUARTER"))
                       .map((p) => (
@@ -854,11 +854,11 @@ export default function FichesPage() {
         {/* Filtres par statut */}
         {/* Mobile : rangée unique scrollable (les tooltips au survol, clippées par
             overflow-x, ne servent pas au tactile). sm+ : retour au wrap classique. */}
-        {!isValidationMode && (profile || hydrated) && (<div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 sm:flex-wrap sm:overflow-x-visible sm:pb-0 sm:mx-0 sm:px-0">
+        {!isValidationMode && (profile || hydrated) && (<div className="flex gap-2 flex-wrap justify-center sm:justify-start">
           <button
             onClick={() => setStatusFilter("ALL")}
             aria-pressed={statusFilter === "ALL"}
-            className={`relative group shrink-0 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+            className={`relative group px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
               statusFilter === "ALL" ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-secondary border"
             }`}
           >
@@ -874,7 +874,7 @@ export default function FichesPage() {
               key={s}
               onClick={() => setStatusFilter(s)}
               aria-pressed={statusFilter === s}
-              className={`relative group shrink-0 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
+              className={`relative group px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
                 statusFilter === s ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-secondary border"
               }`}
             >

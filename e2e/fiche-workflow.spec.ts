@@ -24,15 +24,13 @@ test.describe("Workflow fiche : création du brouillon", () => {
       await page.goto("/fiches?status=BROUILLON");
       const lien = page.getByText(nom).first();
       await lien.waitFor({ state: "visible", timeout: 20_000 });
-      await lien.click({ timeout: 15_000 });
+      await lien.click();
       await page.waitForURL(/\/fiches\/[0-9a-f-]{36}/, { timeout: 20_000 });
       // Attention : le bouton porte aria-label="Supprimer cette fiche", qui remplace
       // son texte visible comme nom accessible.
-      await page.getByRole("button", { name: "Supprimer cette fiche" })
-        .click({ timeout: 15_000 });
-      await page.locator("#delete-motif").fill("Nettoyage automatique du test e2e", { timeout: 15_000 });
-      await page.getByRole("button", { name: "Supprimer définitivement" })
-        .click({ timeout: 15_000 });
+      await page.getByRole("button", { name: "Supprimer cette fiche" }).click();
+      await page.locator("#delete-motif").fill("Nettoyage automatique du test e2e");
+      await page.getByRole("button", { name: "Supprimer définitivement" }).click();
       // La suppression redirige vers le tableau de bord.
       await page.waitForURL((u) => new URL(u).pathname === "/", { timeout: 20_000 });
     } catch (err) {

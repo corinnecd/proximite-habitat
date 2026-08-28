@@ -12,6 +12,11 @@ export default defineConfig({
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
+    // Sans plafond, une action (click, fill…) sur un locator introuvable attend
+    // indéfiniment : le test meurt sur son budget global et l'erreur pointe le
+    // test — ou pire, le hook — au lieu du locator fautif. Avec un plafond, on
+    // obtient le locator, la ligne et le journal d'attente.
+    actionTimeout: 15_000,
     trace: "on-first-retry",
   },
   projects: [

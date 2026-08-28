@@ -1,5 +1,27 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-28 — `actionTimeout` global sur la suite Playwright
+
+`playwright.config.ts` plafonnait le test (30 s) et les assertions `expect` (10 s), mais **pas les actions**. `actionTimeout` n'étant pas défini, sa valeur par défaut est `0` — soit **aucune limite**.
+
+Conséquence : un `.click()` ou `.fill()` sur un locator introuvable n'échoue pas, il attend indéfiniment jusqu'à épuisement du budget du test. L'erreur remontée est alors `Test timeout of 30000ms exceeded`, qui désigne le test ou le hook — **jamais le locator fautif**. C'est ce qui a coûté deux itérations lors de l'écriture du nettoyage automatique : le vrai problème était un `aria-label` masquant le texte du bouton, mais rien dans le message ne le laissait deviner.
+
+**Correctif** — `actionTimeout: 15_000` dans le bloc `use`. L'échec devient explicite :
+
+```
+locator.click: Timeout 15000ms exceeded.
+Call log:
+  - waiting for getByRole('button', { name: '…' })
+  at e2e/fiche-workflow.spec.ts:31
+```
+
+Vérifié par une spec jetable volontairement cassée : le message cite bien le locator, la ligne et le journal d'attente.
+
+Portée : la suite compte 24 actions, dont 20 n'avaient aucun plafond. Les 4 `timeout:` locaux ajoutés la veille dans le hook de nettoyage sont devenus redondants et ont été retirés.
+
+Aucun test qui passe ne change de comportement : le plafond ne se déclenche que sur un échec. Suite : **17 PASS / 0 FAIL / 2 skipped** sur deux passes, brouillons E2E stables à 24 (aucune accumulation).
+
+
 ## 2026-08-28 — Test e2e auto-nettoyant + migration SUPER_ADMIN appliquée
 
 ### Migration appliquée

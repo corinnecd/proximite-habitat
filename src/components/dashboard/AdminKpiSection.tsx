@@ -25,8 +25,8 @@ export function AdminKpiSection({
   return (
     <div className="space-y-6">
       {/* KPI Cards CA */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-card border border-border border-l-4 border-l-amber-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+        <div className="bg-card border border-border border-l-4 border-l-amber-500 rounded-2xl p-4 sm:p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
           <div className="flex items-center justify-between mb-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
               <Euro className="w-5 h-5 text-amber-600" />
@@ -36,7 +36,7 @@ export function AdminKpiSection({
           <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "CA global HT consolidé" : <>CA HT consolidé<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{totalVentes} contrat{totalVentes > 1 ? "s" : ""} signé{totalVentes > 1 ? "s" : ""}</p>
         </div>
-        <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+        <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-4 sm:p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
           <div className="flex items-center justify-between mb-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -45,7 +45,7 @@ export function AdminKpiSection({
           <AnimatedCounter value={totalVentes} className="text-2xl sm:text-3xl font-bold" loading={loading} />
           <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Ventes globales totales" : <>Ventes totales<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
         </div>
-        <div className="bg-card border border-border border-l-4 border-l-blue-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+        <div className="bg-card border border-border border-l-4 border-l-blue-500 rounded-2xl p-4 sm:p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
           <div className="flex items-center justify-between mb-3">
             <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
               <BarChart3 className="w-5 h-5 text-blue-600" />
@@ -65,8 +65,8 @@ export function AdminKpiSection({
         const refusalRate    = baseActive > 0 ? Math.round((counts.REFUSEE   / baseActive) * 100) : 0;
         const inProgressRate = baseActive > 0 ? Math.round((inProgress        / baseActive) * 100) : 0;
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+            <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-4 sm:p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -76,7 +76,7 @@ export function AdminKpiSection({
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global d'acceptation" : <>Taux d&apos;acceptation<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{counts.ACCEPTEE} acceptée{counts.ACCEPTEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>
             </div>
-            <div className="bg-card border border-border border-l-4 border-l-red-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+            <div className="bg-card border border-border border-l-4 border-l-red-500 rounded-2xl p-4 sm:p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                   <XCircle className="w-5 h-5 text-red-500" />
@@ -86,7 +86,7 @@ export function AdminKpiSection({
               <p className="text-xs text-muted-foreground uppercase tracking-wide mt-1">{isAllPeriod ? "Taux global de refus" : <>Taux de refus<span className="normal-case"> ({getPeriodLabel(dashPeriod)})</span></>}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{counts.REFUSEE} refusée{counts.REFUSEE > 1 ? "s" : ""} / {baseActive} active{baseActive > 1 ? "s" : ""}</p>
             </div>
-            <div className="bg-card border border-border border-l-4 border-l-orange-500 rounded-2xl p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
+            <div className="bg-card border border-border border-l-4 border-l-orange-500 rounded-2xl p-4 sm:p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
                   <Clock className="w-5 h-5 text-orange-600" />

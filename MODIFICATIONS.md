@@ -1,5 +1,21 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-28 — Cartes KPI du dashboard sur 2 colonnes en mobile
+
+Les 6 cartes KPI (CA consolidé, ventes, CA moyen, taux d'acceptation, de refus, en cours) s'empilaient sur une seule colonne en mobile — environ 600 px de défilement pour la seule zone d'indicateurs.
+
+**Première tentative, 2 colonnes simples** : chaque groupe compte 3 cartes, donc la troisième se retrouvait seule avec un vide béant à sa droite. Deux trous sur la page — visuellement pire que la colonne unique.
+
+**Retenu** : 2 colonnes, et la troisième carte de chaque groupe occupe toute la largeur (`[&>*:last-child]:col-span-2`, annulé dès `sm`). Deux cartes côte à côte, puis une pleine largeur : aucun trou, rythme régulier. Padding réduit à `p-4` sous `sm` pour desservir le texte.
+
+**Mesuré** : hauteur de page de **3834 px à 3500 px, soit 334 px de défilement en moins** (−9 %), sans débordement horizontal. Desktop vérifié inchangé — les 3 cartes restent alignées sur une ligne.
+
+Fichier : `components/dashboard/AdminKpiSection.tsx`.
+
+### Note de méthode
+La carte « Refusée » apparaît surélevée sur les captures : ce n'est pas un défaut de style — les sept cartes partagent des classes identiques. C'est l'état `hover:`, la souris restant positionnée là où le bouton « Se connecter » a été cliqué avant la navigation.
+
+
 ## 2026-08-28 — Audit visuel (suite) : 4 défauts que l'automatisation ne voyait pas
 
 Les contrôles automatiques (débordement, console, réseau, cibles tactiles) ne remontaient plus rien. Cette passe est l'**examen visuel des captures**, page par page — le volet qualité qu'aucune détection automatique ne couvre.

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,7 @@ const ROLE_FILTERS: Array<{ value: UserRole | "ALL"; label: string }> = [
 export default function UtilisateursPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [confirmUser, setConfirmUser] = useState<Profile | null>(null);
@@ -81,7 +83,15 @@ export default function UtilisateursPage() {
       setLoading(false);
       return;
     }
-    getAllProfiles(supabase).then((data) => { setUsers(data); setLoading(false); });
+    setFetchError(null);
+    // Sans `.catch`, un échec laissait `loading` à true indéfiniment, sans message.
+    getAllProfiles(supabase)
+      .then((data) => { setUsers(data); })
+      .catch((err) => {
+        console.error("[utilisateurs] getAllProfiles", err);
+        setFetchError("Impossible de charger les utilisateurs. Vérifiez votre connexion puis réessayez.");
+      })
+      .finally(() => setLoading(false));
   }, [supabase, profile]);
 
   // Pour le DG : restreindre à la succursale sélectionnée (cohérent avec dashboard/reporting).
@@ -201,7 +211,7 @@ export default function UtilisateursPage() {
 
   return (
     <>
-      <Topbar title="Gestion des utilisateurs" actions={<div className="flex items-center gap-2"><ExportPdfButton title="Utilisateurs" filename="utilisateurs" /><ExportCsvButton filename="utilisateurs" getData={() => ({
+      <Topbar title="Gestion des utilisateurs" actions={<div className="flex items-center gap-2 flex-wrap"><ExportPdfButton title="Utilisateurs" filename="utilisateurs" /><ExportCsvButton filename="utilisateurs" getData={() => ({
         columns: [
           { key: "nom", label: "Nom" },
           { key: "prenom", label: "Prénom" },
@@ -212,6 +222,7 @@ export default function UtilisateursPage() {
         rows: branchScopedUsers.map((u) => ({ nom: u.last_name, prenom: u.first_name, email: u.email, role: ROLE_LABELS[u.role] || u.role, actif: u.is_active ? "Oui" : "Non" })),
       })} /></div>} />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        {fetchError && <ErrorBanner message={fetchError} />}
 
         {/* ═══ HERO UTILISATEURS — navy signature ═══════════════════════ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
@@ -328,7 +339,7 @@ export default function UtilisateursPage() {
                   <button
                     key={value}
                     onClick={() => setRoleFilter(value)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    className={`px-3 min-h-9 sm:min-h-0 py-1.5 rounded-full text-xs font-medium transition-all ${
                       roleFilter === value
                         ? "bg-[#F97316] text-white"
                         : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"

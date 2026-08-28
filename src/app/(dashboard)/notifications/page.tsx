@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { Button } from "@/components/ui/button";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExportPdfButton } from "@/components/ui/export-pdf-button";
@@ -322,6 +323,7 @@ export default function NotificationsPage() {
   const [ficheStatuses, setFicheStatuses] = useState<Record<string, FicheStatus>>({});
   const [loading, setLoading] = useState(true);
   const [initialLoaded, setInitialLoaded] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(0);
@@ -386,6 +388,7 @@ export default function NotificationsPage() {
   ) => {
     if (append) setLoadingMore(true);
     else if (notifications.length === 0) setLoading(true);
+    setFetchError(null);
     try {
       const from = pageToLoad * PAGE_SIZE;
       const { dateFrom, dateTo } = getDateRange(opts.period ?? "all", opts.customFrom ?? "", opts.customTo ?? "");
@@ -417,6 +420,8 @@ export default function NotificationsPage() {
       }
     } catch (e) {
       console.error("[fetchNotifications]", e);
+      // Sans message, l'échec était indiscernable d'une absence de notification.
+      setFetchError("Impossible de charger les notifications. Vérifiez votre connexion puis réessayez.");
       if (!append) setNotifications([]);
     } finally {
       if (append) setLoadingMore(false);
@@ -569,6 +574,7 @@ export default function NotificationsPage() {
         rows: notifications.map((n) => ({ date: n.created_at?.slice(0, 10) || "", titre: n.title, message: n.message || "", lu: n.read ? "Oui" : "Non" })),
       })} /></div> : undefined} />
       <div className="p-4 sm:p-6 lg:p-8 space-y-4">
+        {fetchError && <ErrorBanner message={fetchError} />}
 
         {/* ═══ HERO NOTIFICATIONS — navy signature ═══════════════════════ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
@@ -631,7 +637,7 @@ export default function NotificationsPage() {
                   key={p}
                   type="button"
                   onClick={() => handlePeriodChange(p)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  className={`px-3 min-h-9 sm:min-h-0 py-1.5 rounded-full text-xs font-medium transition-all ${
                     period === p
                       ? "bg-[#F97316] text-white"
                       : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"
@@ -644,7 +650,7 @@ export default function NotificationsPage() {
                 <button
                   type="button"
                   onClick={() => setShowUnreadOnly((v) => !v)}
-                  className={`ml-1 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  className={`ml-1 flex items-center gap-1.5 px-3 min-h-9 sm:min-h-0 py-1.5 rounded-full text-xs font-medium transition-all ${
                     showUnreadOnly
                       ? "bg-[#F97316] text-white"
                       : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"
@@ -670,7 +676,7 @@ export default function NotificationsPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedTypes([])}
-                  className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                  className="text-[10px] min-h-8 px-1 -mx-1 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                 >
                   <X className="w-3 h-3" />Tout effacer
                 </button>
@@ -684,7 +690,7 @@ export default function NotificationsPage() {
                     key={value}
                     type="button"
                     onClick={() => toggleType(value)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all border ${
+                    className={`flex items-center gap-1.5 px-3 min-h-9 sm:min-h-0 py-1.5 rounded-xl text-xs font-medium transition-all border ${
                       active
                         ? "bg-[#0F1E3D] text-white border-[#0F1E3D] shadow-sm"
                         : "bg-background border-border hover:border-primary/40 hover:text-foreground text-muted-foreground"
@@ -732,7 +738,7 @@ export default function NotificationsPage() {
                   <button
                     type="button"
                     onClick={markAllRead}
-                    className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                    className="text-[10px] min-h-8 px-1 -mx-1 text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                   >
                     <CheckCheck className="w-3 h-3" />Tout marquer lu
                   </button>

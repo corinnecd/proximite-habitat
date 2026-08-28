@@ -10,7 +10,7 @@ import { useProfile } from "@/lib/hooks/use-profile";
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel } from "@/lib/periods";
 import { MOTIF_REFUS_LABELS, STATUS_LABELS } from "@/lib/permissions";
 import {
-  TrendingUp, XCircle, Euro, FileText, ArrowLeft, CalendarDays, RefreshCw, Send,
+  TrendingUp, XCircle, Euro, FileText, ArrowLeft, CalendarDays, RefreshCw, Send, ShieldAlert,
 } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -162,7 +162,30 @@ export default function ReferentDashboardPage() {
     return c;
   }, [fiches]);
 
-  if (!currentProfile || !isAdminOrDG) return null;
+  // `return null` rendait une page blanche pendant le chargement du profil, ce
+  // qu'interdit la règle zéro-flash. On distingue les deux cas : structure visible
+  // pendant le chargement, message explicite si l'accès est refusé.
+  if (!currentProfile) {
+    return <Topbar titleAs="p" title="Référent" />;
+  }
+  if (!isAdminOrDG) {
+    return (
+      <>
+        <Topbar titleAs="p" title="Accès refusé" />
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="max-w-md mx-auto text-center py-16 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+              <ShieldAlert className="w-7 h-7 text-muted-foreground" />
+            </div>
+            <h2 className="font-heading text-xl">Accès non autorisé</h2>
+            <p className="text-sm text-muted-foreground">
+              Ce reporting est réservé à la direction.
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -198,7 +221,7 @@ export default function ReferentDashboardPage() {
                   type="button"
                   disabled={refreshing}
                   onClick={async () => { setRefreshing(true); await loadData(periodFilter); setRefreshing(false); }}
-                  className="ml-auto flex items-center gap-1.5 text-[11px] text-white/60 hover:text-white transition-colors"
+                  className="ml-auto flex items-center gap-1.5 min-h-8 px-1 -mr-1 text-[11px] text-white/60 hover:text-white transition-colors"
                 >
                   <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
                   {refreshing ? "Actualisation…" : "Actualiser"}
@@ -210,7 +233,7 @@ export default function ReferentDashboardPage() {
                     key={p}
                     type="button"
                     onClick={() => setPeriodFilter(p)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    className={`px-3 min-h-9 sm:min-h-0 py-1.5 rounded-full text-xs font-medium transition-all ${
                       periodFilter === p
                         ? "bg-emerald-500 text-white"
                         : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"

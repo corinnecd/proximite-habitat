@@ -125,7 +125,7 @@ export function Topbar({ title, actions, titleAs = "h1" }: { title?: string; act
           <button
             type="button"
             onClick={openSearch}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground bg-secondary hover:bg-secondary/80 rounded-full transition-colors border border-border/50"
+            className="flex items-center gap-2 px-3 min-h-9 sm:min-h-0 py-1.5 text-sm text-muted-foreground bg-secondary hover:bg-secondary/80 rounded-full transition-colors border border-border/50"
             aria-label="Recherche globale"
           >
             <Search className="w-4 h-4" />

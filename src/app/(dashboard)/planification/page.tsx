@@ -9,6 +9,7 @@ import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { useBranch } from "@/lib/context/branch-context";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { canEditParcours } from "@/lib/permissions";
 import { toast } from "sonner";
 import {
@@ -85,6 +86,7 @@ export default function PlanificationPage() {
   const [savedParcoursOpen, setSavedParcoursOpen] = useState(false);
   const [loadingSavedParcours, setLoadingSavedParcours] = useState(false);
   const [savedParcoursSearch, setSavedParcoursSearch] = useState("");
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const mondayStr = `${currentMonday.getFullYear()}-${String(currentMonday.getMonth() + 1).padStart(2, "0")}-${String(currentMonday.getDate()).padStart(2, "0")}`;
   const sunday = new Date(currentMonday);
@@ -98,84 +100,91 @@ export default function PlanificationPage() {
   const canEditPlanification = canEditParcours(profile?.role);
 
   const fetchPlan = useCallback(async () => {
-    if (!profile) return;
+    // Sans try/catch, un échec réseau laissait la page vide sans explication.
+    setFetchError(null);
+    try {
+      if (!profile) return;
 
-    // Tout charger en parallèle (plan + parcours + départements + chefs)
-    const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
-    const parcoursOrg = _branchFilter ?? profile.organization_id;
-    let planQuery = supabase.from("planification_hebdo").select("id, ville_id, chef_equipe_id").eq("semaine_du", mondayStr);
-    if (_branchFilter) {
-      planQuery = planQuery.eq("organization_id", _branchFilter);
-    } else if (!isDG) {
-      planQuery = planQuery.eq("organization_id", profile.organization_id);
-    }
-    const [deptRes, planRes, chefsRes, parcoursRes] = await Promise.all([
-      supabase.from("zones_departements").select("*").order("code"),
-      planQuery,
-      // Le chef d'équipe n'est pas un profil dédié : c'est un référent, un
-      // commercial ou, exceptionnellement, un membre de la direction, désigné
-      // via `planification_hebdo.chef_equipe_id` (simple FK vers profiles, sans
-      // contrainte de rôle). Filtrer sur role = CHEF_EQUIPE ne remontait donc
-      // presque personne. Le rôle historique reste inclus pour compatibilité.
-      canEditPlanification
-        ? supabase
-            .from("profiles")
-            .select("id, first_name, last_name")
-            .in("role", ["PROSPECTEUR", "COMMERCIAL", "DIRECTION", "CHEF_EQUIPE"])
-            .eq("is_active", true)
-            .eq("organization_id", parcoursOrg)
-            .order("last_name")
-        : Promise.resolve({ data: null }),
-      supabase
-        .from("parcours_hebdo")
-        .select("id, waypoints, route_geometry, distance_m, duration_s, nom, date_effective")
-        .eq("organization_id", parcoursOrg)
-        .eq("semaine_du", mondayStr)
-        .is("chef_equipe_id", null)
-        .maybeSingle(),
-    ]);
-
-    if (deptRes.data) setDepartements(deptRes.data);
-    if (chefsRes.data) setReferents(chefsRes.data);
-
-    // Parcours
-    if (parcoursRes.data) {
-      setParcoursId(parcoursRes.data.id);
-      setParcours({
-        waypoints: (parcoursRes.data.waypoints ?? []) as [number, number][],
-        route_geometry: (parcoursRes.data.route_geometry ?? []) as [number, number][],
-        distance_m: parcoursRes.data.distance_m,
-        duration_s: parcoursRes.data.duration_s,
-        nom: parcoursRes.data.nom,
-        date_effective: parcoursRes.data.date_effective,
-      });
-    } else {
-      setParcoursId(null);
-      setParcours(null);
-    }
-
-    const data = planRes.data;
-    if (data && data.length > 0) {
-      const villeIds = [...new Set(data.map((d) => d.ville_id))];
-      const chefIds = [...new Set(data.filter((d) => d.chef_equipe_id).map((d) => d.chef_equipe_id!))];
-
-      const [villesRes, chefsMapRes] = await Promise.all([
-        supabase.from("zones_villes").select("*").in("id", villeIds),
-        chefIds.length > 0
-          ? supabase.from("profiles").select("id, first_name, last_name").in("id", chefIds)
-          : Promise.resolve({ data: [] as { id: string; first_name: string; last_name: string }[] }),
+      // Tout charger en parallèle (plan + parcours + départements + chefs)
+      const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
+      const parcoursOrg = _branchFilter ?? profile.organization_id;
+      let planQuery = supabase.from("planification_hebdo").select("id, ville_id, chef_equipe_id").eq("semaine_du", mondayStr);
+      if (_branchFilter) {
+        planQuery = planQuery.eq("organization_id", _branchFilter);
+      } else if (!isDG) {
+        planQuery = planQuery.eq("organization_id", profile.organization_id);
+      }
+      const [deptRes, planRes, chefsRes, parcoursRes] = await Promise.all([
+        supabase.from("zones_departements").select("*").order("code"),
+        planQuery,
+        // Le chef d'équipe n'est pas un profil dédié : c'est un référent, un
+        // commercial ou, exceptionnellement, un membre de la direction, désigné
+        // via `planification_hebdo.chef_equipe_id` (simple FK vers profiles, sans
+        // contrainte de rôle). Filtrer sur role = CHEF_EQUIPE ne remontait donc
+        // presque personne. Le rôle historique reste inclus pour compatibilité.
+        canEditPlanification
+          ? supabase
+              .from("profiles")
+              .select("id, first_name, last_name")
+              .in("role", ["PROSPECTEUR", "COMMERCIAL", "DIRECTION", "CHEF_EQUIPE"])
+              .eq("is_active", true)
+              .eq("organization_id", parcoursOrg)
+              .order("last_name")
+          : Promise.resolve({ data: null }),
+        supabase
+          .from("parcours_hebdo")
+          .select("id, waypoints, route_geometry, distance_m, duration_s, nom, date_effective")
+          .eq("organization_id", parcoursOrg)
+          .eq("semaine_du", mondayStr)
+          .is("chef_equipe_id", null)
+          .maybeSingle(),
       ]);
 
-      const villesMap = new Map((villesRes.data || []).map((v) => [v.id, v]));
-      const chefsMap = new Map((chefsMapRes.data || []).map((p) => [p.id, p]));
+      if (deptRes.data) setDepartements(deptRes.data);
+      if (chefsRes.data) setReferents(chefsRes.data);
 
-      setPlanEntries(data.map((d) => ({
-        ...d,
-        ville: villesMap.get(d.ville_id),
-        chefEquipe: d.chef_equipe_id ? chefsMap.get(d.chef_equipe_id) || null : null,
-      })));
-    } else {
-      setPlanEntries([]);
+      // Parcours
+      if (parcoursRes.data) {
+        setParcoursId(parcoursRes.data.id);
+        setParcours({
+          waypoints: (parcoursRes.data.waypoints ?? []) as [number, number][],
+          route_geometry: (parcoursRes.data.route_geometry ?? []) as [number, number][],
+          distance_m: parcoursRes.data.distance_m,
+          duration_s: parcoursRes.data.duration_s,
+          nom: parcoursRes.data.nom,
+          date_effective: parcoursRes.data.date_effective,
+        });
+      } else {
+        setParcoursId(null);
+        setParcours(null);
+      }
+
+      const data = planRes.data;
+      if (data && data.length > 0) {
+        const villeIds = [...new Set(data.map((d) => d.ville_id))];
+        const chefIds = [...new Set(data.filter((d) => d.chef_equipe_id).map((d) => d.chef_equipe_id!))];
+
+        const [villesRes, chefsMapRes] = await Promise.all([
+          supabase.from("zones_villes").select("*").in("id", villeIds),
+          chefIds.length > 0
+            ? supabase.from("profiles").select("id, first_name, last_name").in("id", chefIds)
+            : Promise.resolve({ data: [] as { id: string; first_name: string; last_name: string }[] }),
+        ]);
+
+        const villesMap = new Map((villesRes.data || []).map((v) => [v.id, v]));
+        const chefsMap = new Map((chefsMapRes.data || []).map((p) => [p.id, p]));
+
+        setPlanEntries(data.map((d) => ({
+          ...d,
+          ville: villesMap.get(d.ville_id),
+          chefEquipe: d.chef_equipe_id ? chefsMap.get(d.chef_equipe_id) || null : null,
+        })));
+      } else {
+        setPlanEntries([]);
+      }
+    } catch (err) {
+      console.error("[planification] fetchPlan", err);
+      setFetchError("Impossible de charger la planification. Vérifiez votre connexion puis réessayez.");
     }
   }, [profile, mondayStr, canEditPlanification, supabase, isDG, selectedBranchId]);
 
@@ -487,6 +496,7 @@ export default function PlanificationPage() {
         }
       />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        {fetchError && <ErrorBanner message={fetchError} onRetry={() => fetchPlan()} />}
 
         {/* ═══ HERO PLANIFICATION — navy signature ══════════════════════════ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">

@@ -151,7 +151,7 @@ export function FicheMainContent({
                       <button
                         type="button"
                         onClick={() => { setRdvDateValue(fiche.rdv_date || ""); setEditingRdvDate(true); }}
-                        className="ml-2 text-xs text-primary hover:underline"
+                        className="ml-2 min-h-8 px-1 text-xs text-primary hover:underline"
                       >
                         Modifier
                       </button>

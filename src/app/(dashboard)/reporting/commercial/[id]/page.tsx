@@ -4,6 +4,8 @@ import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { ShieldAlert } from "lucide-react";
+import { Topbar } from "@/components/layout/Topbar";
 import { CommercialReportingView } from "@/components/reporting/CommercialReportingView";
 
 interface Profile {
@@ -48,7 +50,30 @@ export default function CommercialDashboardPage() {
       });
   }, [id, supabase]);
 
-  if (!currentProfile || !isAdminOrDG) return null;
+  // `return null` rendait une page blanche pendant le chargement du profil, ce
+  // qu'interdit la règle zéro-flash. On distingue les deux cas : structure visible
+  // pendant le chargement, message explicite si l'accès est refusé.
+  if (!currentProfile) {
+    return <Topbar titleAs="p" title="Commercial" />;
+  }
+  if (!isAdminOrDG) {
+    return (
+      <>
+        <Topbar titleAs="p" title="Accès refusé" />
+        <div className="p-4 sm:p-6 lg:p-8">
+          <div className="max-w-md mx-auto text-center py-16 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+              <ShieldAlert className="w-7 h-7 text-muted-foreground" />
+            </div>
+            <h2 className="font-heading text-xl">Accès non autorisé</h2>
+            <p className="text-sm text-muted-foreground">
+              Ce reporting est réservé à la direction.
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <CommercialReportingView

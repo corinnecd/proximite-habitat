@@ -295,7 +295,7 @@ export function CommercialReportingView({
                   type="button"
                   disabled={refreshing}
                   onClick={async () => { setRefreshing(true); await loadData(periodFilter); setRefreshing(false); }}
-                  className="ml-auto flex items-center gap-1.5 text-[11px] text-white/60 hover:text-white transition-colors"
+                  className="ml-auto flex items-center gap-1.5 min-h-8 px-1 -mr-1 text-[11px] text-white/60 hover:text-white transition-colors"
                 >
                   <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
                   {refreshing ? "Actualisation…" : "Actualiser"}
@@ -308,7 +308,7 @@ export function CommercialReportingView({
                     type="button"
                     aria-pressed={periodFilter === p}
                     onClick={() => setPeriodFilter(p)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    className={`px-3 min-h-9 sm:min-h-0 py-1.5 rounded-full text-xs font-medium transition-all ${
                       periodFilter === p
                         ? "bg-[#F97316] text-white"
                         : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"

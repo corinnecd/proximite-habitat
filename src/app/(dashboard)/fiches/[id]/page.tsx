@@ -138,11 +138,21 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         ficheData?.ville_id
           ? supabase.from("zones_villes").select("*").eq("id", ficheData.ville_id).single()
           : Promise.resolve({ data: null }),
+        // Demander une URL signée pour un fichier absent renvoie un 400, qui
+        // polluait la console à l'ouverture de chaque fiche sans signature.
+        // On liste d'abord le dossier et on ne signe que ce qui existe.
         orgId
-          ? Promise.all([
-              supabase.storage.from("signatures").createSignedUrl(`${orgId}/${id}/signature.png`, 7200),
-              supabase.storage.from("signatures").createSignedUrl(`${orgId}/${id}/signature_referent.png`, 7200),
-            ])
+          ? (async () => {
+              const { data: fichiers } = await supabase.storage
+                .from("signatures")
+                .list(`${orgId}/${id}`);
+              const noms = new Set((fichiers ?? []).map((f) => f.name));
+              const signer = async (nom: string) =>
+                noms.has(nom)
+                  ? supabase.storage.from("signatures").createSignedUrl(`${orgId}/${id}/${nom}`, 7200)
+                  : { data: null };
+              return Promise.all([signer("signature.png"), signer("signature_referent.png")]);
+            })()
           : Promise.resolve(null),
       ]);
 
@@ -788,7 +798,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <>
-      <Topbar title="Détail de la fiche" actions={<div className="flex items-center gap-2"><DownloadFicheButton fiche={fiche} referentNom={creatorName || "Référent"} commercialNom={fiche.assigned_to ? (commercials.find((c) => c.id === fiche.assigned_to) ? `${commercials.find((c) => c.id === fiche.assigned_to)!.first_name} ${commercials.find((c) => c.id === fiche.assigned_to)!.last_name}` : undefined) : undefined} photoUrls={photos.map((p) => p.signedUrl).filter(Boolean)} /><ExportCsvButton filename={`fiche-${fiche.reference}`} getData={() => ({
+      <Topbar title="Détail de la fiche" actions={<div className="flex items-center gap-2 flex-wrap"><DownloadFicheButton fiche={fiche} referentNom={creatorName || "Référent"} commercialNom={fiche.assigned_to ? (commercials.find((c) => c.id === fiche.assigned_to) ? `${commercials.find((c) => c.id === fiche.assigned_to)!.first_name} ${commercials.find((c) => c.id === fiche.assigned_to)!.last_name}` : undefined) : undefined} photoUrls={photos.map((p) => p.signedUrl).filter(Boolean)} /><ExportCsvButton filename={`fiche-${fiche.reference}`} getData={() => ({
         columns: [
           { key: "champ", label: "Champ" },
           { key: "valeur", label: "Valeur" },
@@ -955,7 +965,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                         toast.success("Référence copiée", { duration: 2000 });
                       });
                     }}
-                    className="group flex items-center gap-1 text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground hover:text-foreground transition-colors"
+                    className="group flex items-center gap-1 min-h-8 px-1 -mx-1 text-[10px] font-medium tracking-[1px] uppercase text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {fiche.reference}
                     <Copy className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />

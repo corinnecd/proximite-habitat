@@ -205,7 +205,7 @@ export function ImportCsvDialog({ organizationId, createdBy, onImported }: Props
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
       <DialogTrigger render={
         <Button variant="outline" size="sm" className="gap-1.5">
-          <Upload className="w-3.5 h-3.5" />Import CSV
+          <Upload className="w-3.5 h-3.5" /><span className="hidden sm:inline">Import CSV</span><span className="sr-only sm:hidden">Importer un CSV</span>
         </Button>
       } />
       <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col">

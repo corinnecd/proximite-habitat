@@ -162,7 +162,7 @@ export function EvolutionChart({
             key={g}
             type="button"
             onClick={() => onGranularityChange(g)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+            className={`px-3 min-h-9 sm:min-h-0 py-1.5 rounded-full text-xs font-medium transition-all ${
               granularity === g
                 ? "bg-[#1E3A5F] text-white"
                 : "bg-muted text-muted-foreground hover:bg-muted/80 border border-border"

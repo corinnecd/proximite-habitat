@@ -245,7 +245,10 @@ export function ExportPdfButton({
       data-no-print
     >
       <FileDown className="w-4 h-4" />
-      Exporter PDF
+      {/* Libellé masqué en mobile : sinon la barre d'actions se replie sur
+          plusieurs lignes et double la hauteur de l'en-tête. */}
+      <span className="hidden sm:inline">Exporter PDF</span>
+      <span className="sr-only sm:hidden">Exporter en PDF</span>
     </Button>
   );
 }

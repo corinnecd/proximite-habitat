@@ -35,7 +35,9 @@ export function CommercialObjectifs({
       .select("objectif_fiches, objectif_ca")
       .eq("commercial_id", profileId)
       .eq("period_month", month)
-      .single()
+      // `.single()` renvoie une erreur HTTP 406 quand aucun objectif n'est défini,
+      // ce qui polluait la console de chaque commercial à chaque chargement.
+      .maybeSingle()
       .then(({ data }) => {
         if (data) setObjectif(data);
       });

@@ -852,7 +852,7 @@ export default function DashboardPage() {
                     <button
                       key={p}
                       onClick={() => setDashPeriod(p)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      className={`px-3 min-h-9 sm:min-h-0 py-1.5 rounded-full text-xs font-medium transition-all ${
                         dashPeriod === p
                           ? "bg-[#F97316] text-white"
                           : "bg-white/8 text-white/70 hover:bg-white/12 border border-white/10"
@@ -863,7 +863,7 @@ export default function DashboardPage() {
                   ))}
                   <Link
                     href={`/fiches?status=ARCHIVEE${anterieures.length > 0 ? `&highlight=${anterieures.map(f => f.id).join(",")}` : ""}`}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium transition-all bg-white/8 text-white/70 hover:bg-white/12 border border-white/10 inline-flex items-center gap-1.5"
+                    className="px-3 min-h-9 sm:min-h-0 py-1.5 rounded-full text-xs font-medium transition-all bg-white/8 text-white/70 hover:bg-white/12 border border-white/10 inline-flex items-center gap-1.5"
                   >
                     <Archive className="w-3 h-3" />
                     Antérieures

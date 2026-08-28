@@ -525,7 +525,7 @@ export default function FichesPage() {
 
   return (
     <>
-      <Topbar titleAs="p" title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} actions={<div className="flex items-center gap-2"><ExportPdfButton title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} filename={isValidationMode ? "fiches-a-valider" : "fiches-preview"} /><ExportCsvButton filename="fiches" getData={() => ({
+      <Topbar titleAs="p" title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} actions={<div className="flex items-center gap-2 flex-wrap"><ExportPdfButton title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} filename={isValidationMode ? "fiches-a-valider" : "fiches-preview"} /><ExportCsvButton filename="fiches" getData={() => ({
         columns: [
           { key: "reference", label: "Référence" },
           { key: "nom", label: "Nom" },
@@ -619,7 +619,7 @@ export default function FichesPage() {
                       key={p}
                       type="button"
                       onClick={() => setPeriodFilter(p)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      className={`px-3 min-h-9 sm:min-h-0 py-1.5 rounded-full text-xs font-medium transition-all ${
                         periodFilter === p
                           ? "bg-[#F97316] text-white"
                           : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"
@@ -631,7 +631,7 @@ export default function FichesPage() {
                   <button
                     type="button"
                     onClick={() => { setPeriodFilter("ALL"); setStatusFilter("ARCHIVEE"); }}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium transition-all bg-white/8 text-white/70 hover:bg-white/15 border border-white/10 inline-flex items-center gap-1.5"
+                    className="px-3 min-h-9 sm:min-h-0 py-1.5 rounded-full text-xs font-medium transition-all bg-white/8 text-white/70 hover:bg-white/15 border border-white/10 inline-flex items-center gap-1.5"
                   >
                     <Archive className="w-3 h-3" />
                     Antérieures
@@ -677,7 +677,10 @@ export default function FichesPage() {
                   )}
                 </label>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex gap-2 flex-wrap flex-1">
+                  {/* `flex-1` seul faisait partager la ligne avec « Filtres avancés » : en
+                    mobile la colonne restante était si étroite que les 8 puces
+                    s'empilaient une par ligne (~330px de hauteur). */}
+                <div className="flex gap-2 flex-wrap w-full sm:w-auto sm:flex-1">
                     {(Object.keys(PERIOD_LABELS) as PeriodFilter[])
                       .filter((p) => !isValidationMode || (p !== "QUARTER"))
                       .map((p) => (
@@ -685,7 +688,7 @@ export default function FichesPage() {
                         key={p}
                         type="button"
                         onClick={() => setPeriodFilter(p)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                        className={`px-3 min-h-9 sm:min-h-0 py-1.5 rounded-xl text-xs font-medium border transition-all ${
                           periodFilter === p
                             ? "bg-primary text-white border-primary"
                             : "bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
@@ -698,7 +701,7 @@ export default function FichesPage() {
                       <button
                         type="button"
                         onClick={() => { setPeriodFilter("ALL"); setStatusFilter("ARCHIVEE"); }}
-                        className="relative group px-3 py-1.5 rounded-xl text-xs font-medium border transition-all bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-foreground inline-flex items-center gap-1.5"
+                        className="relative group px-3 min-h-9 sm:min-h-0 py-1.5 rounded-xl text-xs font-medium border transition-all bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-foreground inline-flex items-center gap-1.5"
                       >
                         <Archive className="w-3.5 h-3.5" />
                         Antérieures
@@ -709,7 +712,7 @@ export default function FichesPage() {
                     <button
                       type="button"
                       onClick={() => setShowAdvancedFilters((v) => !v)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                      className={`inline-flex items-center gap-1.5 px-3 min-h-9 sm:min-h-0 py-1.5 rounded-xl text-xs font-medium border transition-all ${
                         showAdvancedFilters || advancedFiltersCount > 0
                           ? "bg-primary/5 border-primary/30 text-foreground"
                           : "bg-slate-200 dark:bg-slate-700 border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
@@ -982,7 +985,7 @@ export default function FichesPage() {
                           if (isExpanded) next.delete(s); else next.add(s);
                           return next;
                         })}
-                        className="mt-2 ml-1 text-xs text-primary hover:underline"
+                        className="mt-2 ml-1 min-h-8 px-1 text-xs text-primary hover:underline"
                       >
                         {isExpanded ? "Voir moins" : `Voir plus (${remaining} restant${remaining > 1 ? "s" : ""})`}
                       </button>

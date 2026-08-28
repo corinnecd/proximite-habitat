@@ -1,5 +1,35 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-28 — Audit desktop + mobile sur les 4 profils, et correctifs
+
+Audit conduit par captures réelles : 4 profils (direction, commercial, référent, direction générale) × 2 viewports (1440×900 et 390×844), sur toutes les pages. **66 captures**, avec relevé automatique des débordements horizontaux, erreurs console, réponses HTTP ≥ 400 et cibles tactiles sous 32 px.
+
+### Défauts d'UX corrigés
+- **Pages blanches** (`reporting/commercial/[id]`, `reporting/referent/[id]`) : `if (!currentProfile) return null` ne rendait rien pendant le chargement du profil, en violation de la règle zéro-flash. Structure affichée pendant le chargement, message « Accès non autorisé » explicite si le rôle ne convient pas.
+- **Échecs silencieux** : `loadData` (reporting) et `fetchPlan` (planification) n'avaient aucun `try/catch` et étaient appelés sans `.catch()`. Un échec réseau laissait la page en chargement indéfini, sans message. C'est le même défaut que l'audit #8, corrigé à l'époque uniquement dans `CommercialReportingView` — la page principale avait été manquée.
+- **`getAllProfiles` sans `.catch()`** (`utilisateurs`) : même conséquence.
+- **Erreur confondue avec liste vide** (`notifications`) : le `catch` vidait la liste sans rien afficher.
+- **Nouveau composant `components/ui/error-banner.tsx`** : bandeau unique, avec variante dark et bouton « Réessayer ». Employé par calendrier, reporting, planification, utilisateurs et notifications.
+
+### Défauts trouvés par les captures
+- **Débordement horizontal de 8 px sur `/fiches` en mobile** (direction et DG). Cause réelle : le conteneur `actions` passé à la `Topbar` ne se repliait pas ; avec le troisième bouton (Import CSV) il dépassait. `flex-wrap` ajouté aux 4 conteneurs d'actions. Les libellés d'export sont masqués sous `sm` (icône + `sr-only`), sinon le repli doublait la hauteur de l'en-tête, de 91 à 179 px.
+- **Erreur HTTP 406 à chaque chargement du dashboard commercial** : `.single()` sur `objectifs_commerciaux` échoue quand aucun objectif n'existe. Remplacé par `.maybeSingle()`.
+- **Erreurs HTTP 400 à chaque ouverture de fiche** : URL signées demandées pour des signatures inexistantes. Le dossier est désormais listé avant, et seuls les fichiers présents sont signés.
+- **Filtres de période empilés un par ligne en mobile** (`/fiches`) : le conteneur avait `flex-1` et partageait sa ligne avec « Filtres avancés », d'où une colonne trop étroite — 8 lignes, ~330 px. Pleine largeur sous `sm` : 3 lignes, page raccourcie de 180 px.
+
+### Cibles tactiles
+Corrigées à la source dans le design system (`components/ui/button.tsx`) : les tailles `xs`, `sm`, `icon` et `icon-xs` passaient sous 32 px en mobile (`h-7` = 28 px). Relevées sous 640 px, densité desktop inchangée. Puces de filtre, recherche globale et petits contrôles textuels (15-20 px) relevés également.
+
+### Vérifié sain, sans modification
+Largeurs fixes, tableaux, grilles, noms accessibles des boutons icône, couverture dark mode : conformes. Le « N » sombre en bas à gauche des captures est l'indicateur de développement Next.js, absent en production.
+
+### Résultat
+**Aucun constat sur la passe finale** : zéro débordement, zéro erreur console, zéro erreur réseau, zéro cible sous 32 px, sur les 4 profils en desktop et mobile. Unitaires 51/51, e2e 17 PASS / 0 FAIL / 2 skipped, build vert.
+
+### Incident d'environnement
+Le dépôt a été déplacé de `~/Documents/…` (synchronisé iCloud) vers `~/Projets/proximite-habitat`. iCloud avait évincé 85 des 134 fichiers source (drapeau `dataless`) et corrompu `.git/refs/heads/main` en pleine session. Ne pas replacer un dépôt git dans un dossier synchronisé.
+
+
 ## 2026-08-28 — Purge des brouillons de test (fait)
 
 Les **24 fiches `E2E-Test-*`** accumulées en base par les exécutions Playwright antérieures au nettoyage automatique ont été supprimées.

@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { useBranch } from "@/lib/context/branch-context";
 import { getCachedProfileId, getCachedProfileRole } from "@/lib/utils";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import type { FicheStatus, MotifRefus } from "@/types/database";
 import { STATUS_LABELS, MOTIF_REFUS_LABELS } from "@/lib/permissions";
 import { type PeriodFilter, PERIOD_LABELS, getPeriodDates, getPeriodLabel as getReportPeriodLabel } from "@/lib/periods";
@@ -116,6 +117,7 @@ export default function ReportingPage() {
   const [weeklyTrendOffset, setWeeklyTrendOffset] = useState(0);
 
   const isCommercial = profile?.role === "COMMERCIAL";
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Le rôle fait partie de la clé : les sections et agrégats diffèrent par rôle.
   const rpCacheKey = profile ? `rpt_cache_${profile.id}_${profile.role}` : null;
@@ -146,267 +148,275 @@ export default function ReportingPage() {
   }, [rpCacheKey]);
 
   async function loadData(profileId: string, role: string, period: PeriodFilter = "ALL") {
-    const isComm = role === "COMMERCIAL";
-    const statuses: FicheStatus[] = isComm
-      ? ["AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "RDV_TECHNICIEN", "INSTALLEE", "ARCHIVEE"]
-      : ["SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "RDV_TECHNICIEN", "INSTALLEE", "ARCHIVEE"];
+    // Sans try/catch, l'échec d'une requête laissait la page en chargement
+    // indéfiniment et sans message : `setLoading(false)` n'était jamais atteint.
+    setFetchError(null);
+    try {
+      const isComm = role === "COMMERCIAL";
+      const statuses: FicheStatus[] = isComm
+        ? ["AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "RDV_TECHNICIEN", "INSTALLEE", "ARCHIVEE"]
+        : ["SOUMISE", "VALIDEE", "AFFECTEE", "RDV_A_REPRENDRE", "ACCEPTEE", "RETRACTATION", "REFUSEE", "RDV_TECHNICIEN", "INSTALLEE", "ARCHIVEE"];
 
-    const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
-    const dates = getPeriodDates(period);
-    let ficheIdsForPeriod: string[] | null = null;
+      const _branchFilter = (isDG && selectedBranchId !== "all") ? selectedBranchId : null;
+      const dates = getPeriodDates(period);
+      let ficheIdsForPeriod: string[] | null = null;
 
-    if (dates) {
-      const from = `${dates.from}T00:00:00Z`;
-      const to   = `${dates.to}T23:59:59Z`;
-      let ficheQ = supabase
-        .from("fiches").select("id").neq("status", "BROUILLON")
-        .gte("updated_at", from).lte("updated_at", to);
-      if (isComm) ficheQ = ficheQ.eq("assigned_to", profileId);
-      if (_branchFilter) ficheQ = ficheQ.eq("organization_id", _branchFilter);
-      const { data: ficheRows } = await ficheQ;
-      ficheIdsForPeriod = (ficheRows ?? []).map((f: { id: string }) => f.id);
+      if (dates) {
+        const from = `${dates.from}T00:00:00Z`;
+        const to   = `${dates.to}T23:59:59Z`;
+        let ficheQ = supabase
+          .from("fiches").select("id").neq("status", "BROUILLON")
+          .gte("updated_at", from).lte("updated_at", to);
+        if (isComm) ficheQ = ficheQ.eq("assigned_to", profileId);
+        if (_branchFilter) ficheQ = ficheQ.eq("organization_id", _branchFilter);
+        const { data: ficheRows } = await ficheQ;
+        ficheIdsForPeriod = (ficheRows ?? []).map((f: { id: string }) => f.id);
 
-      if (ficheIdsForPeriod.length === 0) {
-        setStatusCounts(statuses.map((s) => ({ status: s, count: 0 })));
-        setTotalFiches(0);
-        setCaTotal(0);
-        setMotifRefusCounts({ RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 });
-        setReferents([]);
-        let emptyCommQ = supabase
-          .from("profiles").select("id, first_name, last_name")
-          .eq("role", "COMMERCIAL").eq("is_active", true);
-        if (_branchFilter) emptyCommQ = emptyCommQ.eq("organization_id", _branchFilter);
-        const { data: emptyCommProfiles } = await emptyCommQ;
-        setCommerciaux((emptyCommProfiles ?? []).map((p: { id: string; first_name: string; last_name: string }) => ({
-          id: p.id, name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0,
-        })));
-        setVilles([]);
-        setWeeklyData([]);
-        saveRptCache({ statusCounts: statuses.map((s) => ({ status: s, count: 0 })), totalFiches: 0, caTotal: 0, referents: [], commerciaux: [], villes: [], weeklyData: [], motifRefusCounts: { RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 } });
-        setLoading(false);
-        return;
+        if (ficheIdsForPeriod.length === 0) {
+          setStatusCounts(statuses.map((s) => ({ status: s, count: 0 })));
+          setTotalFiches(0);
+          setCaTotal(0);
+          setMotifRefusCounts({ RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 });
+          setReferents([]);
+          let emptyCommQ = supabase
+            .from("profiles").select("id, first_name, last_name")
+            .eq("role", "COMMERCIAL").eq("is_active", true);
+          if (_branchFilter) emptyCommQ = emptyCommQ.eq("organization_id", _branchFilter);
+          const { data: emptyCommProfiles } = await emptyCommQ;
+          setCommerciaux((emptyCommProfiles ?? []).map((p: { id: string; first_name: string; last_name: string }) => ({
+            id: p.id, name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0,
+          })));
+          setVilles([]);
+          setWeeklyData([]);
+          saveRptCache({ statusCounts: statuses.map((s) => ({ status: s, count: 0 })), totalFiches: 0, caTotal: 0, referents: [], commerciaux: [], villes: [], weeklyData: [], motifRefusCounts: { RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 } });
+          return;
+        }
       }
-    }
 
-    // ── Construire les requêtes indépendantes ──
-    // Pas de JOIN sur profiles ici — on les charge séparément en parallèle (requête beaucoup plus légère)
-    let fichesQuery = supabase
-      .from("fiches")
-      .select("id, created_by, assigned_to, organization_id, status, motif_refus, montant_ht, prospect_ville, ville_id, created_at")
-      .neq("status", "BROUILLON");
-    if (isComm) fichesQuery = fichesQuery.eq("assigned_to", profileId);
-    if (ficheIdsForPeriod) fichesQuery = fichesQuery.in("id", ficheIdsForPeriod);
-    if (_branchFilter) fichesQuery = fichesQuery.eq("organization_id", _branchFilter);
+      // ── Construire les requêtes indépendantes ──
+      // Pas de JOIN sur profiles ici — on les charge séparément en parallèle (requête beaucoup plus légère)
+      let fichesQuery = supabase
+        .from("fiches")
+        .select("id, created_by, assigned_to, organization_id, status, motif_refus, montant_ht, prospect_ville, ville_id, created_at")
+        .neq("status", "BROUILLON");
+      if (isComm) fichesQuery = fichesQuery.eq("assigned_to", profileId);
+      if (ficheIdsForPeriod) fichesQuery = fichesQuery.in("id", ficheIdsForPeriod);
+      if (_branchFilter) fichesQuery = fichesQuery.eq("organization_id", _branchFilter);
 
-    // Une seule requête pour tous les profils actifs — sert à la fois au tableau des commerciaux et à la résolution des noms créateurs
-    let allProfilesQ = supabase
-      .from("profiles").select("id, first_name, last_name, role")
-      .eq("is_active", true);
-    if (_branchFilter) allProfilesQ = allProfilesQ.eq("organization_id", _branchFilter);
+      // Une seule requête pour tous les profils actifs — sert à la fois au tableau des commerciaux et à la résolution des noms créateurs
+      let allProfilesQ = supabase
+        .from("profiles").select("id, first_name, last_name, role")
+        .eq("is_active", true);
+      if (_branchFilter) allProfilesQ = allProfilesQ.eq("organization_id", _branchFilter);
 
-    // En vue DG « toutes les succursales », on ne filtre pas par organisation :
-    // sinon seules les villes planifiées au siège remontent. La RLS borne la visibilité.
-    const _planifOrg = _branchFilter ?? (isDG ? null : profile!.organization_id);
-    let planifQ = supabase
-      .from("planification_hebdo")
-      .select("ville_id, zones_villes!inner(nom)");
-    if (_planifOrg) planifQ = planifQ.eq("organization_id", _planifOrg);
-    if (dates) {
-      const fromDate = new Date(dates.from + "T00:00:00");
-      const fromDay = fromDate.getDay();
-      fromDate.setDate(fromDate.getDate() - (fromDay === 0 ? 6 : fromDay - 1));
-      const mondayOfFrom = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, "0")}-${String(fromDate.getDate()).padStart(2, "0")}`;
-      planifQ = planifQ.gte("semaine_du", mondayOfFrom).lte("semaine_du", dates.to);
-    }
-
-    // ── Tout en parallèle : fiches + tous les profils + planification ──
-    const [{ data: fichesRaw }, { data: allProfilesData }, { data: planifRows }] = await Promise.all([
-      fichesQuery,
-      allProfilesQ,
-      planifQ,
-    ]);
-
-    const allProfiles = allProfilesData ?? [];
-    // Commerciaux actifs pour initialiser les lignes vides du tableau
-    const allCommProfiles = allProfiles.filter((p) => p.role === "COMMERCIAL");
-    // Map id → nom complet pour tous les profils
-    const profileNameMap: Record<string, string> = {};
-    for (const p of allProfiles) profileNameMap[p.id] = `${p.first_name} ${p.last_name}`;
-
-    type FicheRow = {
-      id: string; created_by: string; assigned_to: string | null; organization_id: string; status: string;
-      montant_ht: number | null; motif_refus: MotifRefus | null; prospect_ville: string | null; ville_id: string | null; created_at: string;
-    };
-    const fiches = (fichesRaw ?? []) as unknown as FicheRow[];
-    setRawFiches(fiches);
-
-    // ── Compter les statuts côté client (remplace 7-8 requêtes COUNT individuelles) ──
-    const statusMap: Record<string, number> = {};
-    for (const f of fiches) statusMap[f.status] = (statusMap[f.status] ?? 0) + 1;
-    const countResults = statuses.map((s) => ({ status: s, count: statusMap[s] ?? 0 }));
-    setStatusCounts(countResults);
-    setTotalFiches(countResults.reduce((a, b) => a + b.count, 0));
-
-    // ── Ventilation des refus par motif ──
-    const motifCounts: Record<MotifRefus, number> = { RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 };
-    for (const f of fiches) {
-      if (f.status === "REFUSEE" && f.motif_refus) {
-        motifCounts[f.motif_refus]++;
+      // En vue DG « toutes les succursales », on ne filtre pas par organisation :
+      // sinon seules les villes planifiées au siège remontent. La RLS borne la visibilité.
+      const _planifOrg = _branchFilter ?? (isDG ? null : profile!.organization_id);
+      let planifQ = supabase
+        .from("planification_hebdo")
+        .select("ville_id, zones_villes!inner(nom)");
+      if (_planifOrg) planifQ = planifQ.eq("organization_id", _planifOrg);
+      if (dates) {
+        const fromDate = new Date(dates.from + "T00:00:00");
+        const fromDay = fromDate.getDay();
+        fromDate.setDate(fromDate.getDate() - (fromDay === 0 ? 6 : fromDay - 1));
+        const mondayOfFrom = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, "0")}-${String(fromDate.getDate()).padStart(2, "0")}`;
+        planifQ = planifQ.gte("semaine_du", mondayOfFrom).lte("semaine_du", dates.to);
       }
-    }
-    setMotifRefusCounts(motifCounts);
 
-    // ── Vue comparative succursales (DG uniquement, vue globale) ──
-    let branchRows: BranchRow[] = [];
-    if (isDG && !_branchFilter) {
-      const bMap = new Map<string, BranchRow>();
+      // ── Tout en parallèle : fiches + tous les profils + planification ──
+      const [{ data: fichesRaw }, { data: allProfilesData }, { data: planifRows }] = await Promise.all([
+        fichesQuery,
+        allProfilesQ,
+        planifQ,
+      ]);
+
+      const allProfiles = allProfilesData ?? [];
+      // Commerciaux actifs pour initialiser les lignes vides du tableau
+      const allCommProfiles = allProfiles.filter((p) => p.role === "COMMERCIAL");
+      // Map id → nom complet pour tous les profils
+      const profileNameMap: Record<string, string> = {};
+      for (const p of allProfiles) profileNameMap[p.id] = `${p.first_name} ${p.last_name}`;
+
+      type FicheRow = {
+        id: string; created_by: string; assigned_to: string | null; organization_id: string; status: string;
+        montant_ht: number | null; motif_refus: MotifRefus | null; prospect_ville: string | null; ville_id: string | null; created_at: string;
+      };
+      const fiches = (fichesRaw ?? []) as unknown as FicheRow[];
+      setRawFiches(fiches);
+
+      // ── Compter les statuts côté client (remplace 7-8 requêtes COUNT individuelles) ──
+      const statusMap: Record<string, number> = {};
+      for (const f of fiches) statusMap[f.status] = (statusMap[f.status] ?? 0) + 1;
+      const countResults = statuses.map((s) => ({ status: s, count: statusMap[s] ?? 0 }));
+      setStatusCounts(countResults);
+      setTotalFiches(countResults.reduce((a, b) => a + b.count, 0));
+
+      // ── Ventilation des refus par motif ──
+      const motifCounts: Record<MotifRefus, number> = { RDC: 0, ANNULATION: 0, REFUS_CLASSIQUE: 0 };
       for (const f of fiches) {
-        const orgId = f.organization_id;
-        if (!orgId) continue;
-        if (!bMap.has(orgId)) bMap.set(orgId, { orgId, total: 0, accepted: 0, refused: 0, ca: 0, rate: 0 });
-        const b = bMap.get(orgId)!;
-        b.total++;
-        if (f.status === "ACCEPTEE") { b.accepted++; b.ca += Number(f.montant_ht ?? 0); }
-        if (f.status === "REFUSEE") b.refused++;
+        if (f.status === "REFUSEE" && f.motif_refus) {
+          motifCounts[f.motif_refus]++;
+        }
       }
-      branchRows = Array.from(bMap.values())
-        .map((b) => ({ ...b, rate: b.total > 0 ? Math.round((b.accepted / b.total) * 100) : 0 }))
-        .sort((a, b) => b.accepted - a.accepted);
-      setBranchStats(branchRows);
-    } else {
-      setBranchStats([]);
-    }
+      setMotifRefusCounts(motifCounts);
 
-    // ── 1. Productivité référents ──
-    let refRows: ReferentRow[] = [];
-    if (!isComm) {
-      const refMap: Record<string, ReferentRow> = {};
+      // ── Vue comparative succursales (DG uniquement, vue globale) ──
+      let branchRows: BranchRow[] = [];
+      if (isDG && !_branchFilter) {
+        const bMap = new Map<string, BranchRow>();
+        for (const f of fiches) {
+          const orgId = f.organization_id;
+          if (!orgId) continue;
+          if (!bMap.has(orgId)) bMap.set(orgId, { orgId, total: 0, accepted: 0, refused: 0, ca: 0, rate: 0 });
+          const b = bMap.get(orgId)!;
+          b.total++;
+          if (f.status === "ACCEPTEE") { b.accepted++; b.ca += Number(f.montant_ht ?? 0); }
+          if (f.status === "REFUSEE") b.refused++;
+        }
+        branchRows = Array.from(bMap.values())
+          .map((b) => ({ ...b, rate: b.total > 0 ? Math.round((b.accepted / b.total) * 100) : 0 }))
+          .sort((a, b) => b.accepted - a.accepted);
+        setBranchStats(branchRows);
+      } else {
+        setBranchStats([]);
+      }
+
+      // ── 1. Productivité référents ──
+      let refRows: ReferentRow[] = [];
+      if (!isComm) {
+        const refMap: Record<string, ReferentRow> = {};
+        for (const f of fiches) {
+          const key = f.created_by;
+          if (!refMap[key]) {
+            const name = profileNameMap[key] ?? "Inconnu";
+            refMap[key] = { id: key, name, total: 0, submitted: 0, accepted: 0, ca: 0 };
+          }
+          refMap[key].total++;
+          refMap[key].submitted++;
+          if (f.status === "ACCEPTEE") {
+            refMap[key].accepted++;
+            if (f.montant_ht) refMap[key].ca += Number(f.montant_ht);
+          }
+        }
+        refRows = Object.values(refMap).sort((a, b) => b.total - a.total);
+        setReferents(refRows);
+      }
+
+      // ── 2. Taux d'acceptation par commercial ──
+      const commMap: Record<string, CommercialRow> = {};
+      const COMM_STATUSES = ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE"]; // hors ARCHIVEE → cohérent avec baseActive
+      for (const p of allCommProfiles ?? []) {
+        commMap[p.id] = { id: p.id, name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
+      }
       for (const f of fiches) {
-        const key = f.created_by;
-        if (!refMap[key]) {
+        if (!f.assigned_to || !COMM_STATUSES.includes(f.status)) continue;
+        const key = f.assigned_to;
+        if (!commMap[key]) {
           const name = profileNameMap[key] ?? "Inconnu";
-          refMap[key] = { id: key, name, total: 0, submitted: 0, accepted: 0, ca: 0 };
+          commMap[key] = { id: key, name, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
         }
-        refMap[key].total++;
-        refMap[key].submitted++;
+        commMap[key].assigned++;
         if (f.status === "ACCEPTEE") {
-          refMap[key].accepted++;
-          if (f.montant_ht) refMap[key].ca += Number(f.montant_ht);
+          commMap[key].accepted++;
+          if (f.montant_ht) commMap[key].ca += Number(f.montant_ht);
         }
+        if (f.status === "REFUSEE") commMap[key].refused++;
       }
-      refRows = Object.values(refMap).sort((a, b) => b.total - a.total);
-      setReferents(refRows);
-    }
+      const commRows = Object.values(commMap).map((c) => ({
+        ...c,
+        rate: c.assigned > 0 ? Math.round((c.accepted / c.assigned) * 100) : 0,
+      })).sort((a, b) => b.assigned - a.assigned);
+      setCommerciaux(commRows);
 
-    // ── 2. Taux d'acceptation par commercial ──
-    const commMap: Record<string, CommercialRow> = {};
-    const COMM_STATUSES = ["AFFECTEE", "RETRACTATION", "ACCEPTEE", "REFUSEE"]; // hors ARCHIVEE → cohérent avec baseActive
-    for (const p of allCommProfiles ?? []) {
-      commMap[p.id] = { id: p.id, name: `${p.first_name} ${p.last_name}`, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
-    }
-    for (const f of fiches) {
-      if (!f.assigned_to || !COMM_STATUSES.includes(f.status)) continue;
-      const key = f.assigned_to;
-      if (!commMap[key]) {
-        const name = profileNameMap[key] ?? "Inconnu";
-        commMap[key] = { id: key, name, assigned: 0, accepted: 0, refused: 0, rate: 0, ca: 0 };
+      // CA total depuis la source primaire (toutes les fiches ACCEPTEE du dataset filtré)
+      setCaTotal(fiches.filter((f) => f.status === "ACCEPTEE").reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0));
+      type PlanifRow = { ville_id: string; zones_villes: { nom: string } };
+      // Build a map of planned ville_id → ville name
+      const plannedVilleMap = new Map<string, string>();
+      for (const pr of (planifRows ?? []) as unknown as PlanifRow[]) {
+        plannedVilleMap.set(pr.ville_id, pr.zones_villes.nom.trim());
       }
-      commMap[key].assigned++;
-      if (f.status === "ACCEPTEE") {
-        commMap[key].accepted++;
-        if (f.montant_ht) commMap[key].ca += Number(f.montant_ht);
+      // Initialize all planned villes (even those with 0 fiches)
+      const villeMap: Record<string, VilleRow> = {};
+      for (const [vid, vnom] of plannedVilleMap) {
+        villeMap[vid] = { ville: vnom, accepted: 0, refused: 0, total: 0, rate: 0 };
       }
-      if (f.status === "REFUSEE") commMap[key].refused++;
-    }
-    const commRows = Object.values(commMap).map((c) => ({
-      ...c,
-      rate: c.assigned > 0 ? Math.round((c.accepted / c.assigned) * 100) : 0,
-    })).sort((a, b) => b.assigned - a.assigned);
-    setCommerciaux(commRows);
-
-    // CA total depuis la source primaire (toutes les fiches ACCEPTEE du dataset filtré)
-    setCaTotal(fiches.filter((f) => f.status === "ACCEPTEE").reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0));
-    type PlanifRow = { ville_id: string; zones_villes: { nom: string } };
-    // Build a map of planned ville_id → ville name
-    const plannedVilleMap = new Map<string, string>();
-    for (const pr of (planifRows ?? []) as unknown as PlanifRow[]) {
-      plannedVilleMap.set(pr.ville_id, pr.zones_villes.nom.trim());
-    }
-    // Initialize all planned villes (even those with 0 fiches)
-    const villeMap: Record<string, VilleRow> = {};
-    for (const [vid, vnom] of plannedVilleMap) {
-      villeMap[vid] = { ville: vnom, accepted: 0, refused: 0, total: 0, rate: 0 };
-    }
-    // Match fiches by ville_id first, then fallback to prospect_ville name match
-    const plannedNamesUpper = new Map<string, string>();
-    for (const [vid, vnom] of plannedVilleMap) {
-      plannedNamesUpper.set(vnom.toUpperCase(), vid);
-    }
-    for (const f of fiches) {
-      let matchKey: string | null = null;
-      if (f.ville_id && plannedVilleMap.has(f.ville_id)) {
-        matchKey = f.ville_id;
-      } else if (f.prospect_ville) {
-        const nameKey = f.prospect_ville.trim().toUpperCase();
-        if (plannedNamesUpper.has(nameKey)) matchKey = plannedNamesUpper.get(nameKey)!;
+      // Match fiches by ville_id first, then fallback to prospect_ville name match
+      const plannedNamesUpper = new Map<string, string>();
+      for (const [vid, vnom] of plannedVilleMap) {
+        plannedNamesUpper.set(vnom.toUpperCase(), vid);
       }
-      if (!matchKey) continue;
-      if (f.status !== "ARCHIVEE") villeMap[matchKey].total++; // hors ARCHIVEE → cohérent avec baseActive
-      if (f.status === "ACCEPTEE") villeMap[matchKey].accepted++;
-      if (f.status === "REFUSEE") villeMap[matchKey].refused++;
-    }
-    const villeRows = Object.values(villeMap)
-      .map((v) => ({ ...v, rate: v.total > 0 ? Math.round((v.accepted / v.total) * 100) : 0 }))
-      .sort((a, b) => b.total - a.total);
-    setVilles(villeRows);
-
-    // ── 4. Évolution semaine par semaine (depuis le 1er janvier calendaire) ──
-    const now = new Date();
-    const getMonday = (d: Date) => {
-      const day = d.getDay();
-      const diff = d.getDate() - (day === 0 ? 6 : day - 1);
-      return new Date(d.getFullYear(), d.getMonth(), diff);
-    };
-    const firstMonday = getMonday(new Date(now.getFullYear(), 0, 1));
-    const currentMonday = getMonday(now);
-    const WEEK_COUNT = Math.round((currentMonday.getTime() - firstMonday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
-    const weekStarts: Date[] = [];
-    for (let i = WEEK_COUNT - 1; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1) - i * 7);
-      weekStarts.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
-    }
-    const weekBuckets: WeeklyPoint[] = weekStarts.map((ws) => {
-      const end = new Date(ws);
-      end.setDate(end.getDate() + 7);
-      const sun = new Date(ws);
-      sun.setDate(sun.getDate() + 6);
-      const fmtD = (d: Date) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
-      const label = `${fmtD(ws)} - ${fmtD(sun)}`;
-      let creees = 0, acceptees = 0;
       for (const f of fiches) {
-        const d = new Date(f.created_at);
-        if (d >= ws && d < end) {
-          creees++;
-          if (f.status === "ACCEPTEE") acceptees++;
+        let matchKey: string | null = null;
+        if (f.ville_id && plannedVilleMap.has(f.ville_id)) {
+          matchKey = f.ville_id;
+        } else if (f.prospect_ville) {
+          const nameKey = f.prospect_ville.trim().toUpperCase();
+          if (plannedNamesUpper.has(nameKey)) matchKey = plannedNamesUpper.get(nameKey)!;
         }
+        if (!matchKey) continue;
+        if (f.status !== "ARCHIVEE") villeMap[matchKey].total++; // hors ARCHIVEE → cohérent avec baseActive
+        if (f.status === "ACCEPTEE") villeMap[matchKey].accepted++;
+        if (f.status === "REFUSEE") villeMap[matchKey].refused++;
       }
-      return { label, creees, acceptees };
-    });
-    setWeeklyData(weekBuckets);
+      const villeRows = Object.values(villeMap)
+        .map((v) => ({ ...v, rate: v.total > 0 ? Math.round((v.accepted / v.total) * 100) : 0 }))
+        .sort((a, b) => b.total - a.total);
+      setVilles(villeRows);
 
-    saveRptCache({
-      statusCounts: countResults,
-      totalFiches: countResults.reduce((a: number, b: StatusCount) => a + b.count, 0),
-      caTotal: fiches.filter((f) => f.status === "ACCEPTEE").reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0),
-      referents: refRows.slice(0, 20),
-      commerciaux: commRows.slice(0, 20),
-      villes: villeRows.slice(0, 30),
-      weeklyData: weekBuckets,
-      motifRefusCounts: motifCounts,
-      branchStats: branchRows,
-    });
-    setLoading(false);
+      // ── 4. Évolution semaine par semaine (depuis le 1er janvier calendaire) ──
+      const now = new Date();
+      const getMonday = (d: Date) => {
+        const day = d.getDay();
+        const diff = d.getDate() - (day === 0 ? 6 : day - 1);
+        return new Date(d.getFullYear(), d.getMonth(), diff);
+      };
+      const firstMonday = getMonday(new Date(now.getFullYear(), 0, 1));
+      const currentMonday = getMonday(now);
+      const WEEK_COUNT = Math.round((currentMonday.getTime() - firstMonday.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+      const weekStarts: Date[] = [];
+      for (let i = WEEK_COUNT - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1) - i * 7);
+        weekStarts.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()));
+      }
+      const weekBuckets: WeeklyPoint[] = weekStarts.map((ws) => {
+        const end = new Date(ws);
+        end.setDate(end.getDate() + 7);
+        const sun = new Date(ws);
+        sun.setDate(sun.getDate() + 6);
+        const fmtD = (d: Date) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
+        const label = `${fmtD(ws)} - ${fmtD(sun)}`;
+        let creees = 0, acceptees = 0;
+        for (const f of fiches) {
+          const d = new Date(f.created_at);
+          if (d >= ws && d < end) {
+            creees++;
+            if (f.status === "ACCEPTEE") acceptees++;
+          }
+        }
+        return { label, creees, acceptees };
+      });
+      setWeeklyData(weekBuckets);
+
+      saveRptCache({
+        statusCounts: countResults,
+        totalFiches: countResults.reduce((a: number, b: StatusCount) => a + b.count, 0),
+        caTotal: fiches.filter((f) => f.status === "ACCEPTEE").reduce((sum, f) => sum + (f.montant_ht ? Number(f.montant_ht) : 0), 0),
+        referents: refRows.slice(0, 20),
+        commerciaux: commRows.slice(0, 20),
+        villes: villeRows.slice(0, 30),
+        weeklyData: weekBuckets,
+        motifRefusCounts: motifCounts,
+        branchStats: branchRows,
+      });
+    } catch (err) {
+      console.error("[reporting] loadData", err);
+      setFetchError("Impossible de charger le reporting. Vérifiez votre connexion puis réessayez.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -473,7 +483,7 @@ export default function ReportingPage() {
     <>
       <Topbar titleAs="p"
         title="Reporting direction"
-        actions={<div className="flex items-center gap-2"><ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${_pl ? `${PERIOD_LABELS[periodFilter]} (${_pl})` : PERIOD_LABELS[periodFilter]}`} filename="reporting" /><ExportCsvButton filename="reporting" getData={() => ({
+        actions={<div className="flex items-center gap-2 flex-wrap"><ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${_pl ? `${PERIOD_LABELS[periodFilter]} (${_pl})` : PERIOD_LABELS[periodFilter]}`} filename="reporting" /><ExportCsvButton filename="reporting" getData={() => ({
           columns: [
             { key: "indicateur", label: "Indicateur" },
             { key: "valeur", label: "Valeur" },
@@ -490,6 +500,9 @@ export default function ReportingPage() {
         })} /></div>}
       />
       <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        {fetchError && profile && (
+          <ErrorBanner message={fetchError} onRetry={() => loadData(profile.id, profile.role, periodFilter)} />
+        )}
 
         {/* ═══ HERO REPORTING ═══ */}
         <div className="hero-surface hero-surface-sm rounded-3xl p-6 sm:p-7">
@@ -525,7 +538,7 @@ export default function ReportingPage() {
                       await loadData(profile.id, profile.role, periodFilter);
                       setRefreshing(false);
                     }}
-                    className="ml-auto flex items-center gap-1.5 text-[11px] text-white/60 hover:text-white transition-colors"
+                    className="ml-auto flex items-center gap-1.5 min-h-8 px-1 -mr-1 text-[11px] text-white/60 hover:text-white transition-colors"
                   >
                     <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
                     {refreshing ? "Actualisation…" : "Actualiser"}
@@ -538,7 +551,7 @@ export default function ReportingPage() {
                       type="button"
                       aria-pressed={periodFilter === p}
                       onClick={() => setPeriodFilter(p)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      className={`px-3 min-h-9 sm:min-h-0 py-1.5 rounded-full text-xs font-medium transition-all ${
                         periodFilter === p
                           ? "bg-[#F97316] text-white"
                           : "bg-white/8 text-white/70 hover:bg-white/15 border border-white/10"
@@ -746,7 +759,7 @@ export default function ReportingPage() {
               <div className={`space-y-0 overflow-y-auto ${showAllCommerciaux || commSearch ? "max-h-[400px]" : "max-h-[250px]"}`}>
                 {(commSearch ? filteredCommerciaux : (showAllCommerciaux ? commerciaux : commerciaux.slice(0, 5))).map((c) => (
                   <div key={c.name} className="grid grid-cols-[1fr_48px_48px_48px_70px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1.5 sm:gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
-                    <button type="button" onClick={() => setConfirmNav({ type: "commercial", id: c.id, name: c.name })} className="text-sm font-medium truncate hover:text-[#F97316] hover:underline transition-colors text-left">{c.name}</button>
+                    <button type="button" onClick={() => setConfirmNav({ type: "commercial", id: c.id, name: c.name })} className="text-sm font-medium truncate min-h-8 sm:min-h-0 hover:text-[#F97316] hover:underline transition-colors text-left">{c.name}</button>
                     <span className="text-sm text-right tabular-nums text-muted-foreground">{c.assigned}</span>
                     <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{c.accepted}</span>
                     <span className="text-sm text-right tabular-nums text-red-500 font-medium">{c.refused}</span>
@@ -1018,7 +1031,7 @@ export default function ReportingPage() {
                       <div key={p.name} className="grid grid-cols-[1fr_50px_50px_50px] gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="w-5 text-center text-xs font-bold text-muted-foreground shrink-0">{origIndex + 1}</span>
-                          <button type="button" onClick={() => setConfirmNav({ type: "referent", id: p.id, name: p.name })} className="text-sm font-medium truncate hover:text-emerald-600 hover:underline transition-colors text-left">{p.name}</button>
+                          <button type="button" onClick={() => setConfirmNav({ type: "referent", id: p.id, name: p.name })} className="text-sm font-medium truncate min-h-8 sm:min-h-0 hover:text-emerald-600 hover:underline transition-colors text-left">{p.name}</button>
                         </div>
                         <span className="text-sm text-right tabular-nums text-muted-foreground">{p.total}</span>
                         <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{p.accepted}</span>

@@ -550,7 +550,9 @@ export default function PlanificationPage() {
 
         {/* Contenu principal */}
         <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
-          <div className="flex items-center justify-between">
+          {/* `justify-between` sans repli poussait « Dupliquer semaine précédente »
+              hors de la carte en mobile, coupé au bord de l'écran. */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="font-bold flex items-center gap-2">
               <MapPin className="w-5 h-5 text-[#F97316]" />
               Villes planifiées ({planEntries.length})

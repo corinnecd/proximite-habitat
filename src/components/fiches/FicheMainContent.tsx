@@ -171,7 +171,9 @@ export function FicheMainContent({
         iconColor="text-primary"
         title="Caractéristiques du logement"
       >
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {/* 2 colonnes et non 3 : la carte occupe un tiers de la largeur, et des
+            libellés comme « ANNÉE EMMÉNAGEMENT » se chevauchaient sur 3 colonnes. */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
           <DataRow label="Année construction" value={fiche.annee_construction} />
           <DataRow label="Année emménagement" value={fiche.annee_emmenagement} />
           <DataRow label="Surface chauffée" value={fiche.surface_chauffee ? `${fiche.surface_chauffee} m²` : null} />
@@ -280,12 +282,9 @@ export function FicheMainContent({
               {fiche.consentement_rgpd ? "Consentement obtenu" : "Non renseigné"}
             </span>
           </div>
-          <DataRow label="Créée le" value={new Date(fiche.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })} />
-          <DataRow label="Modifiée le" value={new Date(fiche.updated_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })} />
-          {fiche.assigned_to && (() => {
-            const c = commercials.find((x) => x.id === fiche.assigned_to);
-            return c ? <DataRow label="Commercial" value={`${c.first_name} ${c.last_name}`} /> : null;
-          })()}
+          {/* Créée le / Modifiée le / Commercial sont déjà affichés par
+              `FicheSidebar`, y compris à l'impression : les répéter ici
+              faisait apparaître deux fois la même information à l'écran. */}
         </div>
       </div>
       </div>{/* fin pdf-pair 3 */}

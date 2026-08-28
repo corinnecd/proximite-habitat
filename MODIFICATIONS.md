@@ -1,5 +1,32 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-28 — Audit visuel (suite) : 4 défauts que l'automatisation ne voyait pas
+
+Les contrôles automatiques (débordement, console, réseau, cibles tactiles) ne remontaient plus rien. Cette passe est l'**examen visuel des captures**, page par page — le volet qualité qu'aucune détection automatique ne couvre.
+
+### Calendrier mobile : dimanche invisible
+Le `min-w-[420px]` que j'avais ajouté pour éviter l'écrasement des colonnes dépassait la largeur d'un écran de 390 px : **la 7ᵉ colonne (dimanche) se retrouvait hors écran**, derrière un scroll horizontal que rien ne signalait. Un utilisateur mobile ne voyait jamais ses RDV du dimanche.
+
+Largeur minimale retirée : les 7 colonnes tiennent, les chips d'événement ont déjà `truncate`, et le détail complet du jour reste accessible au tap. `overflow-x-auto` est conservé comme filet de sécurité pour les écrans très étroits.
+
+### Fiche détail : métadonnées affichées deux fois
+« Créée le », « Modifiée le », « Commercial » et « Consentement RGPD obtenu » apparaissaient **simultanément dans la barre latérale et dans la carte Consentement RGPD** — la même information deux fois sur le même écran, en desktop comme en mobile. Vérifié qu'aucune règle ne masque la barre latérale à l'impression : la duplication existait donc aussi dans le PDF. Les trois lignes redondantes sont retirées de la carte, qui se concentre sur son objet — l'état du consentement.
+
+### Fiche détail : libellés qui se chevauchent
+La carte « Caractéristiques du logement » occupe un tiers de la largeur mais utilisait une grille de 3 colonnes : environ 90 px pour des libellés comme « ANNÉE EMMÉNAGEMENT », qui se chevauchaient visuellement. Passée à 2 colonnes.
+
+### Planification mobile : bouton hors de sa carte
+`justify-between` sans repli poussait « Dupliquer semaine précédente » **au-delà du bord de la carte**, coupé au bord de l'écran. Ligne rendue repliable : titre et bouton sur deux lignes.
+
+### Résultat
+Unitaires 51/51, e2e 17 PASS / 0 FAIL / 2 skipped, build vert.
+
+### Points mineurs relevés, non corrigés
+- Dashboard mobile : les 6 cartes KPI s'empilent sur une colonne (~600 px de défilement). Lisible, mais une disposition à 2 colonnes gagnerait de la place — à arbitrer, le texte deviendrait serré.
+- Utilisateurs mobile : « Désactiver » passe seul à la ligne sous « Modifier ». Cosmétique.
+- Le cercle sombre « N » visible en bas à gauche des captures est l'**indicateur de développement Next.js**, absent en production.
+
+
 ## 2026-08-28 — Audit desktop + mobile sur les 4 profils, et correctifs
 
 Audit conduit par captures réelles : 4 profils (direction, commercial, référent, direction générale) × 2 viewports (1440×900 et 390×844), sur toutes les pages. **66 captures**, avec relevé automatique des débordements horizontaux, erreurs console, réponses HTTP ≥ 400 et cibles tactiles sous 32 px.

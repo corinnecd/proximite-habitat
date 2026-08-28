@@ -357,7 +357,12 @@ export default function CalendrierPage() {
         )}
 
         <div className="rounded-2xl border bg-background overflow-x-auto">
-          <div className="min-w-[420px]">
+          {/* Pas de largeur minimale : à 390px elle poussait le dimanche hors de
+              l'écran, derrière un scroll horizontal que rien ne signalait. Les 7
+              colonnes tiennent, les chips ont `truncate`, et le détail complet du
+              jour reste accessible au tap. `overflow-x-auto` reste un filet de
+              sécurité pour les écrans très étroits. */}
+          <div>
           <div className="grid grid-cols-7 border-b bg-muted/40">
             {JOURS_ENTETE.map((j) => (
               <div key={j} className="px-2 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide text-center">

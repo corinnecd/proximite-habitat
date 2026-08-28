@@ -1,5 +1,19 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-28 — Purge des brouillons de test (fait)
+
+Les **24 fiches `E2E-Test-*`** accumulées en base par les exécutions Playwright antérieures au nettoyage automatique ont été supprimées.
+
+Précautions prises avant suppression :
+- Sauvegarde JSON des 24 lignes complètes (répertoire temporaire de session, donc éphémère — les données n'ont aucune valeur métier).
+- Vérifié que les 24 étaient **toutes** en `BROUILLON` et **toutes** préfixées `E2E-Test-`.
+- Vérifié l'absence de `fiche_history`, `fiche_photos` et `notifications` liées (0 dans les trois cas).
+
+Filtre appliqué : `status = 'BROUILLON' AND prospect_nom LIKE 'E2E-Test-%'`.
+
+Après suppression : **0 fiche `E2E-Test-` restante**, base à 133 fiches dont 17 brouillons légitimes, intacts. Les prochaines exécutions ne laisseront plus de résidus grâce au `afterEach` de nettoyage.
+
+
 ## 2026-08-28 — `actionTimeout` global sur la suite Playwright
 
 `playwright.config.ts` plafonnait le test (30 s) et les assertions `expect` (10 s), mais **pas les actions**. `actionTimeout` n'étant pas défini, sa valeur par défaut est `0` — soit **aucune limite**.

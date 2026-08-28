@@ -28,13 +28,8 @@ export const COMMERCIAL_AVEC_FICHES = {
   password: "Commercial123!",
 };
 
-// Non créés par `npm run seed` : uniquement via l'environnement, pour ne pas
-// versionner les mots de passe de comptes réels.
-export const CHEF_EQUIPE = {
-  email: process.env.E2E_CHEF_EQUIPE_EMAIL || "",
-  password: process.env.E2E_CHEF_EQUIPE_PASSWORD || "",
-};
-
+// Non créé par `npm run seed` : uniquement via l'environnement, pour ne pas
+// versionner le mot de passe d'un compte réel.
 export const DIRECTION_GENERALE = {
   email: process.env.E2E_DG_EMAIL || "",
   password: process.env.E2E_DG_PASSWORD || "",

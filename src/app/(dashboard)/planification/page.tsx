@@ -108,8 +108,19 @@ export default function PlanificationPage() {
     const [deptRes, planRes, chefsRes, parcoursRes] = await Promise.all([
       supabase.from("zones_departements").select("*").order("code"),
       planQuery,
+      // Le chef d'équipe n'est pas un profil dédié : c'est un référent, un
+      // commercial ou, exceptionnellement, un membre de la direction, désigné
+      // via `planification_hebdo.chef_equipe_id` (simple FK vers profiles, sans
+      // contrainte de rôle). Filtrer sur role = CHEF_EQUIPE ne remontait donc
+      // presque personne. Le rôle historique reste inclus pour compatibilité.
       isAdmin
-        ? supabase.from("profiles").select("id, first_name, last_name").eq("role", "CHEF_EQUIPE").eq("is_active", true)
+        ? supabase
+            .from("profiles")
+            .select("id, first_name, last_name")
+            .in("role", ["PROSPECTEUR", "COMMERCIAL", "DIRECTION", "CHEF_EQUIPE"])
+            .eq("is_active", true)
+            .eq("organization_id", parcoursOrg)
+            .order("last_name")
         : Promise.resolve({ data: null }),
       supabase
         .from("parcours_hebdo")

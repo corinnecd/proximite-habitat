@@ -1,5 +1,32 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-05 — Chef d'équipe : le sélecteur de planification ne proposait presque personne
+
+### Le constat métier
+Le chef d'équipe **n'est pas un profil à part entière** : c'est un référent, un commercial ou, exceptionnellement, un membre de la direction, nommé pour une semaine via `planification_hebdo.chef_equipe_id`.
+
+Le schéma respecte déjà cette règle — `chef_equipe_id` est une simple clé étrangère vers `profiles`, **sans contrainte de rôle**. C'est la requête de l'interface qui était fautive.
+
+### Correctif (`planification/page.tsx`)
+Le sélecteur « Chef d'équipe » ne proposait que les profils de rôle `CHEF_EQUIPE` — il n'en existe **qu'un seul en base** (`CE@gmail.com`, compte de test). Le sélecteur était donc quasi vide et la fonctionnalité inutilisable.
+
+Il propose désormais les `PROSPECTEUR`, `COMMERCIAL` et `DIRECTION` actifs, plus le rôle `CHEF_EQUIPE` historique pour compatibilité. Mesuré : **de 0–1 candidat à 19 et 11 selon la succursale**.
+
+Deux points au passage :
+- **Filtre par organisation ajouté** : la requête n'en avait aucun. Élargie sans ce filtre, elle aurait listé les profils de toutes les succursales. Elle est désormais bornée à `parcoursOrg`, comme les requêtes voisines.
+- Tri par nom de famille ajouté.
+
+### Décision : `canEditParcours` reste à la direction
+Question posée, réponse retenue : seules `DIRECTION` et `SUPER_ADMIN` (plus le rôle `CHEF_EQUIPE`) éditent les parcours. **Le correctif d'audit #9 est donc confirmé, il n'y a pas de régression** : un commercial nommé chef d'équipe est bien désigné dans la planification, mais ne modifie pas le tracé.
+
+À noter : `isAdmin` (ligne 93) inclut toujours `COMMERCIAL`, ce qui gouverne l'édition des **villes** planifiées — distinct de l'édition du **parcours**. Non modifié, hors du périmètre de la décision.
+
+### Tests
+- **Test « dashboard du CHEF_EQUIPE » (audit #1) retiré** : sa prémisse était fausse, il n'existe pas de compte dédié à tester. Constante `CHEF_EQUIPE` retirée des helpers.
+- Le correctif d'audit #1 dans `page.tsx` (ajout de `CHEF_EQUIPE` à `isReferent`) **est conservé** : le rôle existe toujours dans l'enum et dans `permissions.ts` (8 usages), un compte le porte.
+- Suite : **18 PASS / 0 FAIL / 2 skipped** (DG et objectifs, tous deux gated par variable d'environnement).
+
+
 ## 2026-08-05 — Suite e2e remise au vert : 18 PASS / 0 FAIL
 
 Diagnostic des 8 échecs préexistants. **Un vrai défaut applicatif, le reste des tests écrits contre une UI qui n'existe pas (ou plus).**

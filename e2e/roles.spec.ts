@@ -1,16 +1,16 @@
 import { test, expect, type Page } from "@playwright/test";
 import {
   COMMERCIAL, COMMERCIAL_AVEC_FICHES, PROSPECTEUR,
-  CHEF_EQUIPE, DIRECTION_GENERALE, ADMIN, login,
+  DIRECTION_GENERALE, ADMIN, login,
 } from "./helpers";
 
 /**
  * Vérifie les correctifs de périmètre par rôle issus de l'audit du 2026-08-05.
  * Chaque test cible un correctif précis et échoue si la régression revient.
  *
- * Les comptes CHEF_EQUIPE et DIRECTION_GENERALE ne sont pas créés par `npm run seed` :
- * renseignez E2E_CHEF_EQUIPE_EMAIL / _PASSWORD et E2E_DG_EMAIL / _PASSWORD pour les
- * activer, sinon les tests correspondants sont ignorés (et non silencieusement verts).
+ * Le compte DIRECTION_GENERALE n'est pas créé par `npm run seed` : renseignez
+ * E2E_DG_EMAIL / E2E_DG_PASSWORD pour activer le test #10, sinon il est ignoré
+ * (et non silencieusement vert).
  */
 
 /** Attend que la page ait fini son premier chargement de données. */
@@ -108,15 +108,10 @@ test.describe("Audit #10 — DIRECTION_GENERALE est en lecture seule", () => {
   });
 });
 
-test.describe("Audit #1 — le CHEF_EQUIPE voit son tableau de bord", () => {
-  test.skip(!CHEF_EQUIPE.password, "E2E_CHEF_EQUIPE_EMAIL / _PASSWORD non renseignés");
-
-  test("le dashboard affiche les sections référent, pas une page vide", async ({ page }) => {
-    await login(page, CHEF_EQUIPE.email, CHEF_EQUIPE.password);
-    await settle(page);
-
-    // Avant le correctif, isReferent excluait CHEF_EQUIPE : aucune section ne s'affichait.
-    await expect(page.getByRole("link", { name: "Tableau de bord" })).toBeVisible();
-    await expect(page.locator('a[href^="/fiches?status="]').first()).toBeVisible();
-  });
-});
+/*
+ * Audit #1 (dashboard du CHEF_EQUIPE) : test retiré.
+ * Le chef d'équipe n'est pas un profil à part : c'est un référent, un commercial
+ * ou, exceptionnellement, un membre de la direction, désigné par
+ * `planification_hebdo.chef_equipe_id`. Il n'y a donc pas de compte dédié à
+ * tester, et le rôle `CHEF_EQUIPE` de l'enum ne reflète pas le métier.
+ */

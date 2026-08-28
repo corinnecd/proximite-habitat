@@ -166,7 +166,7 @@ export default function ReferentDashboardPage() {
 
   return (
     <>
-      <Topbar
+      <Topbar titleAs="p"
         title={referent ? `${referent.first_name} ${referent.last_name}` : "Référent"}
         actions={
           <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => router.push("/reporting")}>

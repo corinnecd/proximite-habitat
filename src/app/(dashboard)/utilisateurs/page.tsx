@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getAllProfiles, setProfileActive } from "@/lib/data/profiles";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { useBranch } from "@/lib/context/branch-context";
+import { canAccessUsersPage, canMutateUsers } from "@/lib/permissions";
 import { ROLE_LABELS } from "@/lib/permissions";
 import type { UserRole, Profile } from "@/types/database";
 import { toast } from "sonner";
@@ -76,7 +77,7 @@ export default function UtilisateursPage() {
 
   useEffect(() => {
     if (!profile) return;
-    if (profile.role !== "SUPER_ADMIN" && profile.role !== "DIRECTION" && profile.role !== "DIRECTION_GENERALE") {
+    if (!canAccessUsersPage(profile.role)) {
       setLoading(false);
       return;
     }
@@ -119,7 +120,7 @@ export default function UtilisateursPage() {
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
-    if (!profile || profile.role === "DIRECTION_GENERALE") return;
+    if (!profile || !canMutateUsers(profile.role)) return;
     const orgId = isDG ? (targetOrgId || profile.organization_id) : profile.organization_id;
     setCreating(true);
     try {
@@ -140,7 +141,7 @@ export default function UtilisateursPage() {
   }
 
   async function handleToggleActive() {
-    if (!confirmUser || profile?.role === "DIRECTION_GENERALE") return;
+    if (!confirmUser || !profile || !canMutateUsers(profile.role)) return;
     setToggling(true);
     try {
       const { error } = await setProfileActive(supabase, confirmUser.id, !confirmUser.is_active);
@@ -162,7 +163,7 @@ export default function UtilisateursPage() {
 
   async function handleEditUser(e: React.FormEvent) {
     e.preventDefault();
-    if (!editUser || profile?.role === "DIRECTION_GENERALE") return;
+    if (!editUser || !profile || !canMutateUsers(profile.role)) return;
     setSaving(true);
     try {
       const res = await fetch("/api/users", {
@@ -184,7 +185,7 @@ export default function UtilisateursPage() {
   if (profile && profile.role !== "SUPER_ADMIN" && profile.role !== "DIRECTION" && profile.role !== "DIRECTION_GENERALE") {
     return (
       <>
-        <Topbar title="Utilisateurs" />
+        <Topbar titleAs="p" title="Utilisateurs" />
         <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto">
@@ -227,7 +228,7 @@ export default function UtilisateursPage() {
                   {`${stats.total} collaborateur${stats.total > 1 ? "s" : ""} · ${stats.active} actif${stats.active > 1 ? "s" : ""} · ${stats.commercials} commerciaux · ${stats.référents} référents`}
                 </p>
               </div>
-              {profile?.role !== "DIRECTION_GENERALE" && <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              {profile && canMutateUsers(profile.role) && <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger render={<button className="flex-shrink-0 bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 py-2 text-sm font-medium inline-flex items-center gap-2 transition-colors self-start" />}>
                   <UserPlus className="w-4 h-4" />Nouvel utilisateur
                 </DialogTrigger>

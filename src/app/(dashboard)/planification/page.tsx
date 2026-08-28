@@ -9,7 +9,7 @@ import { ExportCsvButton } from "@/components/ui/export-csv-button";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { useBranch } from "@/lib/context/branch-context";
-import { canEditParcours as canEditParcoursFor } from "@/lib/permissions";
+import { canEditParcours } from "@/lib/permissions";
 import { toast } from "sonner";
 import {
   Calendar, ChevronLeft, ChevronRight, MapPin, Check, Copy,
@@ -91,8 +91,11 @@ export default function PlanificationPage() {
   sunday.setDate(currentMonday.getDate() + 6);
   const sundayStr = `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, "0")}-${String(sunday.getDate()).padStart(2, "0")}`;
 
-  const isAdmin = profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN" || profile?.role === "CHEF_EQUIPE" || profile?.role === "COMMERCIAL";
-  const canEditParcours = canEditParcoursFor(profile?.role);
+  // Le chef d'équipe est nommé parmi les référents, commerciaux et direction :
+  // ces trois profils planifient les villes, désignent le chef de la semaine et
+  // éditent le tracé. Une seule règle gouverne donc les deux (l'ancien `isAdmin`
+  // excluait les référents et portait un nom trompeur).
+  const canEditPlanification = canEditParcours(profile?.role);
 
   const fetchPlan = useCallback(async () => {
     if (!profile) return;
@@ -114,7 +117,7 @@ export default function PlanificationPage() {
       // via `planification_hebdo.chef_equipe_id` (simple FK vers profiles, sans
       // contrainte de rôle). Filtrer sur role = CHEF_EQUIPE ne remontait donc
       // presque personne. Le rôle historique reste inclus pour compatibilité.
-      isAdmin
+      canEditPlanification
         ? supabase
             .from("profiles")
             .select("id, first_name, last_name")
@@ -174,7 +177,7 @@ export default function PlanificationPage() {
     } else {
       setPlanEntries([]);
     }
-  }, [profile, mondayStr, isAdmin, supabase, isDG, selectedBranchId]);
+  }, [profile, mondayStr, canEditPlanification, supabase, isDG, selectedBranchId]);
 
   useEffect(() => {
     if (profileLoading || !profile) return;
@@ -423,7 +426,7 @@ export default function PlanificationPage() {
 
   return (
     <>
-      <Topbar
+      <Topbar titleAs="p"
         title="Planification hebdomadaire"
         actions={
           <div className="flex items-center gap-2">
@@ -542,7 +545,7 @@ export default function PlanificationPage() {
               <MapPin className="w-5 h-5 text-[#F97316]" />
               Villes planifiées ({planEntries.length})
             </h2>
-            {isAdmin && (
+            {canEditPlanification && (
               <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={handleDuplicatePrevious} disabled={saving}>
                 <Copy className="w-4 h-4" />
                 Dupliquer semaine précédente
@@ -552,7 +555,7 @@ export default function PlanificationPage() {
 
           {planEntries.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
-              Aucune ville planifiée pour cette semaine.{isAdmin && " Ajoutez des villes ci-dessous."}
+              Aucune ville planifiée pour cette semaine.{canEditPlanification && " Ajoutez des villes ci-dessous."}
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -577,7 +580,7 @@ export default function PlanificationPage() {
                       <p className="text-xs text-muted-foreground/60 mt-0.5">Toute l&apos;équipe</p>
                     )}
                   </Link>
-                  {isAdmin && (
+                  {canEditPlanification && (
                     <button
                       type="button"
                       onClick={() => handleDelete(entry.id)}
@@ -612,7 +615,7 @@ export default function PlanificationPage() {
                     sublabel: e.chefEquipe ? `${e.chefEquipe.first_name} ${e.chefEquipe.last_name}` : "Toute l'équipe",
                   }))}
                 route={parcours}
-                isEditable={canEditParcours}
+                isEditable={canEditPlanification}
                 onSave={handleSaveParcours}
                 onDelete={parcoursId ? handleDeleteParcours : undefined}
                 height={450}
@@ -754,7 +757,7 @@ export default function PlanificationPage() {
         )}
 
         {/* Ajouter des villes — ADMIN uniquement */}
-        {isAdmin && <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
+        {canEditPlanification && <div className="bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] p-6 space-y-4">
           <h2 className="font-bold flex items-center gap-2">
             <MapPin className="w-5 h-5 text-primary" />
             Ajouter des villes

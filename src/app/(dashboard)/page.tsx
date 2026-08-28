@@ -711,7 +711,7 @@ export default function DashboardPage() {
   if (fetchError) {
     return (
       <>
-        <Topbar
+        <Topbar titleAs="p"
           title="Tableau de bord"
           actions={!isReferent ? (
             <div className="flex items-center gap-2">

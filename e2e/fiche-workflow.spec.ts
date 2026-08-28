@@ -41,9 +41,7 @@ test.describe("Workflow fiche : création du brouillon", () => {
   test("l'admin accède à la file des fiches à valider", async ({ page }) => {
     await login(page, ADMIN.email, ADMIN.password);
     await page.goto("/fiches?status=SOUMISE");
-    await expect(
-      page.locator("header").getByRole("heading", { name: "Fiches à valider" }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Fiches à valider" })).toBeVisible({ timeout: 15_000 });
   });
 });
 
@@ -54,7 +52,9 @@ test.describe("Page reporting", () => {
   test("le funnel de conversion s'affiche pour l'admin", async ({ page }) => {
     await login(page, ADMIN.email, ADMIN.password);
     await page.goto("/reporting");
-    await expect(page.getByRole("heading", { name: "Reporting direction" })).toBeVisible({ timeout: 15_000 });
+    // « Reporting direction » est le titre de la Topbar, rendu en <p> depuis
+    // l'unification des <h1>. Le heading de la page est celui du hero.
+    await expect(page.getByRole("heading", { name: "Reporting", exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/Répartition (globale )?par statut/)).toBeVisible();
     await expect(page.getByText(/Taux (global )?d'acceptation/).first()).toBeVisible();
   });
@@ -79,7 +79,10 @@ test.describe("Import CSV", () => {
   test("le bouton Import CSV est visible pour l'admin", async ({ page }) => {
     await login(page, ADMIN.email, ADMIN.password);
     await page.goto("/fiches");
-    await expect(page.getByRole("button", { name: "Import CSV" })).toBeVisible({ timeout: 10_000 });
+    // Attendre le rendu de la page avant le bouton : sous charge (suite complète),
+    // 10 s ne suffisent pas toujours au premier fetch Supabase.
+    await expect(page.getByRole("heading", { name: "Fiches de pré-visite" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: "Import CSV" })).toBeVisible({ timeout: 20_000 });
   });
 });
 

@@ -1,5 +1,46 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-28 — Correction de bugs hors périmètre d'audit
+
+### 🔴 SUPER_ADMIN ne pouvait changer aucun statut de fiche — ⚠️ migration à appliquer
+Le rôle `SUPER_ADMIN` (le compte `corinnediarra.cd@gmail.com`) était absent de la matrice de transitions **aux trois niveaux** : le RPC `transition_fiche` en base, `STATUS_TRANSITIONS` dans `permissions.ts`, et 15 gardes d'affichage dans `fiches/[id]/page.tsx`. Résultat : le bouton « Changer le statut » n'apparaissait pas, et toute transition aurait été refusée par la base. Incohérent avec le reste de l'application, où ce rôle a les pleins droits.
+
+- **Nouvelle migration `supabase/migrations/20260828_super_admin_transitions.sql`** : `SUPER_ADMIN` ajouté aux 26 branches de la matrice qui autorisaient déjà `DIRECTION`. Signature inchangée (5 arguments, `p_montant_ht` conservé) donc simple `CREATE OR REPLACE`, sans `DROP` ni `GRANT`.
+- **`permissions.ts`** : 17 branches de `STATUS_TRANSITIONS` enrichies ; `canAssignFiche` corrigé.
+- **`fiches/[id]/page.tsx`** : booléen dérivé unique `isDirection` remplaçant les 15 tests `role === "DIRECTION"` épars.
+
+### `canManageUsers` : fonction fausse, morte, et test en échec
+`permissions.ts:25` ne renvoyait `true` que pour `SUPER_ADMIN`, alors que la garde réelle autorise aussi `DIRECTION` et `DIRECTION_GENERALE`. La fonction n'était appelée nulle part — la règle était dupliquée en clair dans `utilisateurs/page.tsx` — et son test unitaire échouait depuis avant cette session.
+
+Remplacée par deux fonctions dont les noms disent ce qu'elles font, la distinction lecture/écriture étant réelle : `canAccessUsersPage` (dont le DG) et `canMutateUsers` (sans le DG). Employées aux 5 endroits de `utilisateurs/page.tsx` qui portaient la condition en clair. `isDirectionGenerale`, exporté et jamais appelé, supprimé.
+
+### Un référent ne pouvait pas planifier les villes
+`planification/page.tsx` — `isAdmin` excluait `PROSPECTEUR` : un référent pouvait éditer le tracé du parcours mais ni ajouter de villes, ni nommer le chef d'équipe. Renommé `canEditPlanification` et adossé au helper `canEditParcours`, une seule règle gouvernant désormais les deux (le nom `isAdmin` décrivait mal son contenu).
+
+### Deux `<h1>` par page (accessibilité)
+`Topbar` rendait `<h1>{title}</h1>` alors que 11 pages affichent déjà leur propre `<h1>` de hero — souvent avec le même texte. D'où la violation de mode strict rencontrée la veille, contournée par un locator scopé au `header`.
+
+Prop `titleAs?: "h1" | "p"` ajoutée à `Topbar` (défaut `"h1"`, classes identiques : **aucun changement visuel**). Les 11 pages avec hero passent `titleAs="p"` ; les 4 sans hero (`calendrier`, `fiches/nouvelle`, `fiches/[id]`, `fiches/[id]/modifier`) gardent le défaut. **Chaque page a maintenant exactement un `<h1>`**, et les contournements ont été retirés des tests.
+
+### Fixture de test obsolète (`validations/fiche.test.ts`)
+Deux tests de `step1Schema` échouaient depuis avant cette session : le fixture `validStep1` datait d'une version antérieure du schéma, qui exige désormais `departement_code`, `ville_id`, `date_visite` et au moins une disponibilité. Les cas nominaux échouaient donc pour une raison sans rapport avec leur objet. Fixture complété.
+
+### Fiabilisation
+- Test « Import CSV » : attente du rendu de la page avant le bouton — il échouait par intermittence sous la charge de la suite complète.
+- Test reporting : réaligné sur le `<h1>` du hero, le titre de la Topbar n'étant plus un heading.
+
+### État
+**Unitaires : 51/51.** **E2E : 17 PASS / 0 FAIL / 2 skipped**, stable sur deux passes. `tsc` 0 erreur, build vert.
+
+### Reste à faire côté base
+1. Appliquer `20260828_super_admin_transitions.sql` dans le SQL Editor Supabase.
+2. Purger les 19 brouillons de test laissés par les exécutions e2e :
+   ```sql
+   delete from fiches where status = 'BROUILLON' and prospect_nom like 'E2E-Test-%';
+   ```
+   Vérifié : aucune `fiche_history`, `fiche_photos` ni `notifications` liée, et aucune fiche hors `BROUILLON` ne correspond au filtre.
+
+
 ## 2026-08-05 — Rectification : l'édition des parcours est ouverte aux 3 profils
 
 **Correction d'une décision précédente.** L'édition des parcours hebdomadaires doit être accessible au **référent, au commercial et à la direction** — les trois profils parmi lesquels un chef d'équipe est nommé. La restriction à la direction seule, retenue plus tôt dans la journée, était une mauvaise compréhension de ma part.

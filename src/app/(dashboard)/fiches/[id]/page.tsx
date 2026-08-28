@@ -729,6 +729,10 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
+  // SUPER_ADMIN dispose des mêmes droits que DIRECTION sur le workflow des fiches
+  // (cf. matrice de transitions, migration 20260828_super_admin_transitions.sql).
+  const isDirection = profile?.role === "DIRECTION" || profile?.role === "SUPER_ADMIN";
+
   if (profile?.role === "COMMERCIAL" && fiche.assigned_to !== profile.id && fiche.created_by !== profile.id) {
     return (
       <>
@@ -773,9 +777,9 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
   // Pour ADMIN sur fiche SOUMISE : la bannière gère validation/rejet — on masque ces boutons du hero
   // Pour ADMIN sur fiche AFFECTEE : SOUMISE (re-soumission) est géré via l'Assign card — masqué ici
   const availableTransitions = (() => {
-    if (profile?.role === "DIRECTION" && fiche.status === "SOUMISE")
+    if (isDirection && fiche.status === "SOUMISE")
       return rawTransitions.filter((s) => s !== "BROUILLON");
-    if (profile?.role === "DIRECTION" && fiche.status === "AFFECTEE")
+    if (isDirection && fiche.status === "AFFECTEE")
       return rawTransitions.filter((s) => s !== "SOUMISE");
     return rawTransitions;
   })();
@@ -805,7 +809,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
       <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
 
         {/* ── Bannière "Fiche à valider" — visible direction uniquement ──── */}
-        {fiche.status === "SOUMISE" && profile?.role === "DIRECTION" && (
+        {fiche.status === "SOUMISE" && isDirection && (
           <div data-no-print className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-2xl p-5 space-y-4">
             {/* Header */}
             <div className="flex items-center gap-3">
@@ -1033,7 +1037,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
           <div className="mt-5 pt-5 border-t border-border space-y-3">
 
             <div className="flex items-center gap-2 flex-wrap">
-              {profile?.role === "DIRECTION" && (
+              {isDirection && (
                 <Button variant="outline" size="sm"
                   onClick={() => { setDeleteMotif(""); setShowDeleteConfirm(true); }}
                   className="rounded-xl gap-2 text-destructive hover:text-destructive border-destructive/30 hover:bg-red-50 dark:hover:bg-red-950/30"
@@ -1058,7 +1062,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               )}
 
               {fiche.status !== "BROUILLON" && profile &&
-                (profile.role === "DIRECTION" || profile.role === "COMMERCIAL") && canEdit && (
+                (isDirection || profile.role === "COMMERCIAL") && canEdit && (
                   <Button size="sm" variant="outline" onClick={() => router.push(`/fiches/${fiche.id}/modifier`)}
                     className="rounded-xl gap-2">
                     <Pencil className="w-4 h-4" />Modifier
@@ -1066,12 +1070,12 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
                 )}
 
               {/* Menu déroulant de changement de statut (Direction & Commercial) */}
-              {availableTransitions.length > 0 && (profile?.role === "DIRECTION" || profile?.role === "COMMERCIAL") && (
+              {availableTransitions.length > 0 && (isDirection || profile?.role === "COMMERCIAL") && (
                 <div className="relative" data-status-dropdown>
                   <Button size="sm" disabled={transitioning}
                     onClick={() => setShowStatusDropdown((v) => !v)}
                     className="rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white gap-2">
-                    {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : (fiche.status === "SOUMISE" && profile?.role === "DIRECTION" && isValidated && selectedCommercial ? "Validée et Affectée" : fiche.status === "SOUMISE" && profile?.role === "DIRECTION" && isValidated ? "Validée" : "Changer le statut")}
+                    {transitioning ? <Loader2 className="w-4 h-4 animate-spin" /> : (fiche.status === "SOUMISE" && isDirection && isValidated && selectedCommercial ? "Validée et Affectée" : fiche.status === "SOUMISE" && isDirection && isValidated ? "Validée" : "Changer le statut")}
                     <ChevronDown className="w-4 h-4" />
                   </Button>
                   {showStatusDropdown && (
@@ -1154,7 +1158,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
 
 
               {/* Section RDV à reprendre — référent uniquement */}
-              {fiche.status === "RDV_A_REPRENDRE" && (profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE" || profile?.role === "DIRECTION") && (
+              {fiche.status === "RDV_A_REPRENDRE" && (profile?.role === "PROSPECTEUR" || profile?.role === "CHEF_EQUIPE" || isDirection) && (
                 <div className="w-full bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 rounded-2xl px-4 py-3 space-y-2">
                   <p className="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-2">
                     <UserX className="w-4 h-4" /> Client absent — RDV à reprendre
@@ -1171,7 +1175,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
               )}
 
               {/* Bouton vert "Affecter à un commercial" — ADMIN + VALIDEE uniquement */}
-              {profile?.role === "DIRECTION" && fiche.status === "VALIDEE" && (
+              {isDirection && fiche.status === "VALIDEE" && (
                 <div className="w-full bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-4 py-3 space-y-3">
                   <p className="text-xs uppercase tracking-wide text-emerald-600 font-semibold flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4" /> Fiche validée — Affecter à un commercial
@@ -1216,7 +1220,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* ── Bannière RDV Technicien ────────────────────────────────────────── */}
-        {fiche.status === "RDV_TECHNICIEN" && (profile?.role === "COMMERCIAL" || profile?.role === "DIRECTION") && (() => {
+        {fiche.status === "RDV_TECHNICIEN" && (profile?.role === "COMMERCIAL" || isDirection) && (() => {
           const rdvTechPasse = fiche.rdv_technicien_date
             ? new Date(fiche.rdv_technicien_date) < new Date()
             : false;
@@ -1317,7 +1321,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         })()}
 
         {/* ── Bannière Installée ────────────────────────────────────────────── */}
-        {fiche.status === "INSTALLEE" && (profile?.role === "COMMERCIAL" || profile?.role === "DIRECTION") && (
+        {fiche.status === "INSTALLEE" && (profile?.role === "COMMERCIAL" || isDirection) && (
           <div data-no-print className="bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 rounded-2xl px-4 py-4 space-y-3">
             <p className="text-xs uppercase tracking-wide text-teal-700 dark:text-teal-400 font-semibold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4" /> Installation réalisée
@@ -1349,7 +1353,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         {fiche.status === "AFFECTEE" &&
           fiche.rdv_date &&
           new Date(fiche.rdv_date) < new Date() &&
-          (profile?.role === "COMMERCIAL" || profile?.role === "DIRECTION") && (
+          (profile?.role === "COMMERCIAL" || isDirection) && (
           <div data-no-print className="bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 rounded-2xl px-4 py-4 space-y-3">
             <p className="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-400 font-semibold flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
@@ -1454,7 +1458,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         )}
 
         {/* ── Annuler la validation (AFFECTEE · direction uniquement) ──── */}
-        {fiche.status === "AFFECTEE" && profile?.role === "DIRECTION" && (
+        {fiche.status === "AFFECTEE" && isDirection && (
           <div className="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/20 p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1546,7 +1550,7 @@ export default function FicheDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* ── Barre de validation bas de page — direction uniquement ───────── */}
-        {fiche.status === "SOUMISE" && profile?.role === "DIRECTION" && (
+        {fiche.status === "SOUMISE" && isDirection && (
           <div data-no-print className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-card rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06),0_2px_12px_rgba(0,0,0,0.04),0_0_0_1px_rgba(0,0,0,0.04)] px-6 py-4">
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <span className={`flex items-center gap-1.5 font-medium ${isValidated ? "text-emerald-600" : "text-muted-foreground"}`}>

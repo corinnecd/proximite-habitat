@@ -471,7 +471,7 @@ export default function ReportingPage() {
 
   return (
     <>
-      <Topbar
+      <Topbar titleAs="p"
         title="Reporting direction"
         actions={<div className="flex items-center gap-2"><ExportPdfButton title={isCommercial ? "Mon reporting" : "Reporting direction"} subtitle={`Période : ${_pl ? `${PERIOD_LABELS[periodFilter]} (${_pl})` : PERIOD_LABELS[periodFilter]}`} filename="reporting" /><ExportCsvButton filename="reporting" getData={() => ({
           columns: [

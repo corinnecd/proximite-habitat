@@ -1,16 +1,16 @@
 import type { UserRole, FicheStatus, MotifRefus } from "@/types/database";
 
 const STATUS_TRANSITIONS: Record<FicheStatus, { to: FicheStatus[]; roles: UserRole[] }[]> = {
-  BROUILLON: [{ to: ["SOUMISE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE", "COMMERCIAL", "DIRECTION"] }],
-  SOUMISE: [{ to: ["VALIDEE"], roles: ["DIRECTION"] }, { to: ["BROUILLON"], roles: ["DIRECTION", "PROSPECTEUR", "CHEF_EQUIPE"] }],
-  VALIDEE: [{ to: ["AFFECTEE"], roles: ["DIRECTION"] }, { to: ["SOUMISE"], roles: ["DIRECTION"] }],
-  AFFECTEE: [{ to: ["RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE", "RDV_A_REPRENDRE"], roles: ["DIRECTION", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["SOUMISE"], roles: ["DIRECTION"] }],
-  RDV_A_REPRENDRE: [{ to: ["AFFECTEE"], roles: ["DIRECTION", "PROSPECTEUR", "CHEF_EQUIPE"] }],
-  RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["AFFECTEE"], roles: ["DIRECTION"] }],
-  ACCEPTEE: [{ to: ["RDV_TECHNICIEN", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }],
-  RDV_TECHNICIEN: [{ to: ["INSTALLEE", "REFUSEE", "RETRACTATION", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }],
-  INSTALLEE: [{ to: ["ARCHIVEE", "RDV_TECHNICIEN"], roles: ["DIRECTION", "COMMERCIAL"] }],
-  REFUSEE: [{ to: ["ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL"] }, { to: ["AFFECTEE"], roles: ["DIRECTION"] }],
+  BROUILLON: [{ to: ["SOUMISE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE", "COMMERCIAL", "DIRECTION", "SUPER_ADMIN"] }],
+  SOUMISE: [{ to: ["VALIDEE"], roles: ["DIRECTION", "SUPER_ADMIN"] }, { to: ["BROUILLON"], roles: ["DIRECTION", "PROSPECTEUR", "CHEF_EQUIPE", "SUPER_ADMIN"] }],
+  VALIDEE: [{ to: ["AFFECTEE"], roles: ["DIRECTION", "SUPER_ADMIN"] }, { to: ["SOUMISE"], roles: ["DIRECTION", "SUPER_ADMIN"] }],
+  AFFECTEE: [{ to: ["RETRACTATION", "ACCEPTEE", "REFUSEE", "ARCHIVEE", "RDV_A_REPRENDRE"], roles: ["DIRECTION", "COMMERCIAL", "SUPER_ADMIN"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["SOUMISE"], roles: ["DIRECTION", "SUPER_ADMIN"] }],
+  RDV_A_REPRENDRE: [{ to: ["AFFECTEE"], roles: ["DIRECTION", "PROSPECTEUR", "CHEF_EQUIPE", "SUPER_ADMIN"] }],
+  RETRACTATION: [{ to: ["ACCEPTEE", "REFUSEE", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL", "SUPER_ADMIN"] }, { to: ["REFUSEE"], roles: ["PROSPECTEUR", "CHEF_EQUIPE"] }, { to: ["AFFECTEE"], roles: ["DIRECTION", "SUPER_ADMIN"] }],
+  ACCEPTEE: [{ to: ["RDV_TECHNICIEN", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL", "SUPER_ADMIN"] }],
+  RDV_TECHNICIEN: [{ to: ["INSTALLEE", "REFUSEE", "RETRACTATION", "ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL", "SUPER_ADMIN"] }],
+  INSTALLEE: [{ to: ["ARCHIVEE", "RDV_TECHNICIEN"], roles: ["DIRECTION", "COMMERCIAL", "SUPER_ADMIN"] }],
+  REFUSEE: [{ to: ["ARCHIVEE"], roles: ["DIRECTION", "COMMERCIAL", "SUPER_ADMIN"] }, { to: ["AFFECTEE"], roles: ["DIRECTION", "SUPER_ADMIN"] }],
   ARCHIVEE: [],
 };
 
@@ -22,9 +22,18 @@ export function getAvailableTransitions(role: UserRole, currentStatus: FicheStat
   return STATUS_TRANSITIONS[currentStatus].filter((t) => t.roles.includes(role)).flatMap((t) => t.to);
 }
 
-export function canManageUsers(role: UserRole): boolean { return role === "SUPER_ADMIN"; }
-export function canAssignFiche(role: UserRole): boolean { return role === "DIRECTION"; }
-export function isDirectionGenerale(role: UserRole): boolean { return role === "DIRECTION_GENERALE"; }
+/** Qui peut ouvrir la page Utilisateurs. La direction générale y accède en lecture seule. */
+export function canAccessUsersPage(role: UserRole): boolean {
+  return role === "SUPER_ADMIN" || role === "DIRECTION" || role === "DIRECTION_GENERALE";
+}
+
+/** Qui peut créer, modifier ou désactiver un utilisateur. La direction générale en est exclue. */
+export function canMutateUsers(role: UserRole): boolean {
+  return role === "SUPER_ADMIN" || role === "DIRECTION";
+}
+export function canAssignFiche(role: UserRole): boolean {
+  return role === "DIRECTION" || role === "SUPER_ADMIN";
+}
 
 export function canEditFiche(
   role: UserRole,

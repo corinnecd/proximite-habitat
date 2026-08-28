@@ -136,7 +136,7 @@ export default function ProfilPage() {
 
   return (
     <>
-      <Topbar title="Mon profil" actions={!isProspecteur && profile ? <div className="flex items-center gap-2"><ExportPdfButton title="Mon profil" filename="profil" /><ExportCsvButton filename="profil" getData={() => ({
+      <Topbar titleAs="p" title="Mon profil" actions={!isProspecteur && profile ? <div className="flex items-center gap-2"><ExportPdfButton title="Mon profil" filename="profil" /><ExportCsvButton filename="profil" getData={() => ({
           columns: [
             { key: "champ", label: "Champ" },
             { key: "valeur", label: "Valeur" },

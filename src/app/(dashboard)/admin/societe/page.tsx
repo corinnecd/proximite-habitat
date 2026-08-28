@@ -36,7 +36,7 @@ export default function SocietePage() {
   if (!profileLoading && profile?.role !== "DIRECTION_GENERALE") {
     return (
       <>
-        <Topbar title="Société" />
+        <Topbar titleAs="p" title="Société" />
         <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto">

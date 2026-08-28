@@ -1,14 +1,21 @@
 import { describe, it, expect } from "vitest";
 import { step1Schema, step7Schema } from "./fiche";
 
+// Le fixture doit couvrir TOUS les champs requis par step1Schema. Il était resté
+// à une version antérieure du schéma : departement_code, ville_id et date_visite
+// sont devenus obligatoires, et `disponibilites` exige au moins une entrée — les
+// deux cas nominaux échouaient donc pour une raison sans rapport avec leur objet.
 const validStep1 = {
   prospect_nom: "Dupont",
   prospect_prenom: "Jean",
   prospect_adresse: "12 rue de la Paix",
   prospect_cp: "69001",
   prospect_ville: "Lyon",
+  departement_code: "69",
+  ville_id: "11111111-1111-1111-1111-111111111111",
   prospect_telephone: "06 12 34 56 78",
-  disponibilites: [],
+  disponibilites: ["LU"],
+  date_visite: "2026-09-01",
 };
 
 describe("step1Schema", () => {

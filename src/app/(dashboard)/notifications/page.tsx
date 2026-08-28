@@ -559,7 +559,7 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <Topbar title="Notifications" actions={!isReferent ? <div className="flex items-center gap-2"><ExportPdfButton title="Notifications" filename="notifications" /><ExportCsvButton filename="notifications" getData={() => ({
+      <Topbar titleAs="p" title="Notifications" actions={!isReferent ? <div className="flex items-center gap-2"><ExportPdfButton title="Notifications" filename="notifications" /><ExportCsvButton filename="notifications" getData={() => ({
         columns: [
           { key: "date", label: "Date" },
           { key: "titre", label: "Titre" },

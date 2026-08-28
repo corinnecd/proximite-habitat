@@ -242,7 +242,7 @@ export function CommercialReportingView({
 
   return (
     <>
-      <Topbar
+      <Topbar titleAs="p"
         title={topbarTitle ?? "Mon reporting"}
         actions={
           <div className="flex items-center gap-2">

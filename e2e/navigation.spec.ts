@@ -14,11 +14,9 @@ test.describe("Navigation (admin connecté)", () => {
     await expect(page.getByRole("link", { name: "Statut des Fiches" })).toBeVisible();
     await page.goto("/fiches");
     await expect(page).toHaveURL(/\/fiches/);
-    // « Fiches de pré-visite » est rendu deux fois en <h1> : celui de la Topbar et
-    // celui du hero de la page. On cible celui de la Topbar pour lever l'ambiguïté.
-    await expect(
-      page.locator("header").getByRole("heading", { name: "Fiches de pré-visite" }),
-    ).toBeVisible();
+    // Un seul <h1> par page depuis l'ajout de `titleAs` sur la Topbar : plus besoin
+    // de scoper le locator pour lever une ambiguïté de mode strict.
+    await expect(page.getByRole("heading", { name: "Fiches de pré-visite" })).toBeVisible();
     // Filtres de statut présents
     // `exact` obligatoire : sans lui, « Toutes » matche aussi « Toutes les dates ».
     await expect(page.getByRole("button", { name: "Toutes", exact: true })).toBeVisible();
@@ -34,11 +32,9 @@ test.describe("Navigation (admin connecté)", () => {
     await expect(firstFiche).toBeVisible({ timeout: 20_000 });
     await firstFiche.click();
     await expect(page).toHaveURL(/\/fiches\/[0-9a-f-]{36}/);
-    // La référence PHC- n'est pas un heading : le <h2> porte le nom du prospect,
-    // et la Topbar affiche « Détail de la fiche ».
-    await expect(
-      page.locator("header").getByRole("heading", { name: "Détail de la fiche" }),
-    ).toBeVisible();
+    // La référence PHC- n'est pas un heading : le <h2> porte le nom du prospect.
+    // Cette page n'a pas de hero, la Topbar reste donc son <h1>.
+    await expect(page.getByRole("heading", { name: "Détail de la fiche" })).toBeVisible();
     await expect(page.getByText(/PHC-/).first()).toBeVisible();
   });
 

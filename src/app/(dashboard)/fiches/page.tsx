@@ -525,7 +525,7 @@ export default function FichesPage() {
 
   return (
     <>
-      <Topbar title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} actions={<div className="flex items-center gap-2"><ExportPdfButton title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} filename={isValidationMode ? "fiches-a-valider" : "fiches-preview"} /><ExportCsvButton filename="fiches" getData={() => ({
+      <Topbar titleAs="p" title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} actions={<div className="flex items-center gap-2"><ExportPdfButton title={isValidationMode ? "Fiches à valider" : "Fiches de pré-visite"} filename={isValidationMode ? "fiches-a-valider" : "fiches-preview"} /><ExportCsvButton filename="fiches" getData={() => ({
         columns: [
           { key: "reference", label: "Référence" },
           { key: "nom", label: "Nom" },

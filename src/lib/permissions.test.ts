@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   canTransition,
   getAvailableTransitions,
-  canManageUsers,
+  canAccessUsersPage,
+  canMutateUsers,
   canAssignFiche,
   canEditFiche,
   canEditParcours,
@@ -62,14 +63,40 @@ describe("getAvailableTransitions", () => {
 });
 
 describe("helpers de rôle", () => {
-  it("ADMIN et DIRECTION_GENERALE gèrent les utilisateurs, seul ADMIN affecte les fiches", () => {
-    expect(canManageUsers("DIRECTION")).toBe(true);
-    expect(canManageUsers("DIRECTION_GENERALE")).toBe(true);
-    expect(canManageUsers("COMMERCIAL")).toBe(false);
-    expect(canManageUsers("PROSPECTEUR")).toBe(false);
+  it("la direction et la direction générale accèdent à la page Utilisateurs", () => {
+    expect(canAccessUsersPage("DIRECTION")).toBe(true);
+    expect(canAccessUsersPage("DIRECTION_GENERALE")).toBe(true);
+    expect(canAccessUsersPage("SUPER_ADMIN")).toBe(true);
+    expect(canAccessUsersPage("COMMERCIAL")).toBe(false);
+    expect(canAccessUsersPage("PROSPECTEUR")).toBe(false);
+  });
+
+  it("la direction générale y est en lecture seule", () => {
+    expect(canMutateUsers("DIRECTION")).toBe(true);
+    expect(canMutateUsers("SUPER_ADMIN")).toBe(true);
+    expect(canMutateUsers("DIRECTION_GENERALE")).toBe(false);
+    expect(canMutateUsers("COMMERCIAL")).toBe(false);
+  });
+
+  it("seules la direction et le super admin affectent les fiches", () => {
     expect(canAssignFiche("DIRECTION")).toBe(true);
+    expect(canAssignFiche("SUPER_ADMIN")).toBe(true);
     expect(canAssignFiche("DIRECTION_GENERALE")).toBe(false);
     expect(canAssignFiche("COMMERCIAL")).toBe(false);
+  });
+});
+
+describe("SUPER_ADMIN dans la matrice de transitions", () => {
+  it("dispose des mêmes transitions que la direction", () => {
+    expect(canTransition("SUPER_ADMIN", "SOUMISE", "VALIDEE")).toBe(true);
+    expect(canTransition("SUPER_ADMIN", "VALIDEE", "AFFECTEE")).toBe(true);
+    expect(canTransition("SUPER_ADMIN", "AFFECTEE", "ACCEPTEE")).toBe(true);
+    expect(canTransition("SUPER_ADMIN", "REFUSEE", "AFFECTEE")).toBe(true);
+  });
+
+  it("a bien des transitions disponibles, contrairement à la direction générale", () => {
+    expect(getAvailableTransitions("SUPER_ADMIN", "AFFECTEE").length).toBeGreaterThan(0);
+    expect(getAvailableTransitions("DIRECTION_GENERALE", "AFFECTEE")).toEqual([]);
   });
 });
 

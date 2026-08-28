@@ -12,7 +12,14 @@ import { useSearch } from "@/components/layout/SearchProvider";
 import { usePathname, useRouter } from "next/navigation";
 import { useProfile } from "@/lib/hooks/use-profile";
 
-export function Topbar({ title, actions }: { title?: string; actions?: React.ReactNode }) {
+/**
+ * `titleAs` : la plupart des pages affichent déjà leur propre <h1> dans leur hero,
+ * souvent avec le même texte que ce titre. Deux <h1> par page est un défaut
+ * d'accessibilité (et rendait les sélecteurs de test ambigus) : ces pages passent
+ * "p" pour que le <h1> unique reste celui du contenu. Les pages sans hero gardent
+ * le défaut "h1". Les classes sont identiques dans les deux cas : aucun changement visuel.
+ */
+export function Topbar({ title, actions, titleAs = "h1" }: { title?: string; actions?: React.ReactNode; titleAs?: "h1" | "p" }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [recentNotifs, setRecentNotifs] = useState<Notification[]>([]);
@@ -107,7 +114,11 @@ export function Topbar({ title, actions }: { title?: string; actions?: React.Rea
     <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-md border-b border-border/50">
       <div className="flex items-start sm:items-center justify-between min-h-16 px-4 lg:px-8 gap-2 py-2.5 sm:py-0">
         <div className="lg:pl-0 pl-14 min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
-          {title && <h1 className="font-heading text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">{title}</h1>}
+          {title && (
+            titleAs === "h1"
+              ? <h1 className="font-heading text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">{title}</h1>
+              : <p className="font-heading text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">{title}</p>
+          )}
           {actions && <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:shrink-0" data-no-print>{actions}</div>}
         </div>
         <div className="flex items-center gap-1 shrink-0 pt-1 sm:pt-0" data-no-print>

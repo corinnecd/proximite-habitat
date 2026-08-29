@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { REFERENT, ADMIN, COMMERCIAL_AVEC_FICHES, login, logout } from "./helpers";
+import { REFERENT, ADMIN, login, logout } from "./helpers";
 
 test.describe("Workflow fiche : création du brouillon", () => {
   /*
@@ -78,9 +78,8 @@ test.describe("Workflow fiche : création du brouillon", () => {
 });
 
 test.describe("Page reporting", () => {
-  // « Funnel de conversion » et « Objectifs du mois » n'existaient que dans des
-  // commentaires du source : jamais rendus, donc jamais trouvables. On assert
-  // désormais les titres réellement affichés.
+  // « Funnel de conversion » n'existait que dans un commentaire du source :
+  // jamais rendu, donc jamais trouvable. On assert le titre réellement affiché.
   test("le funnel de conversion s'affiche pour l'admin", async ({ page }) => {
     await login(page, ADMIN.email, ADMIN.password);
     await page.goto("/reporting");
@@ -91,20 +90,6 @@ test.describe("Page reporting", () => {
     await expect(page.getByText(/Taux (global )?d'acceptation/).first()).toBeVisible();
   });
 
-  test("le commercial voit ses objectifs du mois sur son tableau de bord", async ({ page }) => {
-    // La section objectifs vit sur le dashboard du COMMERCIAL (CommercialObjectifs),
-    // pas sur /reporting, et n'existe pas pour un ADMIN. `CommercialObjectifs`
-    // retourne null sans ligne dans `objectifs_commerciaux` pour le mois courant —
-    // table vide dans cet environnement, d'où le gating explicite plutôt qu'un
-    // skip conditionnel qui rendrait le test vert sans rien vérifier.
-    test.skip(
-      process.env.E2E_WITH_OBJECTIFS !== "1",
-      "Nécessite un objectif configuré pour le mois courant (E2E_WITH_OBJECTIFS=1)",
-    );
-    await login(page, COMMERCIAL_AVEC_FICHES.email, COMMERCIAL_AVEC_FICHES.password);
-    await expect(page.getByText(/Mes objectifs —/)).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText("Définis par la direction")).toBeVisible();
-  });
 });
 
 test.describe("Import CSV", () => {

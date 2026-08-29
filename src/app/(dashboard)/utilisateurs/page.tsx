@@ -405,7 +405,7 @@ export default function UtilisateursPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-start sm:justify-end">
                     <Badge variant="secondary" className={`text-xs rounded-lg ${s.badge}`}>
                       {ROLE_LABELS[user.role]}
                     </Badge>
@@ -416,27 +416,30 @@ export default function UtilisateursPage() {
                         <span className="flex items-center gap-1"><XCircle className="w-3 h-3" />Inactif</span>
                       )}
                     </Badge>
+                    {/* Les deux actions forment un groupe : mélangées aux badges dans
+                        un seul `flex-wrap`, « Désactiver » se retrouvait seul sur une
+                        ligne, aligné à droite. Elles se replient désormais ensemble. */}
                     {!isMe && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEditDialog(user)}
-                        className="rounded-xl text-xs h-8 gap-1"
-                        aria-label={`Modifier ${user.first_name}`}
-                      >
-                        <Pencil className="w-3 h-3" />Modifier
-                      </Button>
-                    )}
-                    {!isMe && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setConfirmUser(user)}
-                        className={`rounded-xl text-xs h-8 ${user.is_active ? "hover:border-red-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30" : "hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"}`}
-                        aria-label={user.is_active ? `Désactiver ${user.first_name}` : `Activer ${user.first_name}`}
-                      >
-                        {user.is_active ? "Désactiver" : "Activer"}
-                      </Button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDialog(user)}
+                          className="rounded-xl text-xs h-8 gap-1"
+                          aria-label={`Modifier ${user.first_name}`}
+                        >
+                          <Pencil className="w-3 h-3" />Modifier
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setConfirmUser(user)}
+                          className={`rounded-xl text-xs h-8 ${user.is_active ? "hover:border-red-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30" : "hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"}`}
+                          aria-label={user.is_active ? `Désactiver ${user.first_name}` : `Activer ${user.first_name}`}
+                        >
+                          {user.is_active ? "Désactiver" : "Activer"}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>

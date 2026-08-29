@@ -353,32 +353,6 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["notifications"]["Insert"]>;
         Relationships: [];
       };
-      objectifs_commerciaux: {
-        Row: {
-          id: string;
-          commercial_id: string;
-          organization_id: string;
-          period_month: string;
-          objectif_fiches: number;
-          objectif_ca: number;
-          created_by: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          commercial_id: string;
-          organization_id: string;
-          period_month: string;
-          objectif_fiches?: number;
-          objectif_ca?: number;
-          created_by?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["objectifs_commerciaux"]["Insert"]>;
-        Relationships: [];
-      };
     };
     Views: { [_ in never]: never };
     Functions: {
@@ -415,4 +389,3 @@ export type Notification = Tables["notifications"]["Row"];
 export type ZoneDepartement = Tables["zones_departements"]["Row"];
 export type ZoneVille = Tables["zones_villes"]["Row"];
 export type PlanificationHebdo = Tables["planification_hebdo"]["Row"];
-export type ObjectifCommercial = Tables["objectifs_commerciaux"]["Row"];

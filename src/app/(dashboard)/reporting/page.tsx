@@ -748,7 +748,7 @@ export default function ReportingPage() {
             </div>
             {/* Détail par commercial avec CA */}
             <div className="mt-5">
-              <div className="grid grid-cols-[1fr_48px_48px_48px_70px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1.5 sm:gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
+              <div className="grid grid-cols-[1fr_38px_38px_38px_58px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1 sm:gap-2 text-[10px] text-muted-foreground uppercase tracking-wide font-semibold pb-2 border-b border-border">
                 <span>Commercial</span>
                 <span className="text-right">Affect.</span>
                 <span className="text-right text-emerald-600">Accept.</span>
@@ -758,7 +758,7 @@ export default function ReportingPage() {
               </div>
               <div className={`space-y-0 overflow-y-auto ${showAllCommerciaux || commSearch ? "max-h-[400px]" : "max-h-[250px]"}`}>
                 {(commSearch ? filteredCommerciaux : (showAllCommerciaux ? commerciaux : commerciaux.slice(0, 5))).map((c) => (
-                  <div key={c.name} className="grid grid-cols-[1fr_48px_48px_48px_70px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1.5 sm:gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
+                  <div key={c.name} className="grid grid-cols-[1fr_38px_38px_38px_58px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1 sm:gap-2 items-center py-2 hover:bg-secondary/30 rounded-lg px-1 transition-colors">
                     <button type="button" onClick={() => setConfirmNav({ type: "commercial", id: c.id, name: c.name })} className="text-sm font-medium truncate min-h-8 sm:min-h-0 hover:text-[#F97316] hover:underline transition-colors text-left">{c.name}</button>
                     <span className="text-sm text-right tabular-nums text-muted-foreground">{c.assigned}</span>
                     <span className="text-sm text-right tabular-nums text-emerald-600 font-medium">{c.accepted}</span>
@@ -774,7 +774,7 @@ export default function ReportingPage() {
                 )}
               </div>
               {commerciaux.length > 0 && !commSearch && (
-                <div className="grid grid-cols-[1fr_48px_48px_48px_70px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1.5 sm:gap-2 pt-3 mt-1 border-t border-border px-1">
+                <div className="grid grid-cols-[1fr_38px_38px_38px_58px] sm:grid-cols-[1fr_50px_50px_50px_50px_80px] gap-1 sm:gap-2 pt-3 mt-1 border-t border-border px-1">
                   <span className="text-sm font-bold">Total</span>
                   <span className="text-sm font-bold text-right tabular-nums">{commerciaux.reduce((s, c) => s + c.assigned, 0)}</span>
                   <span className="text-sm font-bold text-right tabular-nums text-emerald-600">{commerciaux.reduce((s, c) => s + c.accepted, 0)}</span>
@@ -947,9 +947,12 @@ export default function ReportingPage() {
                 </ResponsiveContainer>
                 </div>
                 {/* Légende */}
-                <div className="grid grid-cols-2 gap-2">
+                {/* Une seule colonne sous `sm` : à 320px, deux colonnes ne laissaient
+                    que ~140px par entrée et les libellés longs (« Attente Acceptation
+                    Client ») débordaient de l'écran. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {statusCounts.filter((s) => s.count > 0).map(({ status, count }) => (
-                    <div key={status} className="flex items-center gap-2">
+                    <div key={status} className="flex items-center gap-2 min-w-0">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: STATUS_COLORS_HEX[status] }} />
                       <FicheStatusBadge status={status} />
                       <span className="text-xs font-semibold tabular-nums ml-1">{count}</span>

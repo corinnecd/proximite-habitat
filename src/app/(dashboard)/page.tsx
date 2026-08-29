@@ -38,7 +38,7 @@ import { StatusBlock } from "@/components/dashboard/StatusBlock";
 import { PrimeSection } from "@/components/dashboard/PrimeSection";
 import { AdminKpiSection } from "@/components/dashboard/AdminKpiSection";
 import { CollapsibleList } from "@/components/dashboard/CollapsibleList";
-import { CommercialObjectifs, CommercialRdvDuJour } from "@/components/dashboard/CommercialObjectifs";
+import { CommercialRdvDuJour } from "@/components/dashboard/CommercialRdvDuJour";
 import type { FicheAffectee, ReferentStat, CommercialStat } from "@/components/dashboard/dashboard-types";
 
 // ── Filtre période dashboard ──────────────────────────────────────────────────
@@ -1156,13 +1156,8 @@ export default function DashboardPage() {
               })()}
             </div>
 
-            {/* Objectifs du mois + RDV du jour */}
-            {profile && (
-              <>
-                <CommercialObjectifs profileId={profile.id} orgId={profile.organization_id} accepted={mesVentes} ca={caTotal} />
-                <CommercialRdvDuJour profileId={profile.id} />
-              </>
-            )}
+            {/* RDV du jour */}
+            {profile && <CommercialRdvDuJour profileId={profile.id} />}
 
             {/* Détail CA par fiche acceptée */}
             {fichesAcceptees.length > 0 && (

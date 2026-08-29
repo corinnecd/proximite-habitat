@@ -1,5 +1,39 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-29 — Suppression des objectifs commerciaux + UX mobile validée de 320 à 390 px
+
+### 1. Objectifs commerciaux retirés
+La fonctionnalité n'a plus lieu d'être. Tout ce qui en dépendait est supprimé :
+- **Composant `CommercialObjectifs`** supprimé. Le fichier ne contenait plus que `CommercialRdvDuJour`, sans rapport : renommé `components/dashboard/CommercialRdvDuJour.tsx` (via `git mv`, historique préservé).
+- **Dashboard** (`page.tsx`) : bloc « Objectifs du mois » retiré, seul le RDV du jour subsiste.
+- **Types** (`types/database.types.ts`) : table `objectifs_commerciaux` et type `ObjectifCommercial` retirés.
+- **Test e2e** « le commercial voit ses objectifs du mois » supprimé, avec son gating `E2E_WITH_OBJECTIFS`. La suite ne compte donc plus qu'un seul test ignoré (le compte DG).
+- Import `Target` devenu inutilisé retiré.
+
+**Conservé volontairement** : le bloc « Objectif mensuel de prime (3 ventes) » de `AdminKpiSection`. Vérifié — il ne lit pas `objectifs_commerciaux` : c'est la prime des **référents**, calculée depuis leur nombre de ventes. Concept distinct. À supprimer aussi si ce n'était pas l'intention.
+
+**Reste à faire côté base** : la table `objectifs_commerciaux` existe toujours (vide). Plus aucun code ne la lit. Pour la supprimer :
+```sql
+drop table if exists public.objectifs_commerciaux;
+```
+Le fichier `supabase/migrations/20260722_objectifs_commerciaux.sql` est conservé : une migration appliquée fait partie de l'historique et ne se réécrit pas.
+
+### 2. « Désactiver » qui passait seul à la ligne
+Page Utilisateurs — les deux badges et les deux boutons partageaient un unique `flex-wrap` en `justify-end` : au repli, « Désactiver » se retrouvait seul sur une ligne, aligné à droite. Les deux actions forment désormais un groupe et se replient ensemble ; alignement à gauche sous `sm`.
+
+### 3. UX mobile validée jusqu'à 320 px
+Les utilisateurs de l'entreprise sont majoritairement sur mobile. Audit élargi à **320, 360 et 390 px** × 3 profils × 8 pages, avec relevé des débordements (en nommant l'élément fautif) et des cibles tactiles.
+
+Deux défauts trouvés à 320 px, invisibles à 390 :
+- **Légende du camembert** (`reporting`) : 2 colonnes fixes ne laissaient que ~140 px par entrée, et les libellés longs (« Attente Acceptation Client ») débordaient. Une seule colonne sous `sm`, plus `min-w-0` sur la ligne.
+- **Tableau « Taux d'acceptation par commercial »** : `grid-cols-[1fr_48px_48px_48px_70px]` consommait 238 px sur les ~240 disponibles, ne laissant rien à la colonne des noms. Colonnes resserrées en mobile (`38px`/`58px`, gap réduit) — noms tronqués mais chiffres complets et alignés.
+
+**Résultat : aucun constat** sur les 3 largeurs, 3 profils, 8 pages — zéro débordement, zéro cible sous 32 px.
+
+### Vérification
+`tsc` 0 erreur, build vert, unitaires 51/51, e2e 17 PASS / 0 FAIL / 1 skipped.
+
+
 ## 2026-08-28 — Boutons centrés et blocs recomposés en mobile étroit (364 px)
 
 Défauts signalés sur captures réelles à **364 px**. Mon audit tournait à 390 px : ces problèmes n'apparaissaient pas à cette largeur. Reproduits à 364 px, corrigés, revérifiés à 364 px.

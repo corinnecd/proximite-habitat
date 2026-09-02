@@ -1,5 +1,15 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-08-29 — Suppression de la table objectifs_commerciaux
+
+Suite au retrait de la fonctionnalité (commit `21fefb8`), la table `objectifs_commerciaux` ne servait plus à rien : vide, plus aucune référence dans le code.
+
+Migration `supabase/migrations/20260829_drop_objectifs_commerciaux.sql` ajoutée au dépôt. **À exécuter manuellement dans le SQL Editor Supabase** — l'environnement ne dispose ni de la CLI Supabase ni d'un jeton d'accès permettant le DDL via API :
+```sql
+drop table if exists public.objectifs_commerciaux;
+```
+
+
 ## 2026-08-29 — Suppression des objectifs commerciaux + UX mobile validée de 320 à 390 px
 
 ### 1. Objectifs commerciaux retirés

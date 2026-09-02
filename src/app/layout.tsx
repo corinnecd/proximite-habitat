@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, DM_Serif_Display } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -31,6 +31,12 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.webmanifest",
+};
+
+// `themeColor` a migré de `metadata` vers un export `viewport` dédié dans les
+// versions récentes de Next.js — laissé sous `metadata`, il déclenchait un
+// warning de dépréciation sur chaque route de l'app, à chaque build/dev.
+export const viewport: Viewport = {
   themeColor: "#1E3A5F",
 };
 

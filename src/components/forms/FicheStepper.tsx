@@ -76,7 +76,13 @@ const STEPS = [
 const DEFAULT_FORM_VALUES = {
   prospect_nom: "", prospect_prenom: "", prospect_adresse: "",
   prospect_cp: "", prospect_ville: "", prospect_telephone: "", prospect_email: "",
-  departement_code: null, ville_id: null,
+  // "" et non null : c'est le seul écart avec la convention du reste du formulaire
+  // (tous les autres champs texte défaillent sur ""). Avec `null`, le schéma
+  // Zod `z.string().min(1, "Le département est requis")` échouait d'abord sur
+  // la vérification de TYPE avant même d'atteindre `.min()`, affichant le
+  // message brut "Invalid input: expected string, received null" au lieu du
+  // message français prévu.
+  departement_code: "", ville_id: "",
   disponibilites: [] as string[], date_visite: "", heure_visite: "",
   rdv_date: "", referent_nom: "", referent_telephone: "",
   annee_construction: "", annee_emmenagement: "",
@@ -745,8 +751,17 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
           </div>
         )}
 
-        <div className="flex items-center justify-between mt-8 pt-6 border-t">
-          <div className="flex items-center gap-2">
+        {/* Bug critique corrigé : ces 4 boutons en une seule ligne `justify-between`
+            débordaient au-delà de 375px de large. Mesuré en conditions réelles :
+            "Suivant" se retrouvait entièrement hors écran (left: 440px sur un
+            viewport de 375px), donc invisible et intouchable — sur la quasi-
+            totalité des téléphones. C'est le bouton de progression du formulaire
+            de création de fiche, l'action la plus répétée par les référents sur
+            le terrain. Restructuré en deux rangées sous `sm` : actions
+            secondaires groupées en haut, action principale pleine largeur en bas
+            (mise en avant, cible tactile maximale). Desktop inchangé. */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-8 pt-6 border-t">
+          <div className="flex items-center justify-center sm:justify-start gap-2 order-2 sm:order-1">
             <Button
               type="button"
               variant="outline"
@@ -765,13 +780,13 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
               <X className="w-4 h-4" />Annuler
             </Button>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 order-1 sm:order-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => saveDraft({ silent: true })}
               disabled={saving}
-              className="rounded-xl gap-2"
+              className="w-full sm:w-auto justify-center rounded-xl gap-2"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Sauvegarder
@@ -781,7 +796,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
                 type="button"
                 onClick={handleNext}
                 disabled={saving}
-                className="bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 gap-2"
+                className="w-full sm:w-auto justify-center bg-[#F97316] hover:bg-[#EA580C] text-white rounded-full px-5 h-12 sm:h-10 text-base sm:text-sm gap-2"
               >
                 Suivant<ChevronRight className="w-4 h-4" />
               </Button>
@@ -790,7 +805,7 @@ export function FicheStepper({ ficheId: ficheIdProp, initialData, initialPhotos,
                 type="button"
                 onClick={handleSubmitFiche}
                 disabled={submitting}
-                className="bg-[#10B981] hover:bg-[#059669] text-white rounded-full px-5 gap-2"
+                className="w-full sm:w-auto justify-center bg-[#10B981] hover:bg-[#059669] text-white rounded-full px-5 h-12 sm:h-10 text-base sm:text-sm gap-2"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 {submitLabel}

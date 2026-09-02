@@ -272,7 +272,7 @@ export default function ProfilPage() {
                   type="button"
                   onClick={() => setShowNew(!showNew)}
                   aria-label={showNew ? "Masquer" : "Afficher"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -311,7 +311,7 @@ export default function ProfilPage() {
                   type="button"
                   onClick={() => setShowConfirm(!showConfirm)}
                   aria-label={showConfirm ? "Masquer" : "Afficher"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>

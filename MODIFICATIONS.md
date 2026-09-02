@@ -1,5 +1,39 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-09-02 — Audit mobile : performance, accessibilité, design (Lighthouse + tests réels)
+
+Trois audits menés sur `/login` (Lighthouse mobile, seule page atteignable sans authentification) et sur le formulaire de création de fiche via tests Playwright réels (interactions tactiles, mesure des positions DOM réelles — pas de simple lecture de code).
+
+### 🔴 Critique — bouton "Suivant" invisible sur mobile
+Le formulaire de création de fiche (7 étapes, le parcours le plus répété par les référents sur le terrain) avait sa barre d'actions en une seule ligne `justify-between` avec 4 boutons. Mesuré en conditions réelles sur un viewport de 375px : le bouton **"Suivant" se trouvait à `left: 440px`, entièrement hors écran**, invisible et intouchable, sur la quasi-totalité des téléphones. "Sauvegarder" était partiellement coupé.
+
+Corrigé dans `FicheStepper.tsx` : sous `sm`, l'action principale (Suivant/Soumettre) devient pleine largeur et prioritaire visuellement ; Sauvegarder l'accompagne au-dessus ; Précédent/Annuler passent en actions secondaires compactes. Desktop inchangé (vérifié par mesure DOM avant/après).
+
+### 🔴 PWA cassée avant la première connexion
+`manifest.webmanifest`, `sw.js` et `robots.txt` étaient redirigés vers `/login` par le middleware pour tout visiteur non authentifié (même défaut que `/offline`, corrigé en août mais pas généralisé). Conséquences concrètes :
+- Chrome recevait du HTML au lieu du JSON du manifeste → erreur de syntaxe, "Ajouter à l'écran d'accueil" cassé pour tout nouvel utilisateur.
+- `navigator.serviceWorker.register("/sw.js")` échouait silencieusement (catch vide) à chaque visite non connectée → le service worker ne s'installait jamais avant la première connexion.
+
+Les trois chemins sont ajoutés à l'exclusion du matcher dans `src/proxy.ts`.
+
+### Accessibilité (Lighthouse : 91 → 96/100)
+- **Cibles tactiles** : les 5 boutons "afficher/masquer le mot de passe" (login, reset-password ×2, profil ×2) avaient une zone tactile de 16px. Portée à 44×44px (zone Apple HIG), icône et position visuelle inchangées.
+- **Erreurs console à 0** (best-practices 96 → 100/100) : conséquence du manifeste corrigé.
+- **Contraste insuffisant signalé, non corrigé** — décision de marque, pas un bug : le orange `#F97316` (CTA principal, utilisé dans toute l'app) offre un contraste de 2,8:1 sur fond blanc, sous le minimum WCAG AA de 4,5:1 pour du texte normal. Toucher cette couleur reviendrait à modifier l'identité visuelle sans validation — signalé pour arbitrage plutôt que corrigé unilatéralement.
+
+### Modales : correctif systémique
+Le composant `Dialog` de base n'avait ni `max-height` ni `overflow-y-auto` — 3 modales du projet (import CSV, calendrier, planification) avaient dû ajouter ce correctif elles-mêmes au cas par cas. Les autres (changement de statut, confirmation de suppression, édition d'utilisateur…) y étaient exposées : sur mobile, le clavier virtuel mange ~40% de la hauteur visible, exactement le scénario qui ferait déborder une modale sans marge de sécurité, rendant le bouton de confirmation inatteignable.
+
+Ajouté `max-h-[90vh] overflow-y-auto` par défaut dans `components/ui/dialog.tsx` — un seul point de correction, sans régression sur les modales qui définissaient déjà leur propre hauteur (`tailwind-merge` fait gagner la valeur la plus spécifique).
+
+### Performance (Lighthouse mobile simulé : 91 → 94/100)
+- `@react-pdf/renderer` (1,4 Mo) déjà chargé dynamiquement au clic, pas au chargement — vérifié, rien à corriger.
+- `robots.txt` ajouté (`Disallow: /`) — cohérent avec une application interne qui ne doit jamais être indexée. **Fait chuter le score SEO Lighthouse à 63/100 : c'est le résultat correct**, Lighthouse pénalise un site qui refuse d'être indexé, ce qui est précisément l'objectif ici.
+- `themeColor` migré de `metadata` vers l'export `viewport` dédié (déprécié dans cette version de Next.js) — supprime un warning répété sur chaque route à chaque build.
+
+### Vérification
+`tsc` 0 erreur, build vert, unitaires 51/51, e2e 17 PASS / 0 FAIL / 1 skipped. Bouton "Suivant" revérifié par mesure DOM réelle après correctif : `left: 40px, right: 335px` (pleine largeur, dans les 375px).
+
 ## 2026-08-29 — Suppression de la table objectifs_commerciaux
 
 Suite au retrait de la fonctionnalité (commit `21fefb8`), la table `objectifs_commerciaux` ne servait plus à rien : vide, plus aucune référence dans le code.

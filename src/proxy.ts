@@ -14,6 +14,12 @@ export const config = {
     // /login par ce middleware. Les autres routes /api/* restent protégées
     // ici (elles ne font pas toutes leur propre vérification de session,
     // ex. /api/push/subscribe, /api/push/send).
-    "/((?!_next/static|_next/image|favicon.ico|api/cron|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    //
+    // manifest.webmanifest et sw.js étaient auparavant redirigés vers /login
+    // pour tout visiteur non authentifié : Chrome recevait du HTML à la place
+    // du JSON/JS attendu, ce qui invalidait le manifeste PWA (erreur de syntaxe)
+    // et faisait échouer silencieusement `navigator.serviceWorker.register()`
+    // avant la première connexion — l'app ne pouvait jamais devenir installable.
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|robots.txt|api/cron|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

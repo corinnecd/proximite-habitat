@@ -53,7 +53,13 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-2xl bg-popover p-5 text-sm text-popover-foreground shadow-[0_20px_50px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.06)] ring-1 ring-foreground/5 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // max-h + overflow-y-auto par défaut : sans ça, une modale plus haute que
+          // l'écran (formulaire long, clavier mobile qui mange ~40% de la hauteur
+          // visible) déborde sans aucun moyen de faire défiler jusqu'au bouton de
+          // confirmation — inatteignable. 3 modales du projet avaient dû ajouter
+          // ce correctif elles-mêmes au cas par cas ; `tailwind-merge` (via `cn`)
+          // laisse leur propre `max-h`/`overflow-y` prendre le dessus si besoin.
+          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto -translate-x-1/2 -translate-y-1/2 gap-4 rounded-2xl bg-popover p-5 text-sm text-popover-foreground shadow-[0_20px_50px_rgba(0,0,0,0.15),0_4px_12px_rgba(0,0,0,0.06)] ring-1 ring-foreground/5 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}

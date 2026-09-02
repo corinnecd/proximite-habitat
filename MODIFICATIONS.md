@@ -1,5 +1,17 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-09-02 — Performance : Supabase chargé à la demande sur /login + cible navigateurs
+
+Suite de l'audit précédent, pour répondre à "comment aller plus loin".
+
+- **`login/page.tsx`** : `createClient()` (donc `@supabase/supabase-js`, ~66 Ko) était appelé au niveau du composant, chargé et exécuté avant même que l'utilisateur touche le formulaire. C'était la plus grosse part du "Render Delay" mesuré par Lighthouse (85 % du LCP). Déplacé en import dynamique dans `handleSubmit`, même motif que `DownloadFicheButton`/`export-pdf-button`. Vérifié : le chunk Supabase a disparu du bundle initial de `/login` (`grep` sur les 14 chunks référencés par le HTML — 0 résultat), et le login réel fonctionne toujours (`e2e/auth.spec.ts`, 4/4).
+  - **Mesuré sur 3 exécutions Lighthouse** : LCP passé de ~2,8–3,4 s à ~2,4–2,5 s sur 2 essais sur 3 (le 3ᵉ à 3,1 s, variance normale de la méthode simulée). Score performance : 93/100 → 96–97/100 selon l'essai.
+- **`package.json`** : ajout d'un champ `browserslist` standard (`> 0.5%, last 2 versions, Firefox ESR, not dead, not IE 11`) — sans lui, la compilation cible un ensemble de navigateurs par défaut très large et embarque des correctifs (polyfills) pour des navigateurs qu'aucun terrain de terrain n'utilise. Bonne pratique appliquée ; l'audit Lighthouse "Legacy JavaScript" (13,6 Ko, poids nul dans le score) n'a pas bougé après coup — signalé sans être creusé davantage, cette version de Next.js (Turbopack) semble avoir un mécanisme de ciblage différent que je n'ai pas identifié dans le temps imparti.
+
+### Vérification
+`tsc` 0 erreur, build vert, unitaires 51/51, e2e 17/17 (dont le login réel, critique ici).
+
+
 ## 2026-09-02 — Audit mobile : performance, accessibilité, design (Lighthouse + tests réels)
 
 Trois audits menés sur `/login` (Lighthouse mobile, seule page atteignable sans authentification) et sur le formulaire de création de fiche via tests Playwright réels (interactions tactiles, mesure des positions DOM réelles — pas de simple lecture de code).

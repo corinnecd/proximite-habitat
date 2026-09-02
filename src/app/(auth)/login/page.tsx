@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Building2, Loader2, Eye, EyeOff, Mail, Lock, ArrowRight, ShieldCheck } from "lucide-react";
@@ -16,7 +15,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
 
   useEffect(() => {
     if (searchParams.get("error") === "account_disabled") {
@@ -30,6 +28,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // Chargé à la demande : @supabase/supabase-js (~66 Ko) n'a aucune raison
+      // d'être téléchargé, parsé et exécuté avant que l'utilisateur ait cliqué
+      // "Se connecter". C'était la plus grosse partie du "Render Delay" mesuré
+      // par Lighthouse sur cette page (85 % du LCP). Le délai d'import (quelques
+      // dizaines de ms, caché derrière le spinner déjà affiché par `loading`)
+      // est imperceptible comparé au gain sur le premier affichage.
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         const code = (error as unknown as Record<string, unknown>).code as string | undefined;

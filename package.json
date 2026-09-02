@@ -13,6 +13,13 @@
     "test:e2e": "playwright test",
     "seed": "node --env-file=.env.local scripts/seed.mjs"
   },
+  "browserslist": [
+    "> 0.5%",
+    "last 2 versions",
+    "Firefox ESR",
+    "not dead",
+    "not IE 11"
+  ],
   "dependencies": {
     "@base-ui/react": "^1.5.0",
     "@hookform/resolvers": "^5.4.0",

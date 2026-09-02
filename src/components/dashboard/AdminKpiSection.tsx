@@ -7,6 +7,7 @@ import type { FicheStatus } from "@/types/database";
 import { type PeriodFilter as DashPeriod, getPeriodLabel } from "@/lib/periods";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { CollapsibleList } from "./CollapsibleList";
+import { AdminKpiSectionMobile } from "./AdminKpiSectionMobile";
 import type { ReferentStat, CommercialStat } from "./dashboard-types";
 
 // ── Section ADMIN/DG : KPI CA consolidé ────────────────────────────────────────
@@ -24,8 +25,18 @@ export function AdminKpiSection({
 }) {
   return (
     <div className="space-y-6">
+      {/* Mobile uniquement (desktop inchangé) : les 6 tuiles KPI ci-dessous
+          sont remplacées par une seule carte à grille interne. Réduit le
+          nombre de cadres empilés sur mobile de 6 à 1 sans rien cacher. */}
+      <div className="sm:hidden">
+        <AdminKpiSectionMobile
+          caTotal={caTotal} totalVentes={totalVentes} counts={counts}
+          isAllPeriod={isAllPeriod} dashPeriod={dashPeriod} loading={loading}
+        />
+      </div>
+
       {/* KPI Cards CA */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+      <div className="hidden sm:grid sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="bg-card border border-border border-l-4 border-l-amber-500 rounded-2xl p-4 sm:p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
           <div className="flex items-center justify-between mb-3">
             <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
@@ -65,7 +76,7 @@ export function AdminKpiSection({
         const refusalRate    = baseActive > 0 ? Math.round((counts.REFUSEE   / baseActive) * 100) : 0;
         const inProgressRate = baseActive > 0 ? Math.round((inProgress        / baseActive) * 100) : 0;
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
+          <div className="hidden sm:grid sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="bg-card border border-border border-l-4 border-l-emerald-500 rounded-2xl p-4 sm:p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-200">
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">

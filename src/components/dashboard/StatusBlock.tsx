@@ -16,9 +16,13 @@ const STATUS_LABELS_FR: Record<string, string> = {
 };
 
 export function StatusBlock({
-  title, total, icon, iconBg, badge, borderColor, hoverColor, href, fiches,
+  title, mobileTitle, total, icon, iconBg, badge, borderColor, hoverColor, href, fiches,
 }: {
   title: string;
+  /** Version courte pour mobile : sur une ligne compacte (icône + badge + chevron
+   *  + "Voir toutes"), un titre long comme "Validées par le Client" débordait.
+   *  Optionnelle — retombe sur `title` si non fournie. */
+  mobileTitle?: string;
   total: number;
   icon: React.ReactNode;
   iconBg: string;
@@ -31,25 +35,41 @@ export function StatusBlock({
   const [showAll, setShowAll] = React.useState(false);
   const shown  = showAll ? fiches : fiches.slice(0, 5);
   const hasMore = fiches.length > 5;
+  // Replié par défaut sur mobile uniquement (même motif que "Statuts des
+  // fiches" en haut de cette même page). Sur desktop, `sm:block` ignore cet
+  // état : toujours ouvert, comportement inchangé.
+  const [mobileOpen, setMobileOpen] = React.useState(false);
   return (
     <div className="space-y-3">
       {/* En-tête du bloc */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${iconBg}`}>{icon}</div>
-          <h3 className="font-semibold text-base">{title}</h3>
+        <button
+          type="button"
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-expanded={mobileOpen}
+          className="flex items-center gap-2 sm:pointer-events-none flex-1 min-w-0 text-left"
+        >
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>{icon}</div>
+          <h3 className="font-semibold text-base truncate">
+            <span className="sm:hidden">{mobileTitle ?? title}</span>
+            <span className="hidden sm:inline">{title}</span>
+          </h3>
           {total > 0 && (
-            <span className={`${badge} text-white text-xs font-bold px-2 py-0.5 rounded-full`}>{total}</span>
+            <span className={`${badge} text-white text-xs font-bold px-2 py-0.5 rounded-full shrink-0`}>{total}</span>
           )}
-        </div>
+          {mobileOpen
+            ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0 sm:hidden" />
+            : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 sm:hidden" />}
+        </button>
         <Link href={href}>
-          <Button variant="ghost" size="sm" className="text-muted-foreground gap-1">
+          <Button variant="ghost" size="sm" className="text-muted-foreground gap-1 shrink-0">
             Voir toutes <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         </Link>
       </div>
 
-      {/* Contenu */}
+      {/* Contenu — replié par défaut sur mobile, toujours visible dès `sm` */}
+      <div className={mobileOpen ? "block" : "hidden sm:block"}>
       {shown.length === 0 ? (
         <div className="flex items-center gap-3 p-4 bg-muted/30 border border-border rounded-2xl">
           <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
@@ -129,6 +149,7 @@ export function StatusBlock({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

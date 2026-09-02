@@ -1072,6 +1072,7 @@ export default function DashboardPage() {
             />
             <StatusBlock
               title={`Validées par le Client${dashPeriodSuffix}`}
+              mobileTitle="Validées"
               total={counts.ACCEPTEE}
               icon={<CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
               iconBg="bg-emerald-100 dark:bg-emerald-900/40"
@@ -1083,6 +1084,7 @@ export default function DashboardPage() {
             />
             <StatusBlock
               title={`Refusées par le client${dashPeriodSuffix}`}
+              mobileTitle="Refusées"
               total={counts.REFUSEE}
               icon={<XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />}
               iconBg="bg-red-100 dark:bg-red-900/40"

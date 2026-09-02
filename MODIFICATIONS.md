@@ -1,5 +1,29 @@
 # Suivi des modifications — Proximité Habitat Conseil
 
+## 2026-09-02 — Densité du dashboard mobile : 4,3 → 2,8 écrans de défilement
+
+Mesuré en conditions réelles à 375×812, sur les vraies données d'un compte direction : le dashboard s'étalait sur **3512 px de défilement, soit 4,3 écrans**. Deux modifications, mobile uniquement (`sm:hidden` / `hidden sm:block`), desktop strictement inchangé (vérifié par capture) :
+
+### 1. Fusion des 6 tuiles KPI en une carte unique
+Nouveau composant `AdminKpiSectionMobile.tsx` : les 6 tuiles (CA global, ventes, CA moyen, taux d'acceptation, de refus, en cours) — chacune avec sa propre carte, son ombre, son bord de couleur — deviennent 6 cellules d'une grille 2 colonnes à l'intérieur d'une **seule** carte, séparées par des traits fins. Même contenu, mêmes couleurs d'identification par statistique. Sur desktop, les 6 tuiles séparées sont conservées via `hidden sm:grid`.
+
+### 2. Sections par statut repliées par défaut sur mobile
+Dans `StatusBlock.tsx` (utilisé par les blocs *Affectées*, *Validées par le Client*, *Refusées par le client*, *Archivées*) : ajout d'un état local `mobileOpen` initialisé à `false`. En-tête compact (icône + titre + badge + chevron + « Voir toutes ») toujours visible ; contenu affiché seulement si déplié. Sur desktop, `sm:block` ignore cet état — toujours ouvert.
+
+**Exception volontaire** : « Fiches en attente de validation » reste toujours dépliée. C'est la seule section qui appelle une action immédiate ; la cacher par défaut serait un contresens.
+
+Correction en cours de route : les libellés « Validées par le Client » et « Refusées par le client » étaient tronqués (« Validées par le… ») une fois compressés sur une ligne compacte avec badge + chevron + « Voir toutes ». Nouvelle prop optionnelle `mobileTitle` dans `StatusBlock` — « Validées » / « Refusées » sur mobile, libellé complet sur desktop.
+
+### Fichiers
+- `src/components/dashboard/AdminKpiSectionMobile.tsx` (nouveau)
+- `src/components/dashboard/AdminKpiSection.tsx` (branchement mobile-only)
+- `src/components/dashboard/StatusBlock.tsx` (repliable mobile + prop `mobileTitle`)
+- `src/app/(dashboard)/page.tsx` (passage de `mobileTitle` aux 2 blocs concernés)
+
+### Vérification
+`tsc` 0 erreur, build vert, unitaires 51/51, e2e 19/19. Hauteur mesurée avant et après par script Playwright : **3512 → 2276 px (−35 %)**. Desktop vérifié inchangé (capture avant/après identique).
+
+
 ## 2026-09-02 — Performance : Supabase chargé à la demande sur /login + cible navigateurs
 
 Suite de l'audit précédent, pour répondre à "comment aller plus loin".
